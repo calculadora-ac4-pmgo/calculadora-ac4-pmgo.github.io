@@ -227,6 +227,11 @@
     }
     .feed-header h3 { font-size: 1.1rem; font-weight: 600; }
 
+    @keyframes slideUpFade {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
     .escala-card {
       background: var(--bg-surface);
       border: 1px solid var(--border);
@@ -236,8 +241,10 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      transition: box-shadow 0.2s;
+      transition: box-shadow 0.2s, transform 0.2s;
+      animation: slideUpFade 0.3s ease-out forwards;
     }
+    .escala-card:active { transform: scale(0.99); }
     .escala-card:hover { box-shadow: var(--shadow-md); border-color: #cbd5e1; }
 
     .escala-main { display: flex; flex-direction: column; gap: 4px; }
@@ -396,10 +403,10 @@
       <details class="config">
         <summary>Valores da Tabela (Portaria)</summary>
         <div class="config-grid">
-          <div class="input-group"><label>Azul Dia (R$)</label><input type="number" class="input-control" id="valAD" value="30" step="0.01" oninput="calcularDashboard()"></div>
-          <div class="input-group"><label>Azul Noite (R$)</label><input type="number" class="input-control" id="valAN" value="33" step="0.01" oninput="calcularDashboard()"></div>
-          <div class="input-group"><label>Verm. Dia (R$)</label><input type="number" class="input-control" id="valVD" value="40" step="0.01" oninput="calcularDashboard()"></div>
-          <div class="input-group"><label>Verm. Noite (R$)</label><input type="number" class="input-control" id="valVN" value="45" step="0.01" oninput="calcularDashboard()"></div>
+          <div class="input-group"><label>Azul Dia (R$)</label><input type="number" class="input-control" id="valAD" value="30" step="0.01" oninput="salvarConfigs()"></div>
+          <div class="input-group"><label>Azul Noite (R$)</label><input type="number" class="input-control" id="valAN" value="33" step="0.01" oninput="salvarConfigs()"></div>
+          <div class="input-group"><label>Verm. Dia (R$)</label><input type="number" class="input-control" id="valVD" value="40" step="0.01" oninput="salvarConfigs()"></div>
+          <div class="input-group"><label>Verm. Noite (R$)</label><input type="number" class="input-control" id="valVN" value="45" step="0.01" oninput="salvarConfigs()"></div>
         </div>
       </details>
 
@@ -463,6 +470,48 @@
     const formataData = (iso) => new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
     const pegaCentavos = (id) => Math.round((parseFloat($(id).value || '0')) * 100);
 
+    // --- Persistência (LocalStorage) ---
+    function salvarConfigs() {
+      const config = {
+        ad: $('valAD').value, an: $('valAN').value,
+        vd: $('valVD').value, vn: $('valVN').value
+      };
+      localStorage.setItem('pmgoConfig', JSON.stringify(config));
+      calcularDashboard();
+    }
+
+    function carregarDados() {
+      const configStr = localStorage.getItem('pmgoConfig');
+      if (configStr) {
+        try {
+          const c = JSON.parse(configStr);
+          if(c.ad) $('valAD').value = c.ad;
+          if(c.an) $('valAN').value = c.an;
+          if(c.vd) $('valVD').value = c.vd;
+          if(c.vn) $('valVN').value = c.vn;
+        } catch(e) {}
+      }
+      const escalasStr = localStorage.getItem('pmgoEscalas');
+      if (escalasStr) {
+        try {
+          escalas = JSON.parse(escalasStr);
+        } catch(e) {}
+      }
+    }
+
+    // --- Animação de Números ---
+    function animarNumero(el, start, end, duration, formatFn) {
+      let startTime = null;
+      const step = (timestamp) => {
+        if (!startTime) startTime = timestamp;
+        const progress = Math.min((timestamp - startTime) / duration, 1);
+        const current = start + (end - start) * progress;
+        el.textContent = formatFn(current);
+        if (progress < 1) window.requestAnimationFrame(step);
+      };
+      window.requestAnimationFrame(step);
+    }
+
     // --- Inicialização ---
     function init() {
       const agora = new Date();
@@ -470,6 +519,9 @@
       $('escalaInicio').value = local.toISOString().slice(0, 16);
       $('escalaFim').value = new Date(local.getTime() + 8 * 3600000).toISOString().slice(0, 16);
       setInterval(() => { $('printDate').textContent = new Date().toLocaleString('pt-BR'); }, 1000);
+      
+      carregarDados();
+      atualizarUI();
     }
 
 
@@ -531,13 +583,24 @@
       });
 
       const totalHoras = (minDiurno + minNoturno) / 60;
+      
+      // Animações de atualização
       $('totHoras').textContent = totalHoras.toFixed(2).replace('.', ',') + 'h';
       $('totDiurnoNoturno').textContent = `${(minDiurno/60).toFixed(1)}h diurno / ${(minNoturno/60).toFixed(1)}h noturno`;
-      $('totQtd').textContent = escalas.length;
-      $('totValor').textContent = formataMoeda(totValorCentavos / 100);
+      
+      const elQtd = $('totQtd');
+      const valAntQtd = parseInt(elQtd.textContent) || 0;
+      animarNumero(elQtd, valAntQtd, escalas.length, 300, Math.round);
+
+      const elVal = $('totValor');
+      const valTextAnt = elVal.textContent.replace(/[^0-9,-]+/g,"").replace(",",".");
+      const valAntValor = parseFloat(valTextAnt) || 0;
+      const novoValor = totValorCentavos / 100;
+      animarNumero(elVal, valAntValor, novoValor, 400, formataMoeda);
     }
 
     function atualizarUI() {
+      localStorage.setItem('pmgoEscalas', JSON.stringify(escalas));
       calcularDashboard();
       
       const container = $('listaEscalasContainer');
