@@ -463,21 +463,32 @@
     const totMins  = resultados.reduce((s, x) => s + x.r.mins, 0);
     const totValor = resultados.reduce((s, x) => s + x.r.valorCentavos * (x.e.qtdPm || 1), 0);
 
-    let texto = '📋 RELATÓRIO AC4\n\n📊 RESUMO\n';
-    texto += `• Total: ${fmtHoras(totMins)}\n`;
-    texto += `• Valor estimado: ${fmtMoeda(totValor)}\n`;
-    texto += '\n📅 ESCALAS\n';
+    const DIAS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+    const dataAbrev = (iso) => {
+      const d = new Date(iso);
+      return `${DIAS[d.getDay()]}, ${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+    };
+
+    const titulo = lista.length === 1 ? '*AC4 · Simulação de Escala*' : '*AC4 · Simulação de Escalas*';
+    let texto = `${titulo}\n\n`;
+
     resultados.forEach(({ e, r }) => {
       const qtd = e.qtdPm || 1;
       const tipo = r.minVermelha > 0 ? '🔴' : '🔵';
-      const fimStr = fmtData(e.inicio) === fmtData(e.fim) ? fmtHora(e.fim) : `${fmtData(e.fim)} ${fmtHora(e.fim)}`;
-      texto += `${tipo} ${fmtDiaSemana(e.inicio)}, ${fmtData(e.inicio)}\n`;
-      texto += `   ${fmtHora(e.inicio)} → ${fimStr} (${fmtHoras(r.mins)})`;
+      const mesmodia = fmtData(e.inicio) === fmtData(e.fim);
+      const horaFim = mesmodia
+        ? fmtHora(e.fim)
+        : `${DIAS[new Date(e.fim).getDay()]} ${fmtHora(e.fim)}`;
+      texto += `${tipo} ${dataAbrev(e.inicio)} · ${fmtHora(e.inicio)}→${horaFim} · ${fmtHoras(r.mins)}`;
       if (qtd > 1) texto += ` · ${qtd} PMs`;
-      texto += `\n   ${fmtMoeda(r.valorCentavos * qtd)}\n`;
+      texto += ` · ${fmtMoeda(r.valorCentavos * qtd)}\n`;
     });
-    texto += '\n⚠️ Valor simulado — sujeito a validação administrativa.\n';
-    texto += 'Calculadora AC4 · calculadora-ac4-pmgo.github.io';
+
+    if (lista.length > 1) {
+      texto += `\n*${lista.length} escalas · ${fmtHoras(totMins)} · ${fmtMoeda(totValor)}*\n`;
+    }
+
+    texto += '\n_Valor simulado · AC4 PMGO_';
     return texto;
   }
 
