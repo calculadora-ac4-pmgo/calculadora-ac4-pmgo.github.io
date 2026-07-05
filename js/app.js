@@ -607,6 +607,24 @@
   }
 
   /* ------------------------------------------------------- exportações */
+
+  /* Botão principal da topbar — pergunta ao usuário e abre o Google Calendar */
+  async function abrirAgendaGoogle() {
+    const lista = escalasOrdenadas();
+    if (!lista.length) { toast('Adicione escalas antes de salvar na agenda.', { erro: true }); return; }
+
+    const msg = lista.length === 1
+      ? `Deseja salvar a escala "${lista[0].descricao}" no Google Agenda?`
+      : `Deseja salvar as ${lista.length} escalas no Google Agenda?`;
+
+    const ok = await dialogConfirmar(msg, { textoOk: 'Abrir Google Agenda', perigoso: false });
+    if (!ok) return;
+
+    haptic(10);
+    lista.forEach((e) => window.open(gerarLinkGoogleAgenda(e), '_blank', 'noopener'));
+  }
+
+  /* Download .ics para importação manual — acessível pelo share sheet */
   function exportarICS() {
     const lista = escalasOrdenadas();
     if (!lista.length) { toast('Adicione escalas antes de gerar o arquivo .ics.', { erro: true }); return; }
@@ -772,7 +790,7 @@
     on('btnTheme', 'click', () =>
       aplicarTema(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'));
     on('btnPrint',     'click', () => window.print());
-    on('btnExportIcs', 'click', exportarICS);
+    on('btnExportIcs', 'click', abrirAgendaGoogle);
     on('btnExportCsv', 'click', exportarCSV);
     on('btnShare',     'click', abrirShareSheet);
 
