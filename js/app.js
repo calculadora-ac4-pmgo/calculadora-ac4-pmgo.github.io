@@ -45,6 +45,11 @@
   const fmtData = (iso) =>
     new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
+  const fmtDiaSemana = (iso) => {
+    const nome = new Date(iso).toLocaleDateString('pt-BR', { weekday: 'long' });
+    return nome[0].toUpperCase() + nome.slice(1);
+  };
+
   const fmtHora = (iso) =>
     new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
@@ -106,9 +111,11 @@
     return Object.values(atual.valores).every(Number.isFinite) ? atual : tabelaVazia();
   }
 
-  /* ------------------------------------------------------- persistência */
+  /* ------------------------------------------------------- persistência
+     Escalas ficam em sessionStorage: sobrevivem a um recarregamento,
+     mas são apagadas quando a página/aba é fechada. */
   function salvar() {
-    localStorage.setItem(STORAGE.escalas, JSON.stringify(escalas));
+    sessionStorage.setItem(STORAGE.escalas, JSON.stringify(escalas));
   }
 
   function salvarConfig() {
@@ -124,8 +131,10 @@
   function carregar() {
     Object.entries(VALORES_OFICIAIS).forEach(([id, valor]) => { if ($(id)) $(id).value = valor; });
     salvarConfig();
+    // migra/descarta dados antigos que ficavam gravados permanentemente
+    localStorage.removeItem(STORAGE.escalas);
     try {
-      const e = JSON.parse(localStorage.getItem(STORAGE.escalas) || '[]');
+      const e = JSON.parse(sessionStorage.getItem(STORAGE.escalas) || '[]');
       if (Array.isArray(e)) escalas = e.filter((x) => x && x.inicio && x.fim);
     } catch { escalas = []; }
   }
@@ -251,6 +260,7 @@
     editandoId = id;
     $('escalaInicio').value = e.inicio;
     $('escalaFim').value = e.fim;
+    if ($('escalaDuracao')) $('escalaDuracao').value = '';
     if ($('escalaDescricao')) {
       $('escalaDescricao').value = e.descricao === 'Escala AC4' ? '' : (e.descricao || '');
     }
@@ -364,6 +374,7 @@
         <table class="escala-table">
           <thead>
             <tr>
+              <th>Dia</th>
               <th>Data</th>
               <th>Início</th>
               <th>Término</th>
@@ -384,6 +395,7 @@
 
       html += `
         <tr>
+          <td data-label="Dia">${fmtDiaSemana(e.inicio)}</td>
           <td data-label="Data">
             ${fmtData(e.inicio)}
             <span class="table-note">${escapeHTML(e.descricao)}</span>
@@ -491,10 +503,9 @@
     initTema();
     carregar();
 
-    // valores padrão do formulário
-    const agora = new Date();
-    $('escalaInicio').value = toInputLocal(agora);
-    $('escalaFim').value = toInputLocal(new Date(agora.getTime() + 8 * 3600000));
+    // valor padrão do formulário: apenas o início; o término fica a cargo
+    // do usuário (manual ou via seletor de duração 12h/24h)
+    $('escalaInicio').value = toInputLocal(new Date());
 
     // eventos
     on('formEscala', 'submit', (ev) => { ev.preventDefault(); submeterFormulario(); });
@@ -511,10 +522,21 @@
       $('escalaInicio').focus();
     });
 
-    // início automático do término: +8h quando o início muda
-    on('escalaInicio', 'change', () => {
-      const v = $('escalaInicio').value;
-      if (v) $('escalaFim').value = toInputLocal(new Date(new Date(v).getTime() + 8 * 3600000));
+    // duração pré-definida (12h/24h): calcula o término a partir do início;
+    // em "Personalizada" o término é totalmente manual
+    const aplicarDuracao = () => {
+      const sel = $('escalaDuracao');
+      const horas = sel ? Number(sel.value) : 0;
+      const ini = $('escalaInicio').value;
+      if (!horas || !ini) return;
+      $('escalaFim').value = toInputLocal(new Date(new Date(ini).getTime() + horas * 3600000));
+      $('fieldFim').classList.remove('invalid');
+    };
+    on('escalaDuracao', 'change', aplicarDuracao);
+    on('escalaInicio', 'change', aplicarDuracao);
+    // ajuste manual do término volta a duração para "Personalizada"
+    on('escalaFim', 'input', () => {
+      if ($('escalaDuracao')) $('escalaDuracao').value = '';
     });
 
     // ações delegadas da lista

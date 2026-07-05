@@ -380,7 +380,7 @@ textarea.control { min-height: 74px; resize: vertical; }
   align-items: end;
 }
 .launch-row .field { margin-bottom: 0; min-width: 0; }
-.launch-row .btn { min-height: 48px; padding-inline: 22px; }
+.launch-row .btn { min-height: 48px; padding-inline: 22px; grid-column: 1 / -1; }
 .launch-row .control { height: 48px; font-size: 0.94rem; }
 .launch-row input[type="datetime-local"] {
   min-width: 210px;
@@ -550,7 +550,7 @@ details.panel .panel-body { padding-top: 0; }
 .table-wrap { width: 100%; overflow-x: auto; }
 .escala-table {
   width: 100%;
-  min-width: 780px;
+  min-width: 860px;
   border-collapse: collapse;
 }
 .escala-table th {

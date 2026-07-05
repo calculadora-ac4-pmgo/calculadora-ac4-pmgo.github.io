@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="css/styles.css?v=8">
+  <link rel="stylesheet" href="css/styles.css?v=9">
   <script>
     // Aplica o tema salvo antes da primeira pintura para evitar flash
     (function () {
@@ -38,7 +38,7 @@
         </div>
         <div class="brand-text">
           <h1>Calculadora AC4</h1>
-          <p>PMGO · 19º CRPM</p>
+          <p>19º CRPM · PMGO</p>
         </div>
       </div>
       <div class="topbar-actions">
@@ -156,6 +156,14 @@
                 <input type="datetime-local" class="control" id="escalaInicio" required>
                 <p class="field-error">Informe a data e hora de início.</p>
               </div>
+              <div class="field" id="fieldDuracao">
+                <label for="escalaDuracao">Duração</label>
+                <select class="control" id="escalaDuracao">
+                  <option value="">Personalizada</option>
+                  <option value="12">Escala 12 horas</option>
+                  <option value="24">Escala 24 horas</option>
+                </select>
+              </div>
               <div class="field" id="fieldFim">
                 <label for="escalaFim">Término</label>
                 <input type="datetime-local" class="control" id="escalaFim" required>
@@ -255,6 +263,6 @@
   <!-- Toasts -->
   <div class="toast-region" id="toastRegion" aria-live="polite"></div>
 
-  <script src="js/app.js?v=8"></script>
+  <script src="js/app.js?v=9"></script>
 </body>
 </html>
