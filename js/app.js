@@ -37,6 +37,11 @@
     return m === 0 ? `${h}h` : `${h}h${String(m).padStart(2, '0')}`;
   };
 
+  // Exibição amigável: arredonda para a hora inteira mais próxima
+  // (ex.: 4h59 -> 5h, 7h01 -> 7h). Apenas visual — o cálculo do valor
+  // continua sendo feito minuto a minuto.
+  const fmtHorasCheias = (mins) => `${Math.round(mins / 60)}h`;
+
   const fmtDataHora = (iso) =>
     new Date(iso).toLocaleString('pt-BR', {
       day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
@@ -342,8 +347,8 @@
     const totValor = resultados.reduce((s, x) => s + x.r.valorCentavos, 0);
 
     $('totHoras').textContent = fmtHoras(totMins);
-    $('totDiurnas').textContent = fmtHoras(totDiurno);
-    $('totNoturnas').textContent = fmtHoras(totNoturno);
+    $('totDiurnas').textContent = fmtHorasCheias(totDiurno);
+    $('totNoturnas').textContent = fmtHorasCheias(totNoturno);
     $('pctDiurnas').textContent = totMins ? `${((totDiurno / totMins) * 100).toFixed(1).replace('.', ',')}% do total` : '0% do total';
     $('pctNoturnas').textContent = totMins ? `${((totNoturno / totMins) * 100).toFixed(1).replace('.', ',')}% do total` : '0% do total';
     $('totQtd').textContent = `${lista.length} escala${lista.length === 1 ? '' : 's'} no período`;
@@ -390,7 +395,7 @@
       if (r.minVermelha > 0) tipoChips.push('<span class="chip chip-red">Vermelha</span>');
       if (r.minVermelha < r.mins) tipoChips.push('<span class="chip chip-blue">Azul</span>');
       tipoChips.push(r.minNoturno > 0
-        ? `<span class="chip chip-night">${fmtHoras(r.minNoturno)} noturno</span>`
+        ? `<span class="chip chip-night">${fmtHorasCheias(r.minNoturno)} noturno</span>`
         : '<span class="chip chip-day">Diurno</span>');
 
       html += `
