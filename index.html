@@ -11,8 +11,8 @@
   <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="assets/icon-192.png">
 
-  <link rel="stylesheet" href="css/styles.css?v=29">
-  <script src="js/theme.js?v=29"></script>
+  <link rel="stylesheet" href="css/styles.css?v=30">
+  <script src="js/theme.js?v=30"></script>
 </head>
 <body>
 
@@ -255,6 +255,13 @@
           <select class="select-compact select-sm" id="filtroMes" aria-label="Filtrar por mês">
             <option value="">Todos os meses</option>
           </select>
+          <button class="btn btn-outline btn-sm" id="btnImportIcs" aria-label="Importar agenda de arquivo .ics">
+            <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 3v12m0 0 4-4m-4 4-4-4"/>
+              <path d="M2 17l.6 2.5A2 2 0 0 0 4.6 21h14.8a2 2 0 0 0 1.9-1.5L22 17"/>
+            </svg>
+            <span>Importar .ics</span>
+          </button>
           <button class="btn btn-danger-soft btn-sm hidden" id="btnClearAll">Limpar tudo</button>
         </div>
       </div>
@@ -275,7 +282,7 @@
         &copy; <span class="footer-year"></span> Weliton Pinheiro &mdash; Todos os direitos reservados.
       </p>
       <p class="site-footer-meta">
-        Calculadora AC4 &middot; PMGO &middot; v29 &middot;
+        Calculadora AC4 &middot; PMGO &middot; v30 &middot;
         <a href="https://github.com/calculadora-ac4-pmgo" target="_blank" rel="noopener noreferrer" class="footer-link">GitHub</a>
       </p>
     </div>
@@ -305,6 +312,35 @@
 
   <!-- Toasts -->
   <div class="toast-region" id="toastRegion" aria-live="polite" aria-atomic="false"></div>
+
+  <!-- Importação de agenda (.ics) -->
+  <input type="file" id="impArquivo" accept=".ics,text/calendar" class="hidden" aria-hidden="true">
+  <dialog class="confirm-dialog import-dialog" id="dialogImport" aria-modal="true" aria-label="Importar agenda">
+    <div class="dialog-body">
+      <h3 class="import-title">Importar agenda (.ics)</h3>
+      <p class="import-hint">Confira os eventos encontrados no arquivo. Use os filtros para pré-selecionar e desmarque o que não deseja importar.</p>
+      <div class="import-filtros">
+        <div class="field">
+          <label for="impDataIni">De</label>
+          <input type="date" class="control" id="impDataIni">
+        </div>
+        <div class="field">
+          <label for="impDataFim">Até</label>
+          <input type="date" class="control" id="impDataFim">
+        </div>
+        <div class="field import-field-kw">
+          <label for="impPalavras">Palavras-chave (separadas por vírgula)</label>
+          <input type="text" class="control" id="impPalavras" value="AC4, extra, escala, serviço">
+        </div>
+      </div>
+      <p class="import-status" id="impStatus" role="status"></p>
+      <div class="import-lista" id="impLista"></div>
+      <div class="dialog-actions">
+        <button class="btn btn-ghost" id="impCancelar">Cancelar</button>
+        <button class="btn btn-primary" id="impConfirmar">Importar selecionadas</button>
+      </div>
+    </div>
+  </dialog>
 
   <!-- Dialog de confirmação -->
   <dialog class="confirm-dialog" id="dialogConfirm" aria-modal="true">
@@ -401,7 +437,7 @@
     </div>
   </dialog>
 
-  <script type="module" src="js/app.js?v=29"></script>
+  <script type="module" src="js/app.js?v=30"></script>
 
   <!-- Relatório profissional de impressão — populado pelo JS antes de window.print() -->
   <section id="printReport">

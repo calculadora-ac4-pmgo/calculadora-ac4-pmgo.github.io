@@ -24,6 +24,7 @@ Em dispositivos móveis, é possível usar a opção do navegador para adicionar
 - Filtro por mês quando houver escalas em períodos diferentes.
 - Edição, duplicação e exclusão de escalas lançadas.
 - Exportação de agenda em `.ics`, compatível com importação manual em aplicativos de agenda, especialmente Google Agenda.
+- Importação de agenda por arquivo `.ics`, com filtros por data e palavras-chave e tela de revisão antes de consolidar.
 - Exportação de planilha em `.csv`.
 - Geração de relatório em PDF pela função de impressão do navegador.
 - Tema claro/escuro com persistência da preferência do usuário.
