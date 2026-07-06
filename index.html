@@ -6,26 +6,17 @@
   <title>Calculadora AC4</title>
   <meta name="description" content="Calculadora de escalas AC4 para simulação de horas diurnas, horas noturnas, valor estimado, exportação para agenda e relatório em PDF.">
   <meta name="theme-color" content="#0b1f3a">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://cloudflareinsights.com https://static.cloudflareinsights.com; object-src 'none'; base-uri 'self'; form-action 'self'">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="assets/icon.svg">
+  <link rel="apple-touch-icon" href="assets/icon-192.png">
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-
-  <link rel="stylesheet" href="css/styles.css?v=26">
-  <script>
-    (function () {
-      try {
-        var t = localStorage.getItem('pmgoTheme') ||
-          (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-        document.documentElement.dataset.theme = t;
-      } catch (e) {}
-    })();
-  </script>
+  <link rel="stylesheet" href="css/styles.css?v=27">
+  <script src="js/theme.js?v=27"></script>
 </head>
 <body>
+
+  <a class="skip-link" href="#conteudo">Pular para o conteúdo</a>
 
   <!-- Banner PWA -->
   <div class="pwa-banner hidden" id="pwaBanner" role="banner" aria-label="Instalar aplicativo">
@@ -105,7 +96,7 @@
     </div>
   </header>
 
-  <main class="layout">
+  <main class="layout" id="conteudo">
     <section class="metrics" role="status" aria-live="polite">
       <div class="metric-card highlight">
         <div class="metric-icon metric-money">
@@ -284,7 +275,7 @@
         &copy; <span class="footer-year"></span> Weliton Pinheiro &mdash; Todos os direitos reservados.
       </p>
       <p class="site-footer-meta">
-        Calculadora AC4 &middot; PMGO &middot; v26 &middot;
+        Calculadora AC4 &middot; PMGO &middot; v27 &middot;
         <a href="https://github.com/calculadora-ac4-pmgo" target="_blank" rel="noopener noreferrer" class="footer-link">GitHub</a>
       </p>
     </div>
@@ -410,7 +401,7 @@
     </div>
   </dialog>
 
-  <script src="js/app.js?v=26"></script>
+  <script src="js/app.js?v=27"></script>
 
   <!-- Relatório profissional de impressão — populado pelo JS antes de window.print() -->
   <section id="printReport">

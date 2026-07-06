@@ -1,15 +1,20 @@
 /* Service Worker — Calculadora AC4
    Estratégia: network-first para o app shell (atualizações chegam rápido),
    com fallback ao cache quando offline. */
-const CACHE = 'ac4-v26';
+const CACHE = 'ac4-v27';
 const SHELL = [
   './',
   './index.html',
-  './css/styles.css?v=26',
-  './js/app.js?v=26',
+  './css/styles.css?v=27',
+  './js/app.js?v=27',
+  './js/theme.js?v=27',
   './manifest.webmanifest',
   './assets/icon.svg',
   './assets/icon-maskable.svg',
+  './assets/icon-192.png',
+  './assets/icon-512.png',
+  './assets/fonts/inter-latin.woff2',
+  './assets/fonts/inter-latin-ext.woff2',
 ];
 
 self.addEventListener('install', (event) => {
@@ -33,19 +38,26 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   if (request.method !== 'GET') return;
+  // Terceiros (analytics, etc.) seguem direto para a rede, sem interceptação.
+  if (new URL(request.url).origin !== location.origin) return;
 
   event.respondWith(
     fetch(request, { cache: 'no-cache' })
       .then((resp) => {
-        // guarda cópia atualizada de recursos do próprio site
-        if (resp.ok && new URL(request.url).origin === location.origin) {
+        if (resp.ok) {
           const clone = resp.clone();
           caches.open(CACHE).then((c) => c.put(request, clone));
         }
         return resp;
       })
       .catch(() =>
-        caches.match(request).then((hit) => hit || caches.match('./index.html'))
+        caches.match(request).then((hit) => {
+          if (hit) return hit;
+          // Fallback de index só para navegação — devolver HTML no lugar
+          // de CSS/JS quebraria a página.
+          if (request.mode === 'navigate') return caches.match('./index.html');
+          return Response.error();
+        })
       )
   );
 });

@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Calculadora AC4 — v26
+   Calculadora AC4 — v27
    ========================================================================== */
 (() => {
   'use strict';
@@ -309,18 +309,27 @@
       $('dialogOk').className = `btn ${perigoso ? 'btn-danger-soft' : 'btn-primary'}`;
       dlg.showModal();
 
-      function onOk()     { cleanup(); resolve(true); }
-      function onCancel() { cleanup(); resolve(false); }
-      function onBackdrop(e) { if (e.target === dlg) { cleanup(); resolve(false); } }
-      function cleanup() {
+      let resolvido = false;
+      function finalizar(valor) {
+        if (resolvido) return;
+        resolvido = true;
         $('dialogOk').removeEventListener('click', onOk);
         $('dialogCancel').removeEventListener('click', onCancel);
         dlg.removeEventListener('click', onBackdrop);
+        dlg.removeEventListener('close', onClose);
         if (dlg.open) dlg.close();
+        resolve(valor);
       }
+      function onOk()     { finalizar(true); }
+      function onCancel() { finalizar(false); }
+      function onBackdrop(e) { if (e.target === dlg) finalizar(false); }
+      /* Esc fecha o <dialog> nativamente sem passar pelos botões —
+         sem este handler a Promise ficaria pendente e os listeners vazariam. */
+      function onClose()  { finalizar(false); }
       $('dialogOk').addEventListener('click', onOk);
       $('dialogCancel').addEventListener('click', onCancel);
       dlg.addEventListener('click', onBackdrop);
+      dlg.addEventListener('close', onClose);
     });
   }
 
@@ -330,19 +339,26 @@
      Regras (Portaria SSP nº 621/2026):
      - Vermelha: dia de INÍCIO é sex/sáb/dom.
      - Noturno: [22:00, 05:00) minuto a minuto. */
+  const tabelaEscalaValida = (t) =>
+    t && t.valores && ['AD', 'AN', 'VD', 'VN'].every((k) => Number.isFinite(t.valores[k]) && t.valores[k] > 0);
+
   function calcularEscala(e) {
     const ini = parseDateTimeLocal(e.inicio) || new Date(e.inicio);
     const fim = parseDateTimeLocal(e.fim) || new Date(e.fim);
     const mins = Math.max(1, Math.round((fim - ini) / 60000));
     const cont = { AD: 0, AN: 0, VD: 0, VN: 0 };
-    const tabela = tabelaParaCalculo();
+    /* Usa a tabela congelada no lançamento (histórico preservado se a
+       Portaria mudar); cai na tabela vigente para escalas legadas. */
+    const tabela = tabelaEscalaValida(e.tabela) ? e.tabela : tabelaParaCalculo();
     const vermelha = [5, 6, 0].includes(ini.getDay());
 
+    /* Minuto-do-dia incrementado com aritmética modular — Goiás não tem
+       horário de verão, então não há saltos de relógio no intervalo. */
+    let td = ini.getHours() * 60 + ini.getMinutes();
     for (let i = 0; i < mins; i++) {
-      const m = new Date(ini.getTime() + i * 60000);
-      const td = m.getHours() * 60 + m.getMinutes();
       const noturno = td >= 22 * 60 || td < 5 * 60;
       cont[vermelha ? (noturno ? 'VN' : 'VD') : (noturno ? 'AN' : 'AD')]++;
+      td = (td + 1) % 1440;
     }
 
     const centavosMinuto = Object.keys(cont).reduce((s, k) => s + cont[k] * tabela.valores[k], 0);
@@ -585,7 +601,7 @@
   function atualizarSelectMes() {
     const sel = $('filtroMes');
     if (!sel) return;
-    const meses = new Set(escalas.map((e) => toInputMonth(new Date(e.inicio))));
+    const meses = new Set(escalas.map((e) => toInputMonth(parseDateTimeLocal(e.inicio) || new Date(e.inicio))));
     const antigo = sel.value;
     sel.innerHTML = '<option value="">Todos os meses</option>';
     [...meses].sort().forEach((m) => {
@@ -734,7 +750,6 @@
           <h3>Nenhuma escala lançada</h3>
           <p>${escapeHTML(msg)}</p>
         </div>`;
-      if ($('printDate')) $('printDate').textContent = new Date().toLocaleString('pt-BR');
       return;
     }
 
@@ -791,6 +806,7 @@
           </td>
         </tr>`;
     });
+    html += '</tbody>';
     if (lista.length > 1) {
       html += `
         <tfoot>
@@ -802,7 +818,7 @@
           </tr>
         </tfoot>`;
     }
-    html += '</tbody></table></div>';
+    html += '</table></div>';
     container.innerHTML = html;
 
   }
@@ -984,7 +1000,7 @@
       const valorTotal = r.valorCentavos * qtd;
       total += valorTotal;
       linhas.push([
-        `"${e.descricao.replace(/"/g, '""')}"`,
+        `"${(e.descricao || 'Escala AC4').replace(/"/g, '""')}"`,
         `"${(e.origem || 'AC4').replace(/"/g, '""')}"`,
         fmtDataHora(e.inicio), fmtDataHora(e.fim),
         qtd,
