@@ -50,23 +50,29 @@ Exemplo: uma escala com início na sexta-feira às 18h e término no sábado às
 
 ## Privacidade e armazenamento
 
-Os dados são armazenados somente no navegador do usuário.
+Os dados das escalas são armazenados somente no navegador do usuário.
 
-- As escalas lançadas ficam em `sessionStorage`.
-- Configurações e preferência de tema ficam em `localStorage`.
-- Nenhuma escala, configuração ou informação de uso é enviada para servidor.
-- Os dados podem ser perdidos ao fechar a aba, limpar os dados do navegador ou usar modo anônimo/privado.
+- As escalas lançadas, as configurações e a preferência de tema ficam em `localStorage` e **persistem** após fechar a aba ou o aplicativo.
+- A aplicação **não solicita nem armazena dados pessoais** (nome, RG, CPF, matrícula ou similares), em conformidade com a LGPD.
+- Nenhuma escala, valor ou configuração é enviada para servidor.
+- O site utiliza **Cloudflare Web Analytics**, uma ferramenta de métricas **sem cookies e sem rastreamento individual**: são coletadas apenas estatísticas agregadas de acesso (como número de visitas e tipo de navegador), sem identificar o usuário e sem acesso a qualquer dado lançado na calculadora.
+- Os dados locais podem ser perdidos ao limpar os dados do navegador ou ao usar modo anônimo/privado.
 
 ## Estrutura do projeto
 
 ```txt
 index.html            página única da aplicação
+404.html              página de erro para URLs inexistentes
 css/styles.css        estilos, temas, componentes e regras de impressão
 js/app.js             lógica de estado, cálculo, interface e exportações
+js/theme.js           aplicação do tema antes do primeiro paint
 sw.js                 service worker para funcionamento offline
 manifest.webmanifest  manifesto PWA
-assets/               ícones e imagens da aplicação
-docs/                 documentos auxiliares do projeto
+assets/               ícones (SVG e PNG) e fontes self-hosted (Inter)
+tests/                testes de regressão executados no CI
+tools/                utilitários de manutenção (bump de versão)
+docs/                 documentos auxiliares e relatórios do projeto
+.github/workflows/    CI: testes de regressão + deploy no GitHub Pages
 ```
 
 ## Projeto estático
@@ -96,10 +102,17 @@ As exportações refletem os dados informados e calculados no navegador, mantend
 
 ## Testes de regressão
 
-A aplicação possui uma rotina de testes de regressão disponível no console do navegador pela função:
+Os testes de regressão são executados **automaticamente no CI** a cada push na branch `main` — o deploy só ocorre se todos passarem. Para rodar localmente:
+
+```sh
+node tests/run-tests.mjs
+```
+
+As mesmas suítes também estão disponíveis no console do navegador:
 
 ```js
-__ac4Testes()
+__ac4Testes()             // regras de cálculo AC4
+__ac4TestesAgendamento()  // geração de arquivo .ics
 ```
 
 Essa rotina valida cenários de cálculo por categoria de hora e valor total, incluindo casos de escalas azuis, vermelhas, diurnas, noturnas e escalas que atravessam a virada de dia.
@@ -126,6 +139,6 @@ Alterações em regras de cálculo, valores, base normativa ou fluxos administra
 
 ## Licença e uso
 
-Este repositório não declara, neste momento, uma licença formal em arquivo próprio.
+Os termos de uso estão declarados formalmente no arquivo [LICENSE.md](LICENSE.md).
 
-O uso, redistribuição ou adaptação do conteúdo deve observar a autorização do responsável pelo repositório e as normas administrativas aplicáveis. A aplicação deve ser utilizada apenas como apoio de simulação e conferência preliminar.
+Em resumo: todos os direitos reservados ao autor. O uso da aplicação publicada é livre para fins de simulação e conferência preliminar; redistribuição ou adaptação do código dependem de autorização do responsável pelo repositório.
