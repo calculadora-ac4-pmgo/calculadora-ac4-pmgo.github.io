@@ -1,8 +1,9 @@
 /* ==========================================================================
    Calculadora AC4 — módulo de regras de negócio
    Regras (Portaria SSP nº 621/2026):
-   - Vermelha: dia de INÍCIO é sex/sáb/dom.
+   - Vermelha: dia operacional do minuto é sex/sáb/dom.
    - Noturno: [22:00, 05:00) minuto a minuto.
+   - Minutos entre 00:00 e 04:59 usam o dia operacional anterior.
    Funções puras, sem acesso ao DOM.
    ========================================================================== */
 import { parseDateTimeLocal } from './formato.mjs';
@@ -20,6 +21,12 @@ export const TABELA_OFICIAL = Object.freeze({
 export const tabelaEscalaValida = (t) =>
   t && t.valores && ['AD', 'AN', 'VD', 'VN'].every((k) => Number.isFinite(t.valores[k]) && t.valores[k] > 0);
 
+function diaReferenciaOperacional(data, minutoDoDia, noturno) {
+  const ref = new Date(data);
+  if (noturno && minutoDoDia < 5 * 60) ref.setDate(ref.getDate() - 1);
+  return ref.getDay();
+}
+
 /* Calcula minutos por categoria e valor de uma escala.
    Usa a tabela congelada no lançamento (e.tabela) quando válida — preserva o
    histórico se a Portaria mudar; caso contrário usa a tabela vigente. */
@@ -29,15 +36,16 @@ export function calcularEscala(e, tabelaVigente = TABELA_OFICIAL) {
   const mins = Math.max(1, Math.round((fim - ini) / 60000));
   const cont = { AD: 0, AN: 0, VD: 0, VN: 0 };
   const tabela = tabelaEscalaValida(e.tabela) ? e.tabela : tabelaVigente;
-  const vermelha = [5, 6, 0].includes(ini.getDay());
 
-  /* Minuto-do-dia incrementado com aritmética modular — Goiás não tem
-     horário de verão, então não há saltos de relógio no intervalo. */
-  let td = ini.getHours() * 60 + ini.getMinutes();
+  /* Classificação minuto a minuto — Goiás não tem horário de verão, então não
+     há saltos de relógio no intervalo. A madrugada até 04:59 pertence ao dia
+     operacional anterior para preservar a faixa noturna iniciada às 22h. */
   for (let i = 0; i < mins; i++) {
+    const atual = new Date(ini.getTime() + i * 60000);
+    const td = atual.getHours() * 60 + atual.getMinutes();
     const noturno = td >= 22 * 60 || td < 5 * 60;
+    const vermelha = [5, 6, 0].includes(diaReferenciaOperacional(atual, td, noturno));
     cont[vermelha ? (noturno ? 'VN' : 'VD') : (noturno ? 'AN' : 'AD')]++;
-    td = (td + 1) % 1440;
   }
 
   const centavosMinuto = Object.keys(cont).reduce((s, k) => s + cont[k] * tabela.valores[k], 0);
