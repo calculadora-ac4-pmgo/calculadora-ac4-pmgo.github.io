@@ -1,6 +1,24 @@
 /* ==========================================================================
-   Calculadora AC4 — v27
+   Calculadora AC4 — v29
+   Módulo principal: estado, UI, persistência e exportações.
+   Regras de negócio, formatação e agenda vivem em js/modules/.
    ========================================================================== */
+import {
+  fmtMoeda, fmtHoras, fmtHorasCheias, fmtDataHora, fmtData, fmtDiaSemana, fmtHora,
+  combinarDataHoraLocal, parseDateTimeLocal, formatarDataHoraInput, toInputLocal,
+  calcularTerminoPorDuracao, validarIntervaloEscala, toInputMonth, fmtMesRef, escapeHTML,
+} from './modules/formato.mjs';
+import {
+  PORTARIA_ATUAL, VALORES_OFICIAIS, labelOrigem,
+  calcularEscala as calcularEscalaBase,
+} from './modules/calculo.mjs';
+import {
+  ICS_DOMAIN, dataICS, desdobrarLinhasICS,
+  montarICS as montarICSBase,
+  validarICS as validarICSBase,
+  gerarLinkGoogleAgenda as gerarLinkGoogleAgendaBase,
+} from './modules/agenda.mjs';
+
 (() => {
   'use strict';
 
@@ -20,179 +38,6 @@
   let ultimaExcluida = null;
   let filtroMes = '';
   let deferredInstallPrompt = null;
-
-  const PORTARIA_ATUAL = 'Portaria SSP nº 621/2026';
-  const VALORES_OFICIAIS = { valAD: '30', valAN: '33', valVD: '40', valVN: '45' };
-
-  /* -------------------------------------------------------- utilitários */
-  const moedaBRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
-  const fmtMoeda = (cent) => moedaBRL.format(cent / 100);
-
-  const fmtHoras = (mins) => {
-    const h = Math.floor(mins / 60);
-    const m = mins % 60;
-    return m === 0 ? `${h}h` : `${h}h${String(m).padStart(2, '0')}`;
-  };
-  const fmtHorasCheias = (mins) => `${Math.round(mins / 60)}h`;
-
-  const fmtDataHora = (iso) =>
-    new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
-
-  const fmtData = (iso) =>
-    new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-
-  const fmtDiaSemana = (iso) => {
-    const n = new Date(iso).toLocaleDateString('pt-BR', { weekday: 'long' });
-    return n[0].toUpperCase() + n.slice(1);
-  };
-
-  const fmtHora = (iso) =>
-    new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-
-  const dataLocalValida = (date) =>
-    date instanceof Date && Number.isFinite(date.getTime());
-
-  function combinarDataHoraLocal(data, hora) {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(data || '') || !/^\d{2}:\d{2}$/.test(hora || '')) return null;
-    const [ano, mes, dia] = data.split('-').map(Number);
-    const [h, min] = hora.split(':').map(Number);
-    const d = new Date(ano, mes - 1, dia, h, min, 0, 0);
-    return dataLocalValida(d) &&
-      d.getFullYear() === ano &&
-      d.getMonth() === mes - 1 &&
-      d.getDate() === dia &&
-      d.getHours() === h &&
-      d.getMinutes() === min
-      ? d
-      : null;
-  }
-
-  function parseDateTimeLocal(valor) {
-    if (!valor) return null;
-    const [data, horaComSegundos = ''] = String(valor).split('T');
-    const hora = horaComSegundos.slice(0, 5);
-    return combinarDataHoraLocal(data, hora);
-  }
-
-  const formatarDataHoraInput = (date) =>
-    dataLocalValida(date)
-      ? [
-          date.getFullYear(),
-          String(date.getMonth() + 1).padStart(2, '0'),
-          String(date.getDate()).padStart(2, '0'),
-        ].join('-') + `T${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
-      : '';
-
-  const toInputLocal = formatarDataHoraInput;
-
-  const adicionarHoras = (date, horas) =>
-    dataLocalValida(date) && Number.isFinite(Number(horas))
-      ? new Date(date.getTime() + Number(horas) * 3600000)
-      : null;
-
-  const calcularTerminoPorDuracao = (inicioValor, horas) => {
-    const inicio = parseDateTimeLocal(inicioValor);
-    const fim = adicionarHoras(inicio, horas);
-    return fim ? formatarDataHoraInput(fim) : '';
-  };
-
-  function validarIntervaloEscala(inicioValor, fimValor) {
-    const inicio = parseDateTimeLocal(inicioValor);
-    const fim = parseDateTimeLocal(fimValor);
-    if (!inicioValor || !inicio) return { ok: false, campo: 'inicio', mensagem: 'Informe a data e hora de início da escala.' };
-    if (!fimValor || !fim) return { ok: false, campo: 'fim', mensagem: 'Informe a data e hora de término da escala.' };
-    if (fim <= inicio) return { ok: false, campo: 'fim', mensagem: 'O término da escala deve ser posterior ao início.' };
-    return { ok: true, inicio, fim, mensagem: '' };
-  }
-
-  const toInputMonth = (date) =>
-    `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-
-  const fmtMesRef = (yyyymm) => {
-    if (!yyyymm) return '';
-    const [ano, mes] = yyyymm.split('-');
-    const label = new Date(+ano, +mes - 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-    return label[0].toUpperCase() + label.slice(1);
-  };
-
-  const escapeHTML = (s) =>
-    String(s).replace(/[&<>"']/g, (c) =>
-      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-
-  /* ---------------------------------------------------------- ICS */
-  const ICS_DOMAIN = 'calculadora-ac4-pmgo.github.io';
-  const ICS_PRODID = '-//Calculadora AC4//PT-BR';
-  const contarOctetos = (s) => {
-    if (typeof TextEncoder !== 'undefined') return new TextEncoder().encode(s).length;
-    return unescape(encodeURIComponent(s)).length;
-  };
-
-  function dobrarLinhaICS(linha) {
-    const partes = [];
-    let atual = '';
-    Array.from(String(linha)).forEach((char) => {
-      const tentativa = atual + char;
-      if (atual && contarOctetos(tentativa) > 75) { partes.push(atual); atual = ` ${char}`; }
-      else atual = tentativa;
-    });
-    if (atual || !partes.length) partes.push(atual);
-    return partes.join('\r\n');
-  }
-
-  const escaparTextoICS = (v) =>
-    String(v || '').replace(/\\/g, '\\\\').replace(/\r\n|\r|\n/g, '\\n').replace(/;/g, '\\;').replace(/,/g, '\\,');
-
-  function dataICS(valor) {
-    const d = new Date(valor);
-    if (!Number.isFinite(d.getTime())) return '';
-    return d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
-  }
-
-  function hashCurto(valor) {
-    let hash = 0x811c9dc5;
-    Array.from(String(valor)).forEach((c) => { hash ^= c.charCodeAt(0); hash = Math.imul(hash, 0x01000193); });
-    return (hash >>> 0).toString(36);
-  }
-
-  function uidEscalaICS(e) {
-    const origem = e.id != null && e.id !== '' ? String(e.id) : hashCurto(`${e.inicio}|${e.fim}|${e.descricao || ''}`);
-    const seguro = origem.replace(/[^A-Za-z0-9_-]/g, '-').replace(/-+/g, '-').slice(0, 80);
-    return `ac4-${seguro || hashCurto(origem)}@${ICS_DOMAIN}`;
-  }
-
-  const escalaAgendaValida = (e) => {
-    const i = parseDateTimeLocal(e.inicio), f = parseDateTimeLocal(e.fim);
-    return dataLocalValida(i) && dataLocalValida(f) && f > i;
-  };
-
-  function montarICS(lista) {
-    const dtstamp = dataICS(new Date());
-    const linhas = ['BEGIN:VCALENDAR', 'VERSION:2.0', `PRODID:${ICS_PRODID}`, 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH'];
-    let eventos = 0, ignoradas = 0;
-    lista.forEach((e) => {
-      if (!escalaAgendaValida(e)) { ignoradas++; return; }
-      const r = calcularEscala(e);
-      const qtd = e.qtdPm || 1;
-      const descricao = [
-        'Escala AC4',
-        e.descricao && e.descricao !== 'Escala AC4' ? `Unidade: ${e.descricao}` : '',
-        `Origem: ${e.origem || 'AC4'}`,
-        `Início: ${fmtDataHora(e.inicio)}`,
-        `Término: ${fmtDataHora(e.fim)}`,
-        qtd > 1 ? `PMs: ${qtd}` : '',
-        `Valor estimado: ${fmtMoeda(r.valorCentavos * qtd)}`,
-        'Valor simulado, sujeito à conferência administrativa.',
-      ].filter(Boolean).join('\n');
-      linhas.push('BEGIN:VEVENT', `UID:${uidEscalaICS(e)}`, `DTSTAMP:${dtstamp}`,
-        `DTSTART:${dataICS(e.inicio)}`, `DTEND:${dataICS(e.fim)}`,
-        `SUMMARY:${escaparTextoICS(e.descricao || 'Escala AC4')}`,
-        `DESCRIPTION:${escaparTextoICS(descricao)}`,
-        'TRANSP:OPAQUE', 'STATUS:CONFIRMED', 'END:VEVENT');
-      eventos++;
-    });
-    linhas.push('END:VCALENDAR');
-    return { conteudo: linhas.map(dobrarLinhaICS).join('\r\n'), eventos, ignoradas };
-  }
 
   function baixarArquivoAgenda(lista, mensagem = 'Arquivo .ics gerado para importar no Google Agenda.') {
     const arquivo = montarICS(lista);
@@ -241,6 +86,12 @@
     const atual = lerTabelaAtual();
     return Object.values(atual.valores).every(Number.isFinite) ? atual : tabelaVazia();
   };
+
+  /* Pontes para os módulos — injetam a tabela vigente lida do DOM,
+     mantendo as assinaturas originais nos pontos de uso. */
+  const calcularEscala = (e) => calcularEscalaBase(e, tabelaParaCalculo());
+  const montarICS = (lista) => montarICSBase(lista, tabelaParaCalculo());
+  const gerarLinkGoogleAgenda = (e) => gerarLinkGoogleAgendaBase(e, tabelaParaCalculo());
 
   /* --------------------------------------------- persistência */
   function salvar() {
@@ -334,43 +185,6 @@
   }
 
   const haptic = (p = 10) => { try { navigator.vibrate?.(p); } catch {} };
-
-  /* ------------------------------------------------------- cálculo
-     Regras (Portaria SSP nº 621/2026):
-     - Vermelha: dia de INÍCIO é sex/sáb/dom.
-     - Noturno: [22:00, 05:00) minuto a minuto. */
-  const tabelaEscalaValida = (t) =>
-    t && t.valores && ['AD', 'AN', 'VD', 'VN'].every((k) => Number.isFinite(t.valores[k]) && t.valores[k] > 0);
-
-  function calcularEscala(e) {
-    const ini = parseDateTimeLocal(e.inicio) || new Date(e.inicio);
-    const fim = parseDateTimeLocal(e.fim) || new Date(e.fim);
-    const mins = Math.max(1, Math.round((fim - ini) / 60000));
-    const cont = { AD: 0, AN: 0, VD: 0, VN: 0 };
-    /* Usa a tabela congelada no lançamento (histórico preservado se a
-       Portaria mudar); cai na tabela vigente para escalas legadas. */
-    const tabela = tabelaEscalaValida(e.tabela) ? e.tabela : tabelaParaCalculo();
-    const vermelha = [5, 6, 0].includes(ini.getDay());
-
-    /* Minuto-do-dia incrementado com aritmética modular — Goiás não tem
-       horário de verão, então não há saltos de relógio no intervalo. */
-    let td = ini.getHours() * 60 + ini.getMinutes();
-    for (let i = 0; i < mins; i++) {
-      const noturno = td >= 22 * 60 || td < 5 * 60;
-      cont[vermelha ? (noturno ? 'VN' : 'VD') : (noturno ? 'AN' : 'AD')]++;
-      td = (td + 1) % 1440;
-    }
-
-    const centavosMinuto = Object.keys(cont).reduce((s, k) => s + cont[k] * tabela.valores[k], 0);
-    return {
-      mins, cont,
-      minDiurno: cont.AD + cont.VD,
-      minNoturno: cont.AN + cont.VN,
-      minVermelha: cont.VD + cont.VN,
-      valorCentavos: Math.round(centavosMinuto / 60),
-      tabela,
-    };
-  }
 
   function escalasOrdenadas() {
     let lista = [...escalas].sort((a, b) => (parseDateTimeLocal(a.inicio) || new Date(a.inicio)) - (parseDateTimeLocal(b.inicio) || new Date(b.inicio)));
@@ -825,17 +639,6 @@
 
   /* ------------------------------------------------------- exportações */
 
-  /* Mapa de origem → rótulo legível */
-  function labelOrigem(v) {
-    return {
-      AC4: 'AC4', AGETOP: 'AGETOP', DETRAN: 'DETRAN', PREFEITURAS: 'Prefeituras',
-      GOINFRA: 'GOINFRA', FREAP: 'FREAP', CONVENIO_ENEM: 'Conv. ENEM',
-      CONVENIO_TRE: 'Conv. TRE', CONVENIO_UEG: 'Conv. UEG',
-      CONVENIO_SEDUC: 'Conv. SEDUC', CONVENIO_SAMU: 'Conv. SAMU',
-      CONVENIO_AGR: 'Conv. AGR', FAZENDARIO_SEC_ECON: 'Faz./Sec. Econ.', GEAI: 'GEAI',
-    }[v] || v || 'AC4';
-  }
-
   /* Popula #printReport e chama window.print() */
   function imprimirRelatorio() {
     const lista = escalasOrdenadas();
@@ -945,36 +748,6 @@
     baixarArquivoAgenda(lista, 'Arquivo gerado. Use "Importar" na Agenda Google.');
   }
 
-  /* Monta a URL de link direto para o Google Calendar (1 evento por link).
-     Datas convertidas para UTC via dataICS() — fuso horário tratado corretamente. */
-  function gerarLinkGoogleAgenda(e) {
-    const r = calcularEscala(e);
-    const qtd = e.qtdPm || 1;
-    const tipo = r.minVermelha > 0 ? 'Vermelha' : 'Azul';
-    const linhas = [
-      `Servico Extra AC4 — Escala ${tipo}`,
-      '',
-      e.descricao && e.descricao !== 'Escala AC4' ? `Unidade: ${e.descricao}` : null,
-      `Origem: ${e.origem || 'AC4'}`,
-      '',
-      `Duracao: ${fmtHoras(r.mins)}`,
-      `Horas diurnas: ${fmtHorasCheias(r.minDiurno)}`,
-      `Horas noturnas: ${fmtHorasCheias(r.minNoturno)}`,
-    ].filter((l) => l !== null);
-    if (qtd > 1) linhas.push(`Qtd. PM: ${qtd}`);
-    linhas.push('', `Valor estimado: ${fmtMoeda(r.valorCentavos * qtd)}`);
-    if (qtd > 1) linhas.push(`(${fmtMoeda(r.valorCentavos)}/PM)`);
-    linhas.push('', 'Valor simulado — sujeito a validacao administrativa.', 'Calculadora AC4 · PMGO');
-
-    const params = new URLSearchParams({
-      action: 'TEMPLATE',
-      text: e.descricao || `Servico Extra AC4 — ${tipo}`,
-      dates: `${dataICS(e.inicio)}/${dataICS(e.fim)}`,
-      details: linhas.join('\n'),
-    });
-    return `https://calendar.google.com/calendar/render?${params.toString()}`;
-  }
-
   async function abrirAgendaGoogleItem(id) {
     const e = escalas.find((x) => x.id === id);
     if (!e) return;
@@ -1026,46 +799,10 @@
   }
 
   /* -------------------------------------------- validar ICS (debug) */
-  function desdobrarLinhasICS(conteudo) {
-    return conteudo.split('\r\n').reduce((acc, linha) => {
-      if (/^[ \t]/.test(linha) && acc.length) acc[acc.length - 1] += linha.slice(1);
-      else acc.push(linha);
-      return acc;
-    }, []);
-  }
-  function parseDataICS(v) {
-    const m = /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/.exec(v || '');
-    if (!m) return null;
-    const d = new Date(Date.UTC(+m[1], +m[2]-1, +m[3], +m[4], +m[5], +m[6]));
-    return Number.isFinite(d.getTime()) ? d : null;
-  }
   window.__ac4ValidarICS = function (entrada) {
     const fonte = Array.isArray(entrada) ? entrada : escalasOrdenadas();
-    const arquivo = montarICS(fonte);
-    const falhas = [];
-    const c = arquivo.conteudo;
-    if (!c.startsWith('BEGIN:VCALENDAR')) falhas.push('Não inicia com BEGIN:VCALENDAR.');
-    if (!c.endsWith('END:VCALENDAR'))   falhas.push('Não encerra com END:VCALENDAR.');
-    if (!c.includes('\r\n'))            falhas.push('Sem quebras CRLF.');
-    c.split('\r\n').forEach((l, i) => { if (contarOctetos(l) > 75) falhas.push(`Linha ${i+1} excede 75 octetos.`); });
-    const linhas = desdobrarLinhasICS(c);
-    ['VERSION:2.0',`PRODID:${ICS_PRODID}`,'CALSCALE:GREGORIAN','METHOD:PUBLISH']
-      .forEach((item) => { if (!linhas.includes(item)) falhas.push(`Ausente: ${item}`); });
-    const eventos = []; let atual = null;
-    linhas.forEach((l) => {
-      if (l === 'BEGIN:VEVENT') atual = [];
-      else if (l === 'END:VEVENT') { if (atual) eventos.push(atual); atual = null; }
-      else if (atual) atual.push(l);
-    });
-    eventos.forEach((ev, i) => {
-      const obter = (campo) => ev.find((l) => l.startsWith(`${campo}:`));
-      ['UID','DTSTAMP','DTSTART','DTEND','SUMMARY'].forEach((campo) => { if (!obter(campo)) falhas.push(`VEVENT ${i+1} sem ${campo}.`); });
-      const ini = parseDataICS((obter('DTSTART')||'').slice('DTSTART:'.length));
-      const fim = parseDataICS((obter('DTEND')||'').slice('DTEND:'.length));
-      if (ini && fim && fim <= ini) falhas.push(`VEVENT ${i+1}: DTEND ≤ DTSTART.`);
-    });
-    const resultado = { ok: falhas.length === 0, eventos: eventos.length, ignoradas: arquivo.ignoradas, falhas };
-    if (falhas.length && console.table) console.table(falhas);
+    const resultado = validarICSBase(fonte, tabelaParaCalculo());
+    if (resultado.falhas.length && console.table) console.table(resultado.falhas);
     return resultado;
   };
 

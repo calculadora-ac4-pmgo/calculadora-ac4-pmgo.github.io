@@ -1,8 +1,7 @@
 /* Runner de testes para CI — executa os testes de regressão de cálculo
    (window.__ac4Testes e __ac4TestesAgendamento) em Node, sem navegador.
    O app.js só toca o DOM dentro de funções; no carregamento bastam stubs. */
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join } from 'node:path';
 
 const raiz = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -35,9 +34,8 @@ if (!('navigator' in globalThis)) {
 globalThis.matchMedia = () => ({ matches: false, addEventListener: () => {} });
 globalThis.location = { protocol: 'https:', origin: 'https://calculadora-ac4-pmgo.github.io' };
 
-/* ---- carrega o app ---- */
-const codigo = readFileSync(join(raiz, 'js', 'app.js'), 'utf8');
-new Function(codigo)();
+/* ---- carrega o app (módulo ES — os imports de js/modules/ resolvem sozinhos) ---- */
+await import(pathToFileURL(join(raiz, 'js', 'app.js')).href);
 
 /* ---- executa as suítes ---- */
 let falhou = false;
