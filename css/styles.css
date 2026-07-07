@@ -176,8 +176,12 @@ button { color: inherit; }
 
 /* ===== PWA BANNER ===== */
 .pwa-banner {
-  position: sticky;
+  /* CWV/CLS: fixo (fora do fluxo) para não empurrar topbar/conteúdo/footer
+     quando o prompt de instalação aparece depois do load. */
+  position: fixed;
   top: 0;
+  left: 0;
+  right: 0;
   z-index: 50;
   display: flex;
   align-items: center;
@@ -645,6 +649,10 @@ textarea.control { min-height: 74px; resize: vertical; }
 
 /* ===== FEED ===== */
 .feed { margin-top: 20px; }
+/* CWV/CLS: a lista nasce vazia no HTML e só é populada pelo JS; sem altura
+   reservada, o footer e o alerta legal "pulam" quando o empty-state/tabela
+   entra. Reservar a altura do empty-state estabiliza o primeiro paint. */
+#listaEscalas { min-height: 220px; }
 .feed-header {
   min-height: 60px;
   padding: 16px 20px;
