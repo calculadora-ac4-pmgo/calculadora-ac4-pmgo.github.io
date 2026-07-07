@@ -155,6 +155,24 @@ const ROTEIRO_MOBILE = `(async () => {
   const barra = rect('.mobile-bar');
   ok('Footer com folga para a barra fixa', barra && footPad >= barra.height, Math.round(footPad) + 'px de padding vs barra ' + (barra && Math.round(barra.height)) + 'px');
 
+  // 9. bottom sheet de lançamento: abre por "Nova escala", fecha pelo X
+  const painel = document.querySelector('.launch-panel');
+  const btnAdd = document.getElementById('mobileAdd');
+  ok('Sheet fechado por padrão', !!painel && !painel.classList.contains('is-open') && getComputedStyle(painel).visibility === 'hidden');
+  btnAdd.click();
+  await espera(350);
+  ok('Nova escala abre o bottom sheet', painel.classList.contains('is-open') && getComputedStyle(painel).visibility === 'visible');
+  ok('Backdrop visível ao abrir', document.getElementById('mobileLaunchBackdrop').classList.contains('is-open'));
+  ok('Fundo travado (body lock)', document.body.classList.contains('mobile-sheet-open'));
+  ok('aria-expanded=true ao abrir', btnAdd.getAttribute('aria-expanded') === 'true');
+  const painelRect = painel.getBoundingClientRect();
+  ok('Painel ancorado ao rodapé da tela', Math.abs(painelRect.bottom - window.innerHeight) <= 1, Math.round(painelRect.bottom) + ' vs ' + window.innerHeight);
+  document.getElementById('mobileLaunchClose').click();
+  await espera(350);
+  ok('Botão fechar recolhe o sheet', !painel.classList.contains('is-open'));
+  ok('Fundo destravado ao fechar', !document.body.classList.contains('mobile-sheet-open'));
+  ok('aria-expanded=false ao fechar', btnAdd.getAttribute('aria-expanded') === 'false');
+
   localStorage.removeItem('pmgoEscalas');
   return JSON.stringify(passos);
 })()`;

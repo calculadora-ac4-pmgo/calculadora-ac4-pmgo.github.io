@@ -463,6 +463,11 @@ textarea.control { min-height: 74px; resize: vertical; }
 /* ===== LAUNCH PANEL ===== */
 .launch-panel { margin-top: 20px; }
 
+/* Cabeçalho e backdrop do bottom sheet: existem só no mobile.
+   No desktop ficam inertes (display:none) — painel é um card normal. */
+.mobile-launch-header,
+.mobile-launch-backdrop { display: none; }
+
 /* ===== TARIFF STRIP — referência discreta de valores ===== */
 .tariff-strip {
   margin-top: 10px;
@@ -1016,6 +1021,77 @@ textarea.control { min-height: 74px; resize: vertical; }
     -webkit-backdrop-filter: none !important;
   }
   .panel, .feed, .metric-card { background: var(--surface); }
+
+  /* ===== BOTTOM SHEET DE LANÇAMENTO (mobile) =====
+     O #formEscala é reaproveitado — nenhum formulário duplicado. O painel sai
+     do fluxo (position:fixed) para não empurrar #conteudo/footer (CLS-safe) e
+     anima só com transform/opacity. Fechado: fora da tela e não focável. */
+  .mobile-launch-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    background: var(--overlay);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.18s ease;
+  }
+  .mobile-launch-backdrop.is-open { opacity: 1; pointer-events: auto; }
+
+  .launch-panel {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    margin: 0;
+    z-index: 70;
+    max-height: 88dvh;
+    overflow-y: auto;
+    border-radius: 20px 20px 0 0;
+    box-shadow: var(--shadow-lg);
+    transform: translateY(105%);
+    visibility: hidden;
+    transition: transform 0.24s cubic-bezier(0.34, 1.2, 0.64, 1), visibility 0s linear 0.24s;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .launch-panel.is-open {
+    transform: translateY(0);
+    visibility: visible;
+    transition: transform 0.24s cubic-bezier(0.34, 1.2, 0.64, 1), visibility 0s;
+  }
+  /* Trava a rolagem do fundo enquanto o sheet está aberto */
+  body.mobile-sheet-open { overflow: hidden; }
+
+  /* Cabeçalho do sheet: alça + botão fechar */
+  .mobile-launch-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    padding: 4px 0 12px;
+  }
+  .mobile-launch-handle {
+    width: 40px;
+    height: 4px;
+    border-radius: 999px;
+    background: var(--border-strong);
+  }
+  .mobile-launch-close {
+    position: absolute;
+    right: -4px;
+    top: 0;
+    width: 40px;
+    height: 40px;
+    display: grid;
+    place-items: center;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .mobile-launch-close:hover { background: var(--surface-2); color: var(--text); }
 }
 
 @media (max-width: 560px) {

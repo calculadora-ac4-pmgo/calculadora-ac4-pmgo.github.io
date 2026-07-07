@@ -46,6 +46,31 @@ import {
   let filtroMes = '';
   let deferredInstallPrompt = null;
   let submetendo = false;
+  let sheetAberto = false;
+
+  /* ---------------------------------------- bottom sheet mobile (lançamento) */
+  const isMobileViewport = () => window.matchMedia('(max-width: 760px)').matches;
+
+  function setMobileSheetOpen(aberto) {
+    sheetAberto = aberto;
+    document.querySelector('.launch-panel')?.classList.toggle('is-open', aberto);
+    $('mobileLaunchBackdrop')?.classList.toggle('is-open', aberto);
+    document.body.classList.toggle('mobile-sheet-open', aberto);
+    $('mobileAdd')?.setAttribute('aria-expanded', aberto ? 'true' : 'false');
+  }
+
+  function abrirPainelLancamentoMobile({ foco = true } = {}) {
+    setMobileSheetOpen(true);
+    /* espera a transição começar antes de focar, senão o teclado virtual
+       compete com a animação de entrada */
+    if (foco) requestAnimationFrame(() => $('escalaInicio')?.focus());
+  }
+
+  function fecharPainelLancamentoMobile({ devolverFoco = true } = {}) {
+    if (!sheetAberto) return;
+    setMobileSheetOpen(false);
+    if (devolverFoco) $('mobileAdd')?.focus();
+  }
 
   function baixarArquivoAgenda(lista, mensagem = 'Arquivo .ics gerado para importar no Google Agenda.') {
     const arquivo = montarICS(lista);
@@ -357,6 +382,8 @@ import {
       }
       salvar();
       render();
+      /* No mobile, salvar com sucesso fecha o bottom sheet. */
+      if (isMobileViewport()) fecharPainelLancamentoMobile();
     } finally {
       submetendo = false;
       if (btn) btn.disabled = false;
@@ -376,8 +403,13 @@ import {
     $('btnSubmit').textContent = 'Salvar alterações';
     $('btnCancelEdit').classList.remove('hidden');
     $('formTitle').lastChild.textContent = ' Editar escala';
-    document.querySelector('.launch-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    $('escalaInicio').focus();
+    if (isMobileViewport()) {
+      /* já vem preenchido — não sobrescrever com data/hora atual */
+      abrirPainelLancamentoMobile();
+    } else {
+      document.querySelector('.launch-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      $('escalaInicio').focus();
+    }
   }
 
   function cancelarEdicao() {
@@ -1065,7 +1097,10 @@ import {
     $('escalaInicio').value = toInputLocal(new Date());
 
     on('formEscala', 'submit', (ev) => { ev.preventDefault(); submeterFormulario(); });
-    on('btnCancelEdit', 'click', cancelarEdicao);
+    on('btnCancelEdit', 'click', () => {
+      cancelarEdicao();
+      if (isMobileViewport()) fecharPainelLancamentoMobile();
+    });
 
     on('btnTheme', 'click', () =>
       aplicarTema(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'));
@@ -1075,8 +1110,20 @@ import {
     on('btnShare',     'click', abrirShareSheet);
 
     on('mobileAdd', 'click', () => {
+      if (isMobileViewport()) {
+        /* nova escala: pré-preenche o início com agora; ao editar, preserva */
+        if (editandoId === null) $('escalaInicio').value = toInputLocal(new Date());
+        abrirPainelLancamentoMobile();
+        return;
+      }
       document.querySelector('.launch-panel')?.scrollIntoView({ behavior: 'smooth' });
       $('escalaInicio').focus();
+    });
+    on('mobileLaunchClose', 'click', () => fecharPainelLancamentoMobile());
+    on('mobileLaunchBackdrop', 'click', () => fecharPainelLancamentoMobile());
+    /* Sair da faixa mobile com o sheet aberto: destrava a rolagem do fundo */
+    window.matchMedia('(max-width: 760px)').addEventListener('change', (e) => {
+      if (!e.matches && sheetAberto) setMobileSheetOpen(false);
     });
     on('mobileShare', 'click', abrirShareSheet);
 
@@ -1132,7 +1179,10 @@ import {
 
     document.addEventListener('keydown', (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); submeterFormulario(); }
-      if (e.key === 'Escape' && editandoId !== null) cancelarEdicao();
+      if (e.key === 'Escape') {
+        if (editandoId !== null) cancelarEdicao();
+        if (sheetAberto) fecharPainelLancamentoMobile();
+      }
     });
 
     render();

@@ -14,8 +14,8 @@
   <!-- Preload da fonte principal — reduz reflow/CLS do font-swap da Inter -->
   <link rel="preload" href="assets/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 
-  <link rel="stylesheet" href="css/styles.css?v=33">
-  <script src="js/theme.js?v=33"></script>
+  <link rel="stylesheet" href="css/styles.css?v=34">
+  <script src="js/theme.js?v=34"></script>
 </head>
 <body>
 
@@ -151,9 +151,21 @@
       </div>
     </section>
 
+    <!-- Backdrop do bottom sheet mobile (inerte no desktop) -->
+    <div class="mobile-launch-backdrop" id="mobileLaunchBackdrop"></div>
+
     <!-- CARD: Lançar Escala -->
-    <section class="panel launch-panel">
+    <section class="panel launch-panel" id="launchPanel" aria-labelledby="formTitle">
       <div class="panel-body">
+          <!-- Cabeçalho visível apenas no modo bottom sheet (mobile) -->
+          <div class="mobile-launch-header">
+            <span class="mobile-launch-handle" aria-hidden="true"></span>
+            <button type="button" class="mobile-launch-close" id="mobileLaunchClose" aria-label="Fechar lançamento de escala">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M18 6 6 18M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
           <h2 class="panel-title" id="formTitle">
             <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/>
@@ -285,7 +297,7 @@
         &copy; <span class="footer-year"></span> Weliton Pinheiro &mdash; Todos os direitos reservados.
       </p>
       <p class="site-footer-meta">
-        Calculadora AC4 &middot; PMGO &middot; v33 &middot;
+        Calculadora AC4 &middot; PMGO &middot; v34 &middot;
         <a href="https://github.com/calculadora-ac4-pmgo" target="_blank" rel="noopener noreferrer" class="footer-link">GitHub</a>
       </p>
     </div>
@@ -304,7 +316,7 @@
           <path d="m8.59 13.51 6.83 3.98M15.41 6.51l-6.82 3.98"/>
         </svg>
       </button>
-      <button class="btn btn-primary" id="mobileAdd">
+      <button class="btn btn-primary" id="mobileAdd" aria-controls="launchPanel" aria-expanded="false">
         <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
           <path d="M12 5v14M5 12h14"/>
         </svg>
@@ -440,7 +452,7 @@
     </div>
   </dialog>
 
-  <script type="module" src="js/app.js?v=33"></script>
+  <script type="module" src="js/app.js?v=34"></script>
 
   <!-- Relatório profissional de impressão — populado pelo JS antes de window.print() -->
   <section id="printReport">
