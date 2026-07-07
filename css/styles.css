@@ -448,6 +448,27 @@ textarea.control { min-height: 74px; resize: vertical; }
   font-weight: 600;
   margin-top: 5px;
 }
+/* Espelho legível do término calculado (robusto ao não-repaint do
+   datetime-local no mobile). Some quando vazio. */
+.fim-auto {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  color: var(--green-600);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.fim-auto::before {
+  content: '';
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  background: currentColor;
+  -webkit-mask: no-repeat center/contain url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
+  mask: no-repeat center/contain url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
+}
+.fim-auto:empty { display: none; }
 .field.invalid .field-error { display: block; }
 .field.invalid .control { border-color: var(--danger); }
 .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }

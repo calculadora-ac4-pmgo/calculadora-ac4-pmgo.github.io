@@ -167,6 +167,19 @@ const ROTEIRO_MOBILE = `(async () => {
   ok('aria-expanded=true ao abrir', btnAdd.getAttribute('aria-expanded') === 'true');
   const painelRect = painel.getBoundingClientRect();
   ok('Painel ancorado ao rodapé da tela', Math.abs(painelRect.bottom - window.innerHeight) <= 1, Math.round(painelRect.bottom) + ' vs ' + window.innerHeight);
+
+  // 10. duração 14h calcula término e o espelho legível aparece (não depende do repaint do datetime-local)
+  const iniS = document.getElementById('escalaInicio');
+  iniS.value = '2026-07-10T18:00';
+  iniS.dispatchEvent(new Event('change', { bubbles: true }));
+  const durS = document.getElementById('escalaDuracao');
+  durS.value = '14';
+  durS.dispatchEvent(new Event('change', { bubbles: true }));
+  await espera(30);
+  ok('Duração 14h preenche o término (valor)', document.getElementById('escalaFim').value === '2026-07-11T08:00', document.getElementById('escalaFim').value);
+  const resumo = document.getElementById('fimResumo');
+  ok('Espelho legível do término visível', !!resumo && resumo.textContent.includes('11/07') && getComputedStyle(resumo).display !== 'none', resumo && resumo.textContent);
+
   document.getElementById('mobileLaunchClose').click();
   await espera(350);
   ok('Botão fechar recolhe o sheet', !painel.classList.contains('is-open'));

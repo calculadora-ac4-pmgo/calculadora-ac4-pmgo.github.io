@@ -403,6 +403,7 @@ import {
     $('btnSubmit').textContent = 'Salvar alterações';
     $('btnCancelEdit').classList.remove('hidden');
     $('formTitle').lastChild.textContent = ' Editar escala';
+    atualizarResumoFim();
     if (isMobileViewport()) {
       /* já vem preenchido — não sobrescrever com data/hora atual */
       abrirPainelLancamentoMobile();
@@ -410,6 +411,16 @@ import {
       document.querySelector('.launch-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
       $('escalaInicio').focus();
     }
+  }
+
+  /* Espelho legível do término. O datetime-local não repinta em alguns
+     navegadores mobile quando o valor é setado por JS (cálculo da duração);
+     este texto garante que o usuário veja o término calculado. */
+  function atualizarResumoFim() {
+    const el = $('fimResumo');
+    if (!el) return;
+    const v = $('escalaFim')?.value || '';
+    el.textContent = parseDateTimeLocal(v) ? `${fmtDiaSemana(v)}, ${fmtDataHora(v)}` : '';
   }
 
   function cancelarEdicao() {
@@ -1157,13 +1168,17 @@ import {
       $('escalaFim').value = fim;
       $('fieldFim').classList.remove('invalid');
       $('fieldFim').querySelector('.control')?.removeAttribute('aria-invalid');
+      atualizarResumoFim();
       return true;
     };
     on('escalaDuracao', 'input', aplicarDuracao);
     on('escalaDuracao', 'change', aplicarDuracao);
     on('escalaInicio',  'input', aplicarDuracao);
     on('escalaInicio',  'change', aplicarDuracao);
-    const marcarDuracaoPersonalizada = () => { if ($('escalaDuracao')) $('escalaDuracao').value = ''; };
+    const marcarDuracaoPersonalizada = () => {
+      if ($('escalaDuracao')) $('escalaDuracao').value = '';
+      atualizarResumoFim();
+    };
     on('escalaFim', 'input', marcarDuracaoPersonalizada);
     on('escalaFim', 'change', marcarDuracaoPersonalizada);
 

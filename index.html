@@ -14,8 +14,8 @@
   <!-- Preload da fonte principal — reduz reflow/CLS do font-swap da Inter -->
   <link rel="preload" href="assets/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 
-  <link rel="stylesheet" href="css/styles.css?v=34">
-  <script src="js/theme.js?v=34"></script>
+  <link rel="stylesheet" href="css/styles.css?v=35">
+  <script src="js/theme.js?v=35"></script>
 </head>
 <body>
 
@@ -196,6 +196,9 @@
                 <label for="escalaFim">Término</label>
                 <input type="datetime-local" class="control" id="escalaFim" required aria-required="true">
                 <p class="field-error" role="alert">O término deve ser depois do início.</p>
+                <!-- Espelho legível do término: alguns navegadores mobile não
+                     repintam o datetime-local quando o valor é definido por JS -->
+                <p class="fim-auto" id="fimResumo" role="status" aria-live="polite"></p>
               </div>
 
               <div class="field" id="fieldQtdPm">
@@ -297,7 +300,7 @@
         &copy; <span class="footer-year"></span> Weliton Pinheiro &mdash; Todos os direitos reservados.
       </p>
       <p class="site-footer-meta">
-        Calculadora AC4 &middot; PMGO &middot; v34 &middot;
+        Calculadora AC4 &middot; PMGO &middot; v35 &middot;
         <a href="https://github.com/calculadora-ac4-pmgo" target="_blank" rel="noopener noreferrer" class="footer-link">GitHub</a>
       </p>
     </div>
@@ -452,7 +455,7 @@
     </div>
   </dialog>
 
-  <script type="module" src="js/app.js?v=34"></script>
+  <script type="module" src="js/app.js?v=35"></script>
 
   <!-- Relatório profissional de impressão — populado pelo JS antes de window.print() -->
   <section id="printReport">
