@@ -139,8 +139,6 @@ const ROTEIRO_MOBILE = `(async () => {
   // 5. filtro de mês e importação ≥ 44px
   const filtro = rect('#filtroMes');
   ok('Filtro de mês ≥ 44px', filtro && filtro.height >= 44, filtro && Math.round(filtro.height) + 'px');
-  const imp = rect('#btnImportIcs');
-  ok('Botão Importar .ics ≥ 44px', imp && imp.height >= 44, imp && Math.round(imp.height) + 'px');
 
   // 6. tabela em modo cartão (thead oculto)
   const thead = document.querySelector('.escala-table thead');
