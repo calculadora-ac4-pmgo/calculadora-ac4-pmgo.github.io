@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Calculadora AC4 — v53
+   Calculadora AC4 — v54
    Módulo principal: estado, UI, persistência e exportações.
    Regras de negócio, formatação e agenda vivem em js/modules/.
    ========================================================================== */
@@ -7,6 +7,7 @@ import {
   fmtMoeda, fmtHoras, fmtDataHora, fmtData, fmtDiaSemana, fmtHora,
   combinarDataHoraLocal, parseDateTimeLocal, formatarDataHoraInput, toInputLocal,
   calcularTerminoPorDuracao, validarIntervaloEscala, toInputMonth, fmtMesRef, escapeHTML,
+  csvTextoSeguro,
 } from './modules/formato.mjs';
 import {
   PORTARIA_ATUAL, VALORES_OFICIAIS, labelOrigem,
@@ -26,12 +27,18 @@ import {
   const $ = (id) => document.getElementById(id);
   const on = (id, evt, fn) => { const el = $(id); if (el) el.addEventListener(evt, fn); };
 
+  /* Versão da aplicação (sincronizada pelo tools/bump-version.mjs). Serve para
+     carimbar o log de erros e detectar clientes presos em cache antigo:
+     se __ac4Version no console divergir do rodapé/CHANGELOG, o SW não atualizou. */
+  const APP_VERSION = '54';
+
   const STORAGE = {
     escalas:   'pmgoEscalas',
     config:    'pmgoConfig',
     theme:     'pmgoTheme',
     pwaBanner: 'pmgoPwaBanner',
     erros:     'pmgoErros',
+    versao:    'pmgoVersion',
   };
 
   /* ------------------------------------------------------------ estado */
@@ -192,7 +199,9 @@ import {
   function registrarErro(info) {
     try {
       const log = JSON.parse(localStorage.getItem(STORAGE.erros) || '[]');
-      log.push({ t: new Date().toISOString(), ...info });
+      /* v carimba a versão do app: um erro vindo de cache velho aparece com
+         versão antiga, distinguindo bug real de cliente desatualizado. */
+      log.push({ t: new Date().toISOString(), v: APP_VERSION, ...info });
       while (log.length > MAX_ERROS_LOG) log.shift();
       localStorage.setItem(STORAGE.erros, JSON.stringify(log));
     } catch { /* localStorage cheio/indisponível — erro não pode gerar erro */ }
@@ -220,6 +229,17 @@ import {
     });
     window.__ac4Erros = () => { try { return JSON.parse(localStorage.getItem(STORAGE.erros) || '[]'); } catch { return []; } };
     window.__ac4LimparErros = () => { localStorage.removeItem(STORAGE.erros); return 'log de erros limpo'; };
+    /* Métrica de versão anônima: expõe a versão em execução e registra a última
+       vista. Em suporte, `__ac4Version` no console revela cache preso; a
+       comparação com a versão anterior detecta se o SW acabou de atualizar. */
+    window.__ac4Version = APP_VERSION;
+    try {
+      const anterior = localStorage.getItem(STORAGE.versao);
+      if (anterior !== APP_VERSION) {
+        localStorage.setItem(STORAGE.versao, APP_VERSION);
+        if (anterior) console.info(`Calculadora AC4 atualizada: v${anterior} → v${APP_VERSION}`);
+      }
+    } catch {}
   }
 
   /* ---------------------------------------- dialog de confirmação */
@@ -287,6 +307,55 @@ import {
     });
     if (console.table) console.table(resultados);
     return resultados.every((r) => r.ok) ? 'TODOS OS CASOS OK' : resultados;
+  };
+
+  /* Suíte de segurança + invariantes (§10 da auditoria, itens 5 e 6).
+     Puros — rodam em Node no CI e no console do site. */
+  window.__ac4TestesExtras = function () {
+    const resultados = [];
+    const add = (caso, ok, detalhes = '') => resultados.push({ caso, ok: Boolean(ok), detalhes: String(detalhes) });
+
+    /* CSV injection: campo iniciado por = + - @ (ou tab/CR) sai com apóstrofo
+       protetor; texto comum passa intacto. Cobre o exportarCSV. */
+    const casosCSV = [
+      ['=2+2', "'=2+2"], ['+1', "'+1"], ['-1', "'-1"], ['@x', "'@x"],
+      ['\tTAB', "'\tTAB"], ['1ª CIA', '1ª CIA'], ['', ''], ['a=b', 'a=b'],
+    ];
+    casosCSV.forEach(([entrada, esperado]) => {
+      const got = csvTextoSeguro(entrada);
+      add(`csvTextoSeguro(${JSON.stringify(entrada)})`, got === esperado, got);
+    });
+
+    /* Invariantes de calcularEscala sobre 50 escalas aleatórias válidas:
+       cont soma = mins; diurno+noturno = mins; vermelha ≤ mins; valor é inteiro
+       ≥ 0 e reproduz round(Σ minutos×tarifa/60); total = Σ dos valores por escala. */
+    const tabela = { portaria: PORTARIA_ATUAL, valores: { AD: 3000, AN: 3300, VD: 4000, VN: 4500 } };
+    const base = new Date('2026-01-01T00:00').getTime();
+    let invariantesOk = true, somaManual = 0, somaReduce = 0;
+    const lista = [];
+    for (let i = 0; i < 50; i++) {
+      const ini = new Date(base + Math.floor(Math.random() * 365 * 24 * 60) * 60000);
+      const dur = 1 + Math.floor(Math.random() * (192 * 60 - 1)); // 1 min .. 192h
+      const fim = new Date(ini.getTime() + dur * 60000);
+      const e = { inicio: formatarDataHoraInput(ini), fim: formatarDataHoraInput(fim) };
+      const r = calcularEscalaBase(e, tabela);
+      const somaCont = r.cont.AD + r.cont.AN + r.cont.VD + r.cont.VN;
+      const esperadoCent = Math.round((r.cont.AD * 3000 + r.cont.AN * 3300 + r.cont.VD * 4000 + r.cont.VN * 4500) / 60);
+      const ok = somaCont === r.mins
+        && r.minDiurno + r.minNoturno === r.mins
+        && r.minVermelha <= r.mins
+        && Number.isInteger(r.valorCentavos) && r.valorCentavos >= 0
+        && r.valorCentavos === esperadoCent;
+      if (!ok) invariantesOk = false;
+      somaManual += r.valorCentavos;
+      lista.push(r.valorCentavos);
+    }
+    somaReduce = lista.reduce((s, v) => s + v, 0);
+    add('Invariantes de cálculo em 50 escalas aleatórias', invariantesOk);
+    add('Total geral = Σ dos valores por escala', somaManual === somaReduce, `${somaManual} = ${somaReduce}`);
+
+    if (console.table) console.table(resultados);
+    return resultados.every((r) => r.ok) ? 'TODOS OS TESTES EXTRAS OK' : resultados;
   };
 
   window.__ac4TestesLancamento = function () {

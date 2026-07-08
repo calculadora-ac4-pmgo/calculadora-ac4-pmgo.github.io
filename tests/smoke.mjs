@@ -188,6 +188,16 @@ const ROTEIRO = `(async () => {
   dlgAgenda.close();
   await espera(100);
 
+  // 4d2. exportar CSV não pode lançar (guarda a regressão do import de csvTextoSeguro)
+  localStorage.removeItem('pmgoErros');
+  let erroCsv = '';
+  try { document.getElementById('btnExportCsv').click(); } catch (e) { erroCsv = String(e); }
+  await espera(150);
+  const errosCsv = window.__ac4Erros();
+  ok('Exportar CSV não lança erro', erroCsv === '' && errosCsv.length === 0,
+     erroCsv || (errosCsv[0] && errosCsv[0].msg) || '');
+  window.__ac4LimparErros();
+
   // 4e. observabilidade: handler global captura erro anônimo no log local
   localStorage.removeItem('pmgoErros');
   window.dispatchEvent(new ErrorEvent('error', { message: 'erro-teste-smoke', filename: location.origin + '/x.js', lineno: 1, colno: 1 }));
@@ -241,6 +251,26 @@ try {
   const pdf = await cdp.enviar('Page.printToPDF', { printBackground: false }, sessionId);
   const kb = Math.round(((pdf.data || '').length * 3 / 4) / 1024);
   passos.push({ nome: 'PDF gerado pelo CSS de impressão (≥10KB)', ok: kb >= 10, detalhe: `${kb}KB` });
+
+  // 6. localStorage corrompido: grava lixo, recarrega e confirma que o app sobe vazio sem quebrar.
+  await cdp.enviar('Runtime.evaluate', {
+    expression: `localStorage.setItem('pmgoEscalas','{lixo-nao-json['); localStorage.removeItem('pmgoErros');`,
+  }, sessionId);
+  const recarregou = cdp.aguardarEvento('Page.loadEventFired');
+  await cdp.enviar('Page.navigate', { url: `http://127.0.0.1:${porta}/` }, sessionId);
+  await recarregou;
+  const resiliencia = await cdp.enviar('Runtime.evaluate', {
+    expression: `(async()=>{const sl=ms=>new Promise(r=>setTimeout(r,ms));for(let i=0;i<50&&!document.getElementById('formEscala');i++)await sl(100);
+      const formOk=!!document.getElementById('formEscala');
+      const listaVazia=document.querySelectorAll('#listaEscalas tbody tr').length===0;
+      const semErro=(window.__ac4Erros?window.__ac4Erros():[]).length===0;
+      localStorage.removeItem('pmgoEscalas');
+      return JSON.stringify({formOk,listaVazia,semErro});})()`,
+    awaitPromise: true, returnByValue: true,
+  }, sessionId);
+  const rr = JSON.parse(resiliencia.result.value);
+  passos.push({ nome: 'localStorage corrompido: app carrega vazio sem quebrar',
+    ok: rr.formOk && rr.listaVazia && rr.semErro, detalhe: JSON.stringify(rr) });
 
   console.table(passos.map(({ nome, ok, detalhe }) => ({ passo: nome, ok, detalhe })));
 

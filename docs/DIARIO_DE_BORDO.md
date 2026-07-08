@@ -4,6 +4,24 @@
 
 ---
 
+## Sessão de 08/07/2026 — execução das melhorias residuais (v54): nota 9,5/10
+
+Executados os itens P3/P4 do backlog residual da reauditoria. **Próxima versão: v55.**
+
+### 🔴 Bug crítico encontrado e corrigido (estava vivo em produção)
+- Ao escrever o teste de CSV, a exportação lançou **`ReferenceError: csvTextoSeguro is not defined` (`app.js:1067`)** — a função era chamada em `exportarCSV` mas **nunca foi importada** de `formato.mjs`. **O botão "CSV" estava quebrado desde a v48.** Não foi detectado antes porque não havia teste de CSV (a lacuna que a auditoria apontou).
+- O novo handler de observabilidade (v52) **capturou o erro no log**, provando seu valor.
+- Corrigido: import adicionado. Duas guardas contra reincidência: passo de smoke + lint `no-undef`.
+
+### Melhorias aplicadas (v54)
+- **ESLint 9 no CI** (`eslint.config.mjs`, flat config): regras focadas em bugs, globais por contexto (browser/SW/node), zero dependências (roda via `npx --yes eslint@9`). Corrigiu 1 achado real (`catch (e)` não usado em `theme.js`). Rodado como 1º passo do job `test`, também em PRs. Excluído do artefato Pages.
+- **Suíte `__ac4TestesExtras`**: 8 casos de `csvTextoSeguro` + invariantes de cálculo sobre 50 escalas aleatórias (soma de categorias, diurno+noturno, vermelha≤mins, valor inteiro, total=Σ). No CI e no console.
+- **Smoke 16 → 18 passos**: "Exportar CSV não lança erro" + "localStorage corrompido carrega vazio sem quebrar".
+- **Métrica anônima de versão**: `APP_VERSION` carimba o log de erros (`v`), `window.__ac4Version` para suporte, `pmgoVersion` detecta cliente preso em cache. Local, sem dado pessoal. `bump-version.mjs` sincroniza `APP_VERSION`.
+- Cobertura fecha as 3 lacunas da matriz v46. Relatório atualizado em [`relatorio_auditoria_producao_v53.md`](relatorio_auditoria_producao_v53.md) (adendo v54).
+
+---
+
 ## Sessão de 08/07/2026 — reauditoria de produção (v53): nota 9,2/10
 
 - Reauditoria completa executada sobre a v53, com evidência re-coletada (testes locais, inspeção dos 8 `innerHTML`, verificação HTTP da produção ao vivo, workflow, SW). Relatório: [`relatorio_auditoria_producao_v53.md`](relatorio_auditoria_producao_v53.md).
@@ -156,13 +174,13 @@ Em testes com celulares de colegas, o fluxo de "Agenda" no celular ficou **confu
 3. **Validar o ambiente** (deve ficar tudo verde):
    ```sh
    node tests/run-tests.mjs     # regras de cálculo + geração .ics
-   node tests/smoke.mjs         # fluxo E2E em Chrome headless (12 passos, inclui PDF)
+   node tests/smoke.mjs         # fluxo E2E em Chrome headless (18 passos, inclui PDF); rode antes `npx --yes eslint@9 .`
    node tests/mobile-check.mjs  # UX mobile (3 viewports + roteiro iOS)
    ```
    (Se o Chrome não for achado automaticamente, defina `CHROME_PATH`.)
 4. **Fluxo de trabalho do projeto**:
    - Branch → commit → push → `gh pr create` → **aguardar o check `test` do PR** → `gh pr merge --merge --delete-branch` → CI da main testa de novo e faz o deploy.
-   - Qualquer mudança em `index.html`/`css`/`js` exige bump de versão: `node tools/bump-version.mjs <n>` (próxima: **v50**).
+   - Qualquer mudança em `index.html`/`css`/`js` exige bump de versão: `node tools/bump-version.mjs <n>` (próxima: **v55**).
    - Smoke pode falhar esporadicamente no runner ("Chrome não expôs o DevTools em 20s") — é flake de infraestrutura; `gh run rerun <id> --failed` resolve. **Exceção**: se o job de *deploy* do Pages falhar, disparar run novo com `gh workflow run deploy.yml` (não usar rerun no deploy).
 5. **Ler antes de mexer em regra/valor**: [`portaria-ssp-621-2026.md`](portaria-ssp-621-2026.md) (base normativa) e [`relatorio_auditoria_producao_v46.md`](relatorio_auditoria_producao_v46.md) (riscos e backlog).
 

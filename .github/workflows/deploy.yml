@@ -28,6 +28,9 @@ jobs:
         with:
           node-version: 22
 
+      - name: Lint (ESLint — no-undef e afins; sem dependências no repo)
+        run: npx --yes eslint@9 .
+
       - name: Testes de regressão (cálculo AC4 e .ics)
         run: node tests/run-tests.mjs
 
@@ -57,6 +60,7 @@ jobs:
           mkdir -p _site
           rsync -a --exclude '.git*' --exclude '_site' \
             --exclude 'docs' --exclude 'tests' --exclude 'tools' \
+            --exclude 'eslint.config.mjs' --exclude 'node_modules' \
             ./ _site/
 
       - name: Upload artifact

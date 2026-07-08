@@ -57,6 +57,7 @@ const rodar = (nome, fn) => {
 };
 
 rodar('__ac4Testes (regras de cálculo AC4)', globalThis.__ac4Testes);
+rodar('__ac4TestesExtras (CSV injection + invariantes)', globalThis.__ac4TestesExtras);
 rodar('__ac4TestesAgendamento (geração de .ics)', globalThis.__ac4TestesAgendamento);
 
 process.exit(falhou ? 1 : 0);

@@ -94,3 +94,26 @@ Nenhum item abaixo é defeito; são deltas estruturais, em ordem de relevância:
 | 2 | P4 | ESLint (flat config, sem build) rodando no CI | ~1h |
 | 3 | P4 | Extrair `exportacoes.mjs`/`pwa.mjs` de `app.js` se passar de ~1.700 linhas | sob demanda |
 | 4 | P4 | Métrica anônima de versão adotada (detectar clientes presos em cache) | ~2h |
+
+---
+
+## Adendo — Execução das melhorias residuais (08/07/2026, v54)
+
+Itens 1, 2 e 4 do §10 executados. **Item 3** (modularização) segue sob demanda — `app.js` ainda coeso.
+
+### Achado crítico durante a execução (regressão P1 latente, agora corrigida)
+
+Ao escrever o teste de exportação de CSV (item 1), a exportação foi dirigida em Chrome headless e **lançou `Uncaught ReferenceError: csvTextoSeguro is not defined` (`app.js:1067`)**: a função existia em `formato.mjs` e era chamada em `exportarCSV`, mas **nunca foi importada** em `app.js`. Ou seja, **o botão CSV estava quebrado desde a v48** e a auditoria v46/v53 não detectou porque não havia teste de CSV — exatamente a lacuna apontada. Detalhes:
+
+- **Como foi flagrado:** o handler `initObservabilidade` (criado na v52) capturou o erro no log `pmgoErros`, provando o valor da observabilidade anônima.
+- **Correção:** `csvTextoSeguro` adicionado ao import de `formato.mjs` em `app.js`.
+- **Guardas de regressão:** (a) passo de smoke "Exportar CSV não lança erro"; (b) o novo lint `no-undef` pega estaticamente essa classe de bug antes do runtime.
+
+### Melhorias aplicadas
+
+- **ESLint 9 (flat config) no CI** (`eslint.config.mjs`): regras focadas em bugs (`no-undef`, `no-unused-vars`, `no-const-assign`, `valid-typeof`, `use-isnan`…), globais por contexto (browser/ESM, service worker, node). Zero dependências no repo — o CI roda via `npx --yes eslint@9`. Corrigiu 1 achado real (`catch (e)` não usado em `theme.js`). Excluído do artefato Pages.
+- **Suíte `__ac4TestesExtras`** (rodando no CI): 8 casos de `csvTextoSeguro` (neutraliza `= + - @` / tab / CR; preserva texto comum) + invariantes de `calcularEscala` sobre 50 escalas aleatórias (soma das categorias = mins; diurno+noturno = mins; vermelha ≤ mins; valor inteiro ≥ 0 reproduzindo a fórmula; total geral = Σ por escala).
+- **Smoke: 16 → 18 passos** (+ "Exportar CSV não lança erro" e "localStorage corrompido: app carrega vazio sem quebrar").
+- **Métrica anônima de versão:** `APP_VERSION` carimba cada entrada do log de erros (`v`), `window.__ac4Version` expõe a versão em execução para suporte, e a troca de versão é registrada em `pmgoVersion` (detecta cliente preso em cache) — tudo local, sem dado pessoal. `bump-version.mjs` passou a sincronizar `APP_VERSION`.
+
+**Nota revisada: 9,5/10.** A cobertura de teste agora fecha as 3 lacunas da matriz v46, o lint impede a reincidência da classe de bug que estava viva em produção, e a observabilidade provou seu valor em campo. Os deltas remanescentes para "big tech pleno" são estruturais (bus factor = 1, ausência de staging/preview nativo no Pages, CSP sem headers reais) e não resolvíveis sem mudar hospedagem ou equipe.

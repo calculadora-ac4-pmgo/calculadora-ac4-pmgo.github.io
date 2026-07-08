@@ -106,16 +106,20 @@ As exportações refletem os dados informados e calculados no navegador, mantend
 
 ## Testes de regressão
 
-Os testes de regressão são executados **automaticamente no CI** a cada push na branch `main` — o deploy só ocorre se todos passarem. Para rodar localmente:
+Os testes de regressão e o lint são executados **automaticamente no CI** em cada push na `main` e em cada pull request — o deploy só ocorre se todos passarem. Para rodar localmente:
 
 ```sh
-node tests/run-tests.mjs
+npx --yes eslint@9 .      # lint (no-undef e afins; sem dependências no repo)
+node tests/run-tests.mjs  # regras de cálculo + CSV/invariantes + geração .ics
+node tests/smoke.mjs      # fluxo E2E em Chrome headless (18 passos, inclui PDF real)
+node tests/mobile-check.mjs
 ```
 
-As mesmas suítes também estão disponíveis no console do navegador:
+As suítes puras também estão disponíveis no console do navegador:
 
 ```js
 __ac4Testes()             // regras de cálculo AC4
+__ac4TestesExtras()       // CSV injection + invariantes do cálculo
 __ac4TestesAgendamento()  // geração de arquivo .ics
 ```
 
