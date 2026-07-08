@@ -190,9 +190,8 @@ export function parseICS(conteudo) {
   return { eventos, ignorados };
 }
 
-/* Monta a URL de link direto para o Google Calendar (1 evento por link).
-   Datas convertidas para UTC via dataICS() — fuso horário tratado corretamente. */
-export function gerarLinkGoogleAgenda(e, tabelaVigente = TABELA_OFICIAL) {
+/* Título e corpo do evento — compartilhados pelos links de agenda web. */
+function detalhesEventoAgenda(e, tabelaVigente) {
   const r = calcularEscala(e, tabelaVigente);
   const qtd = e.qtdPm || 1;
   const tipo = r.minVermelha > 0 ? 'Vermelha' : 'Azul';
@@ -210,12 +209,38 @@ export function gerarLinkGoogleAgenda(e, tabelaVigente = TABELA_OFICIAL) {
   linhas.push('', `Valor estimado: ${fmtMoeda(r.valorCentavos * qtd)}`);
   if (qtd > 1) linhas.push(`(${fmtMoeda(r.valorCentavos)}/PM)`);
   linhas.push('', 'Valor simulado — sujeito a validacao administrativa.', 'Calculadora AC4 · PMGO');
+  return { titulo: e.descricao || `Servico Extra AC4 — ${tipo}`, corpo: linhas.join('\n') };
+}
 
+/* Monta a URL de link direto para o Google Calendar (1 evento por link).
+   Datas convertidas para UTC via dataICS() — fuso horário tratado corretamente. */
+export function gerarLinkGoogleAgenda(e, tabelaVigente = TABELA_OFICIAL) {
+  const { titulo, corpo } = detalhesEventoAgenda(e, tabelaVigente);
   const params = new URLSearchParams({
     action: 'TEMPLATE',
-    text: e.descricao || `Servico Extra AC4 — ${tipo}`,
+    text: titulo,
     dates: `${dataICS(e.inicio)}/${dataICS(e.fim)}`,
-    details: linhas.join('\n'),
+    details: corpo,
   });
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
+
+/* Monta a URL de link direto para o Outlook (1 evento por link).
+   corporativo=true usa o Outlook do Microsoft 365 (conta de trabalho);
+   false usa o Outlook.com pessoal. Datas em ISO 8601 UTC. */
+export function gerarLinkOutlookAgenda(e, tabelaVigente = TABELA_OFICIAL, corporativo = false) {
+  const { titulo, corpo } = detalhesEventoAgenda(e, tabelaVigente);
+  const iso = (v) => {
+    const d = new Date(v);
+    return Number.isFinite(d.getTime()) ? d.toISOString() : '';
+  };
+  const params = new URLSearchParams({
+    rru: 'addevent',
+    startdt: iso(e.inicio),
+    enddt: iso(e.fim),
+    subject: titulo,
+    body: corpo,
+  });
+  const base = corporativo ? 'https://outlook.office.com' : 'https://outlook.live.com';
+  return `${base}/calendar/action/compose?${params.toString()}`;
 }

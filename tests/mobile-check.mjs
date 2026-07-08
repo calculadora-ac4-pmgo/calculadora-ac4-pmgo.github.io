@@ -123,8 +123,9 @@ const ROTEIRO_MOBILE = `(async () => {
   const add = rect('#mobileAdd');
   ok('Botão "Nova escala" ≥ 44px de altura', add && add.height >= 44, add && Math.round(add.height) + 'px');
 
-  // 2. topbar compacta: agenda-action oculta no mobile
-  ok('Topbar compacta (agenda-action oculta)', !visivel('.agenda-action'));
+  // 2. botão de agenda removido da topbar (agendamento vive nos lançamentos e no compartilhar)
+  ok('Topbar sem botão "Adicionar à agenda"', !document.querySelector('.agenda-action') && !document.getElementById('btnExportIcs'));
+  ok('Dialog de escolha de agenda presente no DOM', !!document.getElementById('dialogAgenda'));
 
   // 3. touch targets da topbar ≥ 44px
   const csv = rect('#btnExportCsv');
