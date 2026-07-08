@@ -14,8 +14,8 @@
   <!-- Preload da fonte principal — reduz reflow/CLS do font-swap da Inter -->
   <link rel="preload" href="assets/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 
-  <link rel="stylesheet" href="css/styles.css?v=39">
-  <script src="js/theme.js?v=39"></script>
+  <link rel="stylesheet" href="css/styles.css?v=40">
+  <script src="js/theme.js?v=40"></script>
 </head>
 <body>
 
@@ -209,7 +209,7 @@
                 <!-- Espelho legível do término: alguns navegadores mobile não
                      repintam o datetime-local quando o valor é definido por JS -->
                 <p class="fim-auto" id="fimResumo" role="status" aria-live="polite"></p>
-                <p class="field-hint fim-hint">O término é calculado automaticamente com base no início e na duração.</p>
+                <p class="field-hint fim-hint">Calculado automaticamente.</p>
               </div>
 
               <div class="field" id="fieldQtdPm">
@@ -289,13 +289,6 @@
           <select class="select-compact select-sm" id="filtroMes" aria-label="Filtrar por mês">
             <option value="">Todos os meses</option>
           </select>
-          <button class="btn btn-outline btn-sm" id="btnImportIcs" aria-label="Importar agenda de arquivo .ics">
-            <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M12 3v12m0 0 4-4m-4 4-4-4"/>
-              <path d="M2 17l.6 2.5A2 2 0 0 0 4.6 21h14.8a2 2 0 0 0 1.9-1.5L22 17"/>
-            </svg>
-            <span>Importar .ics</span>
-          </button>
           <button class="btn btn-danger-soft btn-sm hidden" id="btnClearAll">Limpar tudo</button>
         </div>
       </div>
@@ -316,7 +309,7 @@
         &copy; <span class="footer-year"></span> Weliton Pinheiro &mdash; Todos os direitos reservados.
       </p>
       <p class="site-footer-meta">
-        Calculadora AC4 &middot; PMGO &middot; v39 &middot;
+        Calculadora AC4 &middot; PMGO &middot; v40 &middot;
         <a href="https://github.com/calculadora-ac4-pmgo" target="_blank" rel="noopener noreferrer" class="footer-link">GitHub</a>
       </p>
     </div>
@@ -471,7 +464,7 @@
     </div>
   </dialog>
 
-  <script type="module" src="js/app.js?v=39"></script>
+  <script type="module" src="js/app.js?v=40"></script>
 
   <!-- Relatório profissional de impressão — populado pelo JS antes de window.print() -->
   <section id="printReport">
