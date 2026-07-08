@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Calculadora AC4 — v45
+   Calculadora AC4 — v46
    ========================================================================== */
 
 /* Inter (variable, 100–900) self-hosted — sem dependência do Google Fonts,
@@ -282,20 +282,6 @@ button { color: inherit; }
   flex-wrap: wrap;
 }
 .topbar-secondary { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.agenda-action {
-  display: grid;
-  justify-items: stretch;
-  gap: 8px;
-  width: min(100%, 310px);
-}
-.agenda-action .btn { white-space: normal; line-height: 1.2; text-align: center; }
-.agenda-action p {
-  color: rgb(255 255 255 / 0.62);
-  font-size: 0.82rem;
-  max-width: 310px;
-  text-align: center;
-  line-height: 1.25;
-}
 
 /* ===== BUTTONS ===== */
 .btn {
@@ -947,6 +933,60 @@ textarea.control { min-height: 74px; resize: vertical; }
 .share-icon-gcal    { background: #e8f0fe; color: #1a73e8; }
 .share-icon-install { background: var(--primary-soft); color: var(--primary-text); }
 
+/* ===== ESCOLHA DE AGENDA (desktop) ===== */
+.agenda-dialog { max-width: min(92vw, 430px); }
+.agenda-title { font-size: 1.05rem; margin: 0 0 4px; }
+.agenda-sub { color: var(--text-muted); font-size: 0.84rem; font-weight: 600; margin: 0 0 16px; }
+.agenda-body { display: grid; gap: 10px; margin-bottom: 18px; }
+.agenda-prov {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 0.92rem;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+.agenda-prov:hover { background: var(--surface-3); border-color: var(--border-strong); }
+.agenda-prov-ico {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 38px;
+}
+.agenda-prov-ico.google  { background: #e8f0fe; color: #1a73e8; }
+.agenda-prov-ico.outlook { background: #e0f0fb; color: #0f6cbd; }
+.agenda-prov-txt small { display: block; color: var(--text-muted); font-weight: 600; font-size: 0.76rem; margin-top: 2px; }
+.agenda-hint { color: var(--text-muted); font-size: 0.84rem; margin: 0 0 10px; line-height: 1.4; }
+.agenda-lista { display: grid; gap: 8px; max-height: 40vh; overflow-y: auto; margin-bottom: 12px; }
+.agenda-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 11px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  color: var(--text);
+  text-decoration: none;
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+.agenda-item:hover { background: var(--surface-3); border-color: var(--border-strong); }
+.agenda-item.aberta { opacity: 0.55; }
+.agenda-item.aberta::after { content: '✓'; color: var(--green-700); font-weight: 800; }
+
 /* ===== PRINT ===== */
 .print-only { display: none; }
 #printReport { display: none; }
@@ -998,15 +1038,12 @@ textarea.control { min-height: 74px; resize: vertical; }
 @media (max-width: 1180px) {
   .topbar-inner { grid-template-columns: 1fr; align-items: stretch; padding: 22px 22px 34px; }
   .topbar-actions { justify-content: flex-start; }
-  .agenda-action { justify-items: start; }
-  .agenda-action p { text-align: left; }
 }
 
 @media (max-width: 760px) {
   .topbar-inner { padding: 12px 14px; gap: 12px; }
-  /* Topbar compacto: flex em vez de grid, oculta agenda-action (disponível no share sheet) */
+  /* Topbar compacto: flex em vez de grid */
   .topbar-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
-  .agenda-action { display: none; }
   .topbar-secondary { justify-content: flex-start; }
   .layout { padding: 16px 14px 120px; }
   .metrics { grid-template-columns: 1fr 1fr; gap: 10px; }

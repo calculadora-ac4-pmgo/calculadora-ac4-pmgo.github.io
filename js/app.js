@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Calculadora AC4 — v45
+   Calculadora AC4 — v46
    Módulo principal: estado, UI, persistência e exportações.
    Regras de negócio, formatação e agenda vivem em js/modules/.
    ========================================================================== */
@@ -17,6 +17,7 @@ import {
   montarICS as montarICSBase,
   validarICS as validarICSBase,
   gerarLinkGoogleAgenda as gerarLinkGoogleAgendaBase,
+  gerarLinkOutlookAgenda as gerarLinkOutlookAgendaBase,
 } from './modules/agenda.mjs';
 
 (() => {
@@ -72,7 +73,7 @@ import {
     if (devolverFoco) $('mobileAdd')?.focus();
   }
 
-  function baixarArquivoAgenda(lista, mensagem = 'Arquivo .ics gerado para importar no Google Agenda.') {
+  function baixarArquivoAgenda(lista, mensagem = 'Arquivo .ics gerado para importar na sua agenda.') {
     const arquivo = montarICS(lista);
     if (!arquivo.eventos) {
       toast('Não há escalas válidas para gerar o arquivo .ics.', { erro: true });
@@ -125,6 +126,7 @@ import {
   const calcularEscala = (e) => calcularEscalaBase(e, tabelaParaCalculo());
   const montarICS = (lista) => montarICSBase(lista, tabelaParaCalculo());
   const gerarLinkGoogleAgenda = (e) => gerarLinkGoogleAgendaBase(e, tabelaParaCalculo());
+  const gerarLinkOutlookAgenda = (e, corporativo) => gerarLinkOutlookAgendaBase(e, tabelaParaCalculo(), corporativo);
 
   /* --------------------------------------------- persistência */
   function salvar() {
@@ -1015,46 +1017,105 @@ import {
     window.print();
   }
 
-  /* Ação única de agenda: 1 escala abre Google Agenda; várias geram .ics. */
-  async function adicionarAgenda() {
-    const lista = escalasOrdenadas();
+  /* ------------------------------------------------ agendamento
+     Mobile: entrega o evento (.ics) ao app de agenda padrão do aparelho —
+     seja Google, Samsung, Outlook ou outro configurado no sistema.
+     Desktop: dialog para abrir na agenda web da estação (Google/Outlook),
+     sem gerar arquivo. */
+  const PROVEDORES_AGENDA = [
+    {
+      id: 'google', nome: 'Google Agenda', hint: 'Abre no navegador',
+      classeIco: 'google',
+      icone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/><path d="m9.5 14.5 2-2v5"/></svg>',
+      link: (e) => gerarLinkGoogleAgenda(e),
+    },
+    {
+      id: 'outlook', nome: 'Outlook pessoal', hint: 'Conta Outlook.com',
+      classeIco: 'outlook',
+      icone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/><circle cx="12" cy="15" r="2.6"/></svg>',
+      link: (e) => gerarLinkOutlookAgenda(e, false),
+    },
+    {
+      id: 'outlook365', nome: 'Outlook corporativo', hint: 'Conta Microsoft 365 (trabalho)',
+      classeIco: 'outlook',
+      icone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/><path d="M9.5 17v-4.5h2.2a1.4 1.4 0 0 1 0 2.8H9.5"/></svg>',
+      link: (e) => gerarLinkOutlookAgenda(e, true),
+    },
+  ];
+
+  async function agendarEscalas(lista) {
     if (!lista.length) { toast('Adicione escalas antes de salvar na agenda.', { erro: true }); return; }
-
-    if (lista.length > 1) {
-      const okMulti = await dialogConfirmar(
-        `Gerar um arquivo .ics com as ${lista.length} escalas para importar na agenda?`,
-        { textoOk: 'Gerar .ics', perigoso: false }
-      );
-      if (!okMulti) return;
-      haptic(10);
-      baixarArquivoAgenda(lista, 'Arquivo .ics gerado com todas as escalas para importar na agenda.');
-      return;
-    }
-
-    const ok = await dialogConfirmar(`Deseja salvar a escala "${lista[0].descricao}" na agenda?`, { textoOk: 'Abrir agenda', perigoso: false });
-    if (!ok) return;
-
-    haptic(10);
-    window.open(gerarLinkGoogleAgenda(lista[0]), '_blank', 'noopener');
+    if (isMobileViewport()) { await agendarNoCelular(lista); return; }
+    abrirDialogAgenda(lista);
   }
 
-  /* Download .ics para importação manual — acessível pelo share sheet */
-  function exportarICS() {
-    const lista = escalasOrdenadas();
-    if (!lista.length) { toast('Adicione escalas antes de gerar o arquivo .ics.', { erro: true }); return; }
-    baixarArquivoAgenda(lista, 'Arquivo gerado. Use "Importar" no seu app de agenda.');
-  }
-
-  async function abrirAgendaGoogleItem(id) {
-    const e = escalas.find((x) => x.id === id);
-    if (!e) return;
+  /* Mobile: o .ics é o formato que o sistema roteia para a agenda padrão do
+     aparelho — ao abrir o arquivo, o Android/iOS usa o app que o PM configurou. */
+  async function agendarNoCelular(lista) {
+    const rotulo = lista.length === 1 ? `a escala "${lista[0].descricao}"` : `as ${lista.length} escalas`;
     const ok = await dialogConfirmar(
-      `Deseja salvar a escala "${e.descricao}" na agenda?`,
+      `Adicionar ${rotulo} à agenda do celular?`,
       { textoOk: 'Abrir agenda', perigoso: false }
     );
     if (!ok) return;
     haptic(10);
-    window.open(gerarLinkGoogleAgenda(e), '_blank', 'noopener');
+    baixarArquivoAgenda(lista, 'Toque no arquivo baixado para abrir na agenda do seu celular.');
+  }
+
+  function abrirDialogAgenda(lista) {
+    const dlg = $('dialogAgenda');
+    if (!dlg) return;
+    $('agendaSub').textContent = lista.length === 1
+      ? `${lista[0].descricao} — ${fmtDataHora(lista[0].inicio)}`
+      : `${lista.length} escalas selecionadas`;
+    montarOpcoesProvedor(lista);
+    dlg.showModal();
+  }
+
+  function montarOpcoesProvedor(lista) {
+    const body = $('agendaBody');
+    body.innerHTML = PROVEDORES_AGENDA.map((p) => `
+      <button class="agenda-prov" data-prov="${p.id}" type="button">
+        <span class="agenda-prov-ico ${p.classeIco}" aria-hidden="true">${p.icone}</span>
+        <span class="agenda-prov-txt">${p.nome}<small>${p.hint}</small></span>
+      </button>`).join('');
+    body.querySelectorAll('.agenda-prov').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const prov = PROVEDORES_AGENDA.find((p) => p.id === btn.dataset.prov);
+        if (!prov) return;
+        haptic(10);
+        if (lista.length === 1) {
+          window.open(prov.link(lista[0]), '_blank', 'noopener');
+          $('dialogAgenda')?.close();
+          return;
+        }
+        montarListaEscalasProvedor(lista, prov);
+      });
+    });
+  }
+
+  /* Agendas web só aceitam um evento por link: com várias escalas, cada uma
+     vira um link clicável — evita bloqueio de pop-up e dá controle ao PM. */
+  function montarListaEscalasProvedor(lista, prov) {
+    const body = $('agendaBody');
+    body.innerHTML = `
+      <p class="agenda-hint">O ${prov.nome} abre uma escala por vez. Clique em cada uma para adicionar:</p>
+      <div class="agenda-lista">
+        ${lista.map((e) => `
+          <a class="agenda-item" href="${escapeHTML(prov.link(e))}" target="_blank" rel="noopener">
+            <span>${escapeHTML(e.descricao || 'Escala AC4')} — ${fmtDataHora(e.inicio)}</span>
+          </a>`).join('')}
+      </div>
+      <button class="btn btn-ghost btn-sm" id="agendaVoltar" type="button">‹ Escolher outra agenda</button>`;
+    body.querySelectorAll('.agenda-item').forEach((a) => {
+      a.addEventListener('click', () => a.classList.add('aberta'));
+    });
+    $('agendaVoltar')?.addEventListener('click', () => montarOpcoesProvedor(lista));
+  }
+
+  function agendarEscalaItem(id) {
+    const e = escalas.find((x) => x.id === id);
+    if (e) agendarEscalas([e]);
   }
 
   function exportarCSV() {
@@ -1124,6 +1185,21 @@ import {
       { caso: 'Inclui as datas da escala de 05/08/2026', ok: linhas.includes(esperado[2]) && linhas.includes(esperado[3]) },
       { caso: 'Gera UIDs estáveis e únicos', ok: uids.length === 2 && new Set(uids).size === 2 && uids.every((uid) => uid.endsWith(`@${ICS_DOMAIN}`)) },
       { caso: 'Validação iCalendar aprova múltiplas escalas', ok: window.__ac4ValidarICS(casos).ok },
+      {
+        caso: 'Link do Outlook pessoal com datas UTC e evento',
+        ok: (() => {
+          const url = new URL(gerarLinkOutlookAgenda(casos[0], false));
+          return url.origin === 'https://outlook.live.com'
+            && url.searchParams.get('rru') === 'addevent'
+            && url.searchParams.get('startdt') === new Date(casos[0].inicio).toISOString()
+            && url.searchParams.get('enddt') === new Date(casos[0].fim).toISOString()
+            && url.searchParams.get('subject') === casos[0].descricao;
+        })(),
+      },
+      {
+        caso: 'Link do Outlook corporativo usa outlook.office.com',
+        ok: new URL(gerarLinkOutlookAgenda(casos[0], true)).origin === 'https://outlook.office.com',
+      },
     ];
     if (console.table) console.table(resultados);
     return resultados.every((r) => r.ok) ? 'TODOS OS TESTES DE AGENDAMENTO OK' : resultados;
@@ -1241,7 +1317,6 @@ import {
     on('btnTheme', 'click', () =>
       aplicarTema(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'));
     on('btnPrint',     'click', imprimirRelatorio);
-    on('btnExportIcs', 'click', adicionarAgenda);
     on('btnExportCsv', 'click', exportarCSV);
     on('btnShare',     'click', abrirShareSheet);
 
@@ -1272,7 +1347,8 @@ import {
     on('shareWA',     'click', () => { $('dialogShare')?.close(); compartilharWhatsApp(); });
     on('shareNative', 'click', () => { $('dialogShare')?.close(); compartilharNativo(); });
     on('shareCopy',   'click', () => { $('dialogShare')?.close(); copiarResumo(); });
-    on('shareIcsOpt', 'click', () => { $('dialogShare')?.close(); adicionarAgenda(); });
+    on('shareIcsOpt', 'click', () => { $('dialogShare')?.close(); agendarEscalas(escalasOrdenadas()); });
+    on('agendaCancelar', 'click', () => $('dialogAgenda')?.close());
     on('shareCsvOpt', 'click', () => { $('dialogShare')?.close(); exportarCSV(); });
     on('sharePdfOpt', 'click', () => { $('dialogShare')?.close(); imprimirRelatorio(); });
     on('shareClose',  'click', () => $('dialogShare')?.close());
@@ -1349,7 +1425,7 @@ import {
       if (btn.dataset.acao === 'remover')        removerEscala(id);
       else if (btn.dataset.acao === 'editar')    editarEscala(id);
       else if (btn.dataset.acao === 'duplicar')  duplicarEscala(id);
-      else if (btn.dataset.acao === 'agenda')    abrirAgendaGoogleItem(id);
+      else if (btn.dataset.acao === 'agenda')    agendarEscalaItem(id);
     });
 
     document.addEventListener('keydown', (e) => {
