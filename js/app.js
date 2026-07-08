@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Calculadora AC4 — v41
+   Calculadora AC4 — v42
    Módulo principal: estado, UI, persistência e exportações.
    Regras de negócio, formatação e agenda vivem em js/modules/.
    ========================================================================== */
@@ -400,6 +400,7 @@ import {
     if ($('escalaQtdPm'))    $('escalaQtdPm').value = e.qtdPm || 1;
     if ($('escalaDescricao')) $('escalaDescricao').value = e.descricao === 'Escala AC4' ? '' : (e.descricao || '');
     if ($('escalaOrigem'))   $('escalaOrigem').value = e.origem || 'AC4';
+    sincronizarTodosControlesDataHora();
     $('btnSubmit').textContent = 'Salvar alterações';
     $('btnCancelEdit').classList.remove('hidden');
     $('formTitle').lastChild.textContent = ' Editar escala';
@@ -440,6 +441,31 @@ import {
     const origem = labelOrigem($('escalaOrigem')?.value || 'AC4');
     el.textContent = `${fmtHoras(r.mins)} · ${qtd} PM · ${origem} · ${fmtMoeda(r.valorCentavos * qtd)}`;
     el.classList.remove('vazio');
+  }
+
+  function sincronizarControlesDataHora(id) {
+    const valor = $(id)?.value || '';
+    const normalizado = parseDateTimeLocal(valor) ? formatarDataHoraInput(parseDateTimeLocal(valor)) : '';
+    const data = $(`${id}Data`);
+    const hora = $(`${id}Hora`);
+    if (data) data.value = normalizado ? normalizado.slice(0, 10) : '';
+    if (hora) hora.value = normalizado ? normalizado.slice(11, 16) : '';
+  }
+
+  function sincronizarTodosControlesDataHora() {
+    sincronizarControlesDataHora('escalaInicio');
+    sincronizarControlesDataHora('escalaFim');
+  }
+
+  function aplicarPartesDataHora(id, tipoEvento = 'input') {
+    const data = $(`${id}Data`)?.value || '';
+    const hora = $(`${id}Hora`)?.value || '';
+    const combinado = combinarDataHoraLocal(data, hora);
+    const campo = $(id);
+    if (!campo || !combinado) return false;
+    campo.value = formatarDataHoraInput(combinado);
+    campo.dispatchEvent(new Event(tipoEvento, { bubbles: true }));
+    return true;
   }
 
   /* Chips de duração rápida (mobile): refletem #escalaDuracao — mesma fonte de
@@ -1183,6 +1209,7 @@ import {
     initPWA();
 
     $('escalaInicio').value = toInputLocal(new Date());
+    sincronizarTodosControlesDataHora();
 
     on('formEscala', 'submit', (ev) => { ev.preventDefault(); submeterFormulario(); });
     on('btnCancelEdit', 'click', () => {
@@ -1204,6 +1231,7 @@ import {
           setTituloSheet('Nova escala AC4');
           $('escalaInicio').value = toInputLocal(new Date());
           aplicarDuracao();          /* recalcula término se já havia duração escolhida */
+          sincronizarTodosControlesDataHora();
         }
         atualizarResumoLancamento();
         abrirPainelLancamentoMobile();
@@ -1248,6 +1276,7 @@ import {
       const fim = calcularTerminoPorDuracao($('escalaInicio')?.value || '', horas);
       if (!fim) return false;
       $('escalaFim').value = fim;
+      sincronizarControlesDataHora('escalaFim');
       $('fieldFim').classList.remove('invalid');
       $('fieldFim').querySelector('.control')?.removeAttribute('aria-invalid');
       atualizarResumoFim();
@@ -1259,14 +1288,23 @@ import {
     on('escalaDuracao', 'change', aplicarDuracao);
     on('escalaInicio',  'input', aplicarDuracao);
     on('escalaInicio',  'change', aplicarDuracao);
+    on('escalaInicio',  'input', () => sincronizarControlesDataHora('escalaInicio'));
+    on('escalaInicio',  'change', () => sincronizarControlesDataHora('escalaInicio'));
     const marcarDuracaoPersonalizada = () => {
       if ($('escalaDuracao')) $('escalaDuracao').value = '';
+      sincronizarControlesDataHora('escalaFim');
       atualizarResumoFim();
       atualizarChipsDuracao();
       atualizarResumoLancamento();
     };
     on('escalaFim', 'input', marcarDuracaoPersonalizada);
     on('escalaFim', 'change', marcarDuracaoPersonalizada);
+    ['escalaInicio', 'escalaFim'].forEach((id) => {
+      ['Data', 'Hora'].forEach((sufixo) => {
+        on(`${id}${sufixo}`, 'input', () => aplicarPartesDataHora(id, 'input'));
+        on(`${id}${sufixo}`, 'change', () => aplicarPartesDataHora(id, 'change'));
+      });
+    });
     /* Resumo do lançamento também depende de Qtd. PM e Origem */
     on('escalaQtdPm', 'input', atualizarResumoLancamento);
     on('escalaQtdPm', 'change', atualizarResumoLancamento);

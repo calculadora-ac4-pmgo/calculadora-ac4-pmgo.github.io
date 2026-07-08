@@ -186,6 +186,27 @@ const ROTEIRO_MOBILE = `(async () => {
   const painelRect = painel.getBoundingClientRect();
   ok('Painel ancorado ao rodapé da tela', Math.abs(painelRect.bottom - window.innerHeight) <= 1, Math.round(painelRect.bottom) + ' vs ' + window.innerHeight);
 
+  // 9b. data e hora mobile: controles separados, grandes e contidos no viewport
+  const dtInicio = document.getElementById('escalaInicioData');
+  const hrInicio = document.getElementById('escalaInicioHora');
+  const dtFim = document.getElementById('escalaFimData');
+  const hrFim = document.getElementById('escalaFimHora');
+  const inputNativoInicio = document.getElementById('escalaInicio');
+  ok('Mobile usa data/hora separadas para início',
+     !!dtInicio && !!hrInicio && getComputedStyle(dtInicio).display !== 'none' && getComputedStyle(hrInicio).display !== 'none');
+  ok('Datetime-local nativo fica oculto no sheet mobile',
+     inputNativoInicio && inputNativoInicio.getBoundingClientRect().width <= 1,
+     inputNativoInicio && Math.round(inputNativoInicio.getBoundingClientRect().width) + 'px');
+  const contidos = [dtInicio, hrInicio, dtFim, hrFim].every((el) => {
+    const r = el.getBoundingClientRect();
+    return r.left >= 0 && r.right <= window.innerWidth + 1 && r.height >= 54;
+  });
+  ok('Campos data/hora não ultrapassam a tela', contidos,
+     [dtInicio, hrInicio, dtFim, hrFim].map((el) => {
+       const r = el.getBoundingClientRect();
+       return Math.round(r.left) + '-' + Math.round(r.right) + ' / ' + Math.round(r.height);
+     }).join(' | '));
+
   // 10. duração 14h calcula término e o espelho legível aparece (não depende do repaint do datetime-local)
   const iniS = document.getElementById('escalaInicio');
   iniS.value = '2026-07-10T18:00';
@@ -199,6 +220,20 @@ const ROTEIRO_MOBILE = `(async () => {
   ok('Espelho legível do término visível', !!resumo && resumo.textContent.includes('11/07') && getComputedStyle(resumo).display !== 'none', resumo && resumo.textContent);
   const lResumo = document.getElementById('launchResumo');
   ok('Resumo do lançamento no sheet (14h · 1 PM · AC4 · R$)', !!lResumo && getComputedStyle(lResumo).display !== 'none' && /14h/.test(lResumo.textContent) && /R\\$/.test(lResumo.textContent), lResumo && lResumo.textContent);
+  ok('Campos separados refletem início e término calculado',
+     dtInicio.value === '2026-07-10' && hrInicio.value === '18:00' && dtFim.value === '2026-07-11' && hrFim.value === '08:00',
+     [dtInicio.value, hrInicio.value, dtFim.value, hrFim.value].join(' / '));
+
+  hrInicio.value = '19:30';
+  hrInicio.dispatchEvent(new Event('change', { bubbles: true }));
+  await espera(30);
+  ok('Alterar horário inicial no campo grande recalcula término',
+     document.getElementById('escalaInicio').value === '2026-07-10T19:30' &&
+     document.getElementById('escalaFim').value === '2026-07-11T09:30',
+     document.getElementById('escalaInicio').value + ' → ' + document.getElementById('escalaFim').value);
+  hrInicio.value = '18:00';
+  hrInicio.dispatchEvent(new Event('change', { bubbles: true }));
+  await espera(30);
 
   // 11. chips de duração rápida (mobile): clicar 24h ativa o chip e recalcula término
   const chip24 = [...document.querySelectorAll('#durChips .dur-chip')].find((c) => c.dataset.horas === '24');
