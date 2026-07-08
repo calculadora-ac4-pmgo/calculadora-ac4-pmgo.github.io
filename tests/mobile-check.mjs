@@ -132,9 +132,10 @@ const ROTEIRO_MOBILE = `(async () => {
   const tema = rect('#btnTheme');
   ok('Botão de tema ≥ 44px', tema && tema.width >= 44 && tema.height >= 44, tema && Math.round(tema.width) + '×' + Math.round(tema.height));
 
-  // 4. ações da escala (tabela em modo cartão) ≥ 44px
-  const acao = rect('#listaEscalas .escala-actions .btn-icon');
-  ok('Botões de ação da escala ≥ 44px', acao && acao.width >= 44 && acao.height >= 44, acao && Math.round(acao.width) + '×' + Math.round(acao.height));
+  // 4. linha da escala: altura tocável e ações compactas na ordem pedida
+  const linhaEl = document.querySelector('#listaEscalas .escala-card .ec-line');
+  const linhaEscala = linhaEl?.getBoundingClientRect();
+  ok('Linha da escala ≥ 44px de altura', linhaEscala && linhaEscala.height >= 44, linhaEscala && Math.round(linhaEscala.height) + 'px');
 
   // 5. filtro de mês e importação ≥ 44px
   const filtro = rect('#filtroMes');
@@ -159,13 +160,18 @@ const ROTEIRO_MOBILE = `(async () => {
   const mResumo = document.getElementById('metricResumoMobile');
   ok('Resumo das métricas visível (Xh · N escalas)', !!mResumo && getComputedStyle(mResumo).display !== 'none' && /escala/.test(mResumo.textContent), mResumo && mResumo.textContent);
 
-  // 8c. lista premium: cards enxutos no lugar da tabela
+  // 8c. lista premium: linha única no lugar da tabela
   ok('Tabela oculta no mobile', getComputedStyle(document.querySelector('.table-wrap')).display === 'none');
   ok('Cards de escala visíveis no mobile', getComputedStyle(document.querySelector('.escala-cards')).display !== 'none');
-  const cardVal = document.querySelector('.escala-card .ec-value');
-  ok('Card de escala mostra o valor', !!cardVal && cardVal.textContent.includes('R$'), cardVal && cardVal.textContent);
-  const cardAcao = rect('.escala-card .escala-actions .btn-icon');
-  ok('Ações do card ≥ 44px', cardAcao && cardAcao.width >= 44 && cardAcao.height >= 44, cardAcao && Math.round(cardAcao.width) + '×' + Math.round(cardAcao.height));
+  const linhaTexto = document.querySelector('.escala-card .ec-line-text');
+  ok('Linha mostra data - dia - horas - valor',
+     !!linhaTexto && linhaTexto.textContent.includes('06/07/2026 - Segunda-Feira - 14h - R$'),
+     linhaTexto && linhaTexto.textContent);
+  ok('Linha completa cabe sem truncar em 393px',
+     !!linhaEl && linhaEl.scrollWidth <= linhaEl.clientWidth + 1,
+     linhaEl && (Math.round(linhaEl.scrollWidth) + ' vs ' + Math.round(linhaEl.clientWidth)));
+  const acoesLinha = [...document.querySelectorAll('.escala-card .ec-line-action')].map((b) => b.textContent.trim()).join(' ');
+  ok('Ações do card na ordem ✎ ⧉ 🗑', acoesLinha === '✎ ⧉ 🗑', acoesLinha);
 
   // 9. bottom sheet de lançamento: abre por "Nova escala", fecha pelo X
   const painel = document.querySelector('.launch-panel');
@@ -253,11 +259,25 @@ const ROTEIRO_320 = `(async () => {
   const ok = (nome, cond, detalhe = '') => passos.push({ nome, ok: !!cond, detalhe: String(detalhe) });
   const espera = (ms) => new Promise((r) => setTimeout(r, ms));
   for (let i = 0; i < 50 && !document.getElementById('formEscala'); i++) await espera(100);
+  localStorage.removeItem('pmgoEscalas');
+  const ini = document.getElementById('escalaInicio');
+  ini.value = '2026-07-06T07:00';
+  ini.dispatchEvent(new Event('change', { bubbles: true }));
+  const dur = document.getElementById('escalaDuracao');
+  dur.value = '14';
+  dur.dispatchEvent(new Event('change', { bubbles: true }));
+  document.getElementById('btnSubmit').click();
+  await espera(400);
   ok('320px: sem rolagem horizontal', document.documentElement.scrollWidth <= window.innerWidth + 1,
      document.documentElement.scrollWidth + ' vs ' + window.innerWidth);
   const barra = document.querySelector('.mobile-bar')?.getBoundingClientRect();
   ok('320px: barra fixa cabe na tela', barra && barra.width <= window.innerWidth + 1,
      barra && Math.round(barra.width) + 'px');
+  const linha = document.querySelector('.escala-card .ec-line');
+  ok('320px: escala permanece em linha única',
+     !!linha && getComputedStyle(linha).whiteSpace === 'nowrap' && linha.getBoundingClientRect().height <= 52,
+     linha && Math.round(linha.getBoundingClientRect().height) + 'px');
+  localStorage.removeItem('pmgoEscalas');
   return JSON.stringify(passos);
 })()`;
 

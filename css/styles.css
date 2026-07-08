@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Calculadora AC4 — v31
+   Calculadora AC4 — v41
    ========================================================================== */
 
 /* Inter (variable, 100–900) self-hosted — sem dependência do Google Fonts,
@@ -1268,32 +1268,81 @@ textarea.control { min-height: 74px; resize: vertical; }
 
   /* ===== Lista premium: cards enxutos no lugar da tabela ===== */
   .table-wrap { display: none; }
-  .escala-cards { display: grid; gap: 10px; }
+  .escala-cards { display: grid; gap: 8px; }
   .escala-card {
-    padding: 14px 16px;
+    min-width: 0;
+    padding: 0;
     border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-sm);
     background: var(--surface);
     box-shadow: var(--shadow-sm);
   }
-  .ec-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-  .ec-date { font-size: 0.92rem; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 7px; min-width: 0; }
-  .ec-date b { font-weight: 800; }
-  .ec-dot { width: 9px; height: 9px; border-radius: 999px; flex-shrink: 0; }
-  .ec-dot-blue { background: var(--blue-600); }
-  .ec-dot-red { background: var(--red-600); }
-  .ec-tag-night {
-    margin-left: 2px; padding: 1px 7px; border-radius: 999px;
-    background: var(--info-soft); color: var(--info-text);
-    font-size: 0.66rem; font-weight: 800;
+  .ec-line {
+    min-width: 0;
+    min-height: 48px;
+    padding: 0 4px 0 6px;
+    display: flex;
+    align-items: center;
+    gap: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
   }
-  .ec-time { margin-top: 4px; color: var(--text-muted); font-size: 0.84rem; font-weight: 600; font-variant-numeric: tabular-nums; }
-  .ec-bottom { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; }
-  .ec-value { color: var(--green-600); font-size: 1.05rem; font-weight: 800; font-variant-numeric: tabular-nums; }
-  .ec-value small { display: block; color: var(--text-faint); font-size: 0.68rem; font-weight: 600; }
-  .escala-card .escala-actions { gap: 2px; }
-  .escala-card .escala-actions .btn-icon { width: 44px; height: 44px; border-color: transparent; background: transparent; }
-  .escala-card .escala-actions .delete:hover { background: var(--danger-soft); color: var(--danger); }
+  .ec-line::-webkit-scrollbar { display: none; }
+  .ec-line-text {
+    flex: 0 0 auto;
+    overflow: visible;
+    text-overflow: clip;
+    color: var(--text);
+    font-size: 0.76rem;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: 0;
+    font-variant-numeric: tabular-nums;
+  }
+  .ec-line-actions {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 1px;
+    margin-left: 6px;
+    color: var(--text-muted);
+  }
+  .ec-line-action {
+    position: relative;
+    width: 16px;
+    height: 44px;
+    display: inline-grid;
+    place-items: center;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: 1rem;
+    line-height: 1;
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .ec-line-action::before {
+    content: "";
+    position: absolute;
+    inset: -4px -8px;
+  }
+  .ec-line-action:hover,
+  .ec-line-action:focus-visible {
+    background: var(--surface-3);
+    color: var(--text);
+    outline: none;
+  }
+  .ec-line-action.delete:hover,
+  .ec-line-action.delete:focus-visible {
+    background: var(--danger-soft);
+    color: var(--danger);
+  }
 }
 
 [data-theme="dark"] .dur-chip.is-active {
