@@ -4,6 +4,34 @@
 
 ---
 
+## 🏁 PROJETO FINALIZADO — 08/07/2026 (v54)
+
+O escopo do MVP e todo o backlog de auditoria foram **concluídos**. O projeto entra em **modo de manutenção** (só correções sob demanda ou nova norma).
+
+**Estado final entregue:**
+
+| Item | Estado |
+| --- | --- |
+| Versão em produção | **v54** — no ar em https://calculadora-ac4-pmgo.github.io/ (HTTP 200) |
+| Backlog da auditoria | **100% tratado** — nota **9,5/10**; sem P0/P1/P2 abertos |
+| Regra de cálculo | Validada contra a Portaria SSP 621/2026 (transcrita no repo) |
+| CI | Lint (ESLint 9) + 3 suítes de teste em PRs e na main; deploy só na main |
+| Testes | run-tests (3 suítes) · smoke (18 passos, PDF real) · mobile-check — verdes |
+| Segurança | Sem segredos; CSP; CSV neutralizado; XSS auditado; HSTS |
+| LGPD | Minimização real — nenhum dado pessoal coletado |
+| Acessibilidade | WCAG AA (0 falhas de contraste), h1 único |
+| Observabilidade | Erros JS anônimos (local) + uptime externo (UptimeRobot) |
+| Trabalho inacabado | **Nenhum** |
+
+**Itens que dependem só do gestor (operacionais, não são código):**
+- Confirmar no UptimeRobot que o **alerta por e-mail** está ativo e vinculado ao monitor.
+
+**Melhorias futuras opcionais (sem urgência, "nice to have"):** modularizar `app.js` se ultrapassar ~1.700 linhas; otimizar demais assets se necessário. Não bloqueiam nada.
+
+**Como reabrir:** este projeto está estável e documentado. Para retomar (nova norma, bug ou evolução), siga a seção *"Como retomar em outra estação de trabalho"* mais abaixo e as *"Regras invioláveis do projeto"*. Próximo bump de versão: **v55**.
+
+---
+
 ## Sessão de 08/07/2026 — execução das melhorias residuais (v54): nota 9,5/10
 
 Executados os itens P3/P4 do backlog residual da reauditoria. **Próxima versão: v55.**
