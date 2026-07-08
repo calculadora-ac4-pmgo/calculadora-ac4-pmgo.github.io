@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Calculadora AC4 — v31
+   Calculadora AC4 — v41
    Módulo principal: estado, UI, persistência e exportações.
    Regras de negócio, formatação e agenda vivem em js/modules/.
    ========================================================================== */
@@ -59,11 +59,11 @@ import {
     $('mobileAdd')?.setAttribute('aria-expanded', aberto ? 'true' : 'false');
   }
 
-  function abrirPainelLancamentoMobile({ foco = true } = {}) {
+  function abrirPainelLancamentoMobile({ foco = false } = {}) {
     setMobileSheetOpen(true);
-    /* espera a transição começar antes de focar, senão o teclado virtual
-       compete com a animação de entrada */
-    if (foco) requestAnimationFrame(() => $('escalaInicio')?.focus());
+    /* O foco automático em mobile pode abrir teclado/picker e deslocar o sheet.
+       Mantemos a opção para fluxos específicos, mas sem usar por padrão. */
+    if (foco) window.setTimeout(() => $('escalaInicio')?.focus({ preventScroll: true }), 260);
   }
 
   function fecharPainelLancamentoMobile({ devolverFoco = true } = {}) {
@@ -753,23 +753,37 @@ import {
       </button>
     </div>`;
 
-  /* Card enxuto de uma escala (mobile): data+dia+horas, faixa horária, valor e ações.
+  const fmtDiaSemanaLinha = (iso) =>
+    fmtDiaSemana(iso)
+      .split('-')
+      .map((parte) => parte ? parte[0].toLocaleUpperCase('pt-BR') + parte.slice(1) : parte)
+      .join('-');
+  const fmtMoedaLinha = (centavos) => fmtMoeda(centavos).replace(/\u00a0/g, ' ');
+
+  const botoesLinhaMobileHTML = (id) => `
+    <div class="ec-line-actions" aria-label="Ações da escala">
+      <button class="ec-line-action" data-acao="editar" data-id="${id}" title="Editar" aria-label="Editar">
+        <span aria-hidden="true">✎</span>
+      </button>
+      <button class="ec-line-action" data-acao="duplicar" data-id="${id}" title="Duplicar para o dia seguinte" aria-label="Duplicar">
+        <span aria-hidden="true">⧉</span>
+      </button>
+      <button class="ec-line-action delete" data-acao="remover" data-id="${id}" title="Excluir" aria-label="Excluir">
+        <span aria-hidden="true">🗑</span>
+      </button>
+    </div>`;
+
+  /* Linha enxuta de uma escala (mobile): data - dia - horas - valor + ações.
      Estrutura própria — o desktop segue usando a tabela, sem alteração. */
   const cardEscalaHTML = (e, r) => {
     const qtd = e.qtdPm || 1;
     const valorTotal = r.valorCentavos * qtd;
-    const tipoCls = r.minVermelha > 0 ? 'ec-dot-red' : 'ec-dot-blue';
-    const fimStr = fmtData(e.inicio) === fmtData(e.fim) ? fmtHora(e.fim) : `${fmtData(e.fim)} ${fmtHora(e.fim)}`;
-    const noturno = r.minNoturno > 0 ? '<span class="ec-tag-night">noturno</span>' : '';
+    const resumoLinha = `${fmtData(e.inicio)} - ${fmtDiaSemanaLinha(e.inicio)} - ${fmtHoras(r.mins)} - ${fmtMoedaLinha(valorTotal)}`;
     return `
-      <div class="escala-card">
-        <div class="ec-top">
-          <span class="ec-date"><span class="ec-dot ${tipoCls}"></span>${fmtData(e.inicio)} <b>${fmtDiaSemana(e.inicio)}</b> · ${fmtHoras(r.mins)} ${noturno}</span>
-        </div>
-        <div class="ec-time">${fmtHora(e.inicio)} → ${fimStr}</div>
-        <div class="ec-bottom">
-          <span class="ec-value">${fmtMoeda(valorTotal)}${qtd > 1 ? `<small>${qtd} PMs</small>` : ''}</span>
-          ${botoesAcaoHTML(e.id)}
+      <div class="escala-card" role="listitem">
+        <div class="ec-line" aria-label="${escapeHTML(resumoLinha)}">
+          <span class="ec-line-text">${escapeHTML(resumoLinha)}</span>
+          ${botoesLinhaMobileHTML(e.id)}
         </div>
       </div>`;
   };
@@ -869,7 +883,7 @@ import {
 
     /* Cards enxutos (mobile) — vêm antes da tabela no DOM; CSS mostra um ou
        outro conforme a largura. Mesma fonte de dados, sem tocar no desktop. */
-    const cardsMobile = `<div class="escala-cards">${resultados.map(({ e, r }) => cardEscalaHTML(e, r)).join('')}</div>`;
+    const cardsMobile = `<div class="escala-cards" role="list" aria-label="Escalas lançadas">${resultados.map(({ e, r }) => cardEscalaHTML(e, r)).join('')}</div>`;
     container.innerHTML = cardsMobile + html;
   }
 
