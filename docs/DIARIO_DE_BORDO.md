@@ -4,6 +4,17 @@
 
 ---
 
+## Sessão de 08/07/2026 — residuais de a11y aprovados pelo gestor (v53)
+
+Os dois residuais menores de acessibilidade documentados na v52 foram **aprovados e aplicados**:
+
+- **`--text-faint` (tema claro):** `#93a4b7` (2,55:1) → **`#64707c`** — passa o AA em todas as superfícies claras (≥4,53:1). As dicas ("(opcional)", `.table-note`, `.fim-hint`) ficaram mais legíveis, mantendo a hierarquia.
+- **Duplo `<h1>`:** o título do relatório de impressão virou `<p class="pr-title">` (estilo idêntico no PDF via `.pr-header .pr-title`). Agora há **um único `<h1>`** na página.
+
+Auditoria re-executada: **0 falhas de contraste** (15 pares) e `h1=1`. Relatório atualizado em [`relatorio_acessibilidade_v52.md`](relatorio_acessibilidade_v52.md). Smoke (16 passos), run-tests e verificação visual desktop verdes. **A partir da v53 não há residuais de a11y abertos.**
+
+---
+
 ## Sessão de 08/07/2026 — conclusão das fases pendentes P3/P4 (v52)
 
 Fechadas as pendências acionáveis do diário. Resta só a **P2 (uptime)**, que depende do gestor.

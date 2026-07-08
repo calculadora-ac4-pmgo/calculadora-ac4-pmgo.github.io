@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Calculadora AC4 — v52
+   Calculadora AC4 — v53
    ========================================================================== */
 
 /* Inter (variable, 100–900) self-hosted — sem dependência do Google Fonts,
@@ -45,7 +45,7 @@
   --border-strong: #b9c8d8;
   --text: #122033;
   --text-muted: #627286; /* AA: 4.54:1 sobre --bg (era #66778c, 4.23:1) */
-  --text-faint: #93a4b7;
+  --text-faint: #64707c; /* AA: 4.53:1 sobre --surface-3 (era #93a4b7, 2.55:1) */
   --primary: var(--navy-900);
   --primary-hover: var(--navy-800);
   --primary-soft: #e8eef7;
@@ -1550,7 +1550,7 @@ textarea.control { min-height: 74px; resize: vertical; }
     border-bottom: 2px solid #111; padding-bottom: 10px; margin-bottom: 12px;
     break-inside: avoid;
   }
-  .pr-header h1 { font-size: 13pt; font-weight: bold; color: #000 !important; margin: 0 0 3px; }
+  .pr-header .pr-title { font-size: 13pt; font-weight: bold; color: #000 !important; margin: 0 0 3px; }
   .pr-subtitle { font-size: 8.5pt; color: #555 !important; margin: 0; }
   .pr-header-right { text-align: right; font-size: 8pt; color: #444 !important; line-height: 1.7; }
   .pr-header-right p { margin: 0; }
