@@ -75,12 +75,21 @@ export const calcularTerminoPorDuracao = (inicioValor, horas) => {
   return fim ? formatarDataHoraInput(fim) : '';
 };
 
+/* Teto de sanidade da duração: um typo no ano do término (ex.: 2036 em vez
+   de 2026) criaria uma escala de milhões de minutos e travaria o cálculo
+   minuto a minuto em todo carregamento. Nenhuma escala AC4 real passa de
+   7 dias corridos. */
+export const DURACAO_MAX_HORAS = 168;
+
 export function validarIntervaloEscala(inicioValor, fimValor) {
   const inicio = parseDateTimeLocal(inicioValor);
   const fim = parseDateTimeLocal(fimValor);
   if (!inicioValor || !inicio) return { ok: false, campo: 'inicio', mensagem: 'Informe a data e hora de início da escala.' };
   if (!fimValor || !fim) return { ok: false, campo: 'fim', mensagem: 'Informe a data e hora de término da escala.' };
   if (fim <= inicio) return { ok: false, campo: 'fim', mensagem: 'O término da escala deve ser posterior ao início.' };
+  if (fim - inicio > DURACAO_MAX_HORAS * 3600000) {
+    return { ok: false, campo: 'fim', mensagem: `A duração máxima de uma escala é de 7 dias (${DURACAO_MAX_HORAS}h). Confira a data e o ano do término.` };
+  }
   return { ok: true, inicio, fim, mensagem: '' };
 }
 

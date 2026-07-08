@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Calculadora AC4 — v46
+   Calculadora AC4 — v47
    Módulo principal: estado, UI, persistência e exportações.
    Regras de negócio, formatação e agenda vivem em js/modules/.
    ========================================================================== */
@@ -273,6 +273,9 @@ import {
       add('Aceitar término maior que início', validarIntervaloEscala(inicio24, fim24).ok);
       add('Rejeitar término igual ao início', !validarIntervaloEscala(inicio24, inicio24).ok);
       add('Rejeitar término anterior ao início', !validarIntervaloEscala(fim24, inicio24).ok);
+      add('Aceitar duração no limite de 7 dias', validarIntervaloEscala('2026-07-05T08:00', '2026-07-12T08:00').ok);
+      const acimaLimite = validarIntervaloEscala('2026-07-05T08:00', '2036-07-05T08:00');
+      add('Rejeitar duração acima de 7 dias (typo de ano)', !acimaLimite.ok && acimaLimite.campo === 'fim', acimaLimite.mensagem);
 
       const escalaTeste = {
         id: 'teste-lancamento-ac4',
@@ -734,7 +737,11 @@ import {
     const arquivo = $('impArquivo')?.files?.[0];
     if (!arquivo) return;
     try {
-      const { eventos, ignorados } = parseICS(await arquivo.text());
+      const lido = parseICS(await arquivo.text());
+      /* Mesmo teto de duração do formulário — evento com intervalo absurdo
+         (typo de ano na agenda de origem) travaria o cálculo minuto a minuto. */
+      const eventos = lido.eventos.filter((ev) => validarIntervaloEscala(ev.inicio, ev.fim).ok);
+      const ignorados = lido.ignorados + (lido.eventos.length - eventos.length);
       if (!eventos.length) {
         toast(`Nenhum evento com data e hora válidas no arquivo.${ignorados ? ` (${ignorados} sem horário ou inválidos)` : ''}`, { erro: true });
         return;

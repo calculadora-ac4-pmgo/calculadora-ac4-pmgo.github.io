@@ -164,6 +164,11 @@ const ROTEIRO = `(async () => {
   const ics = window.__ac4ValidarICS();
   ok('Arquivo .ics gerado é válido', ics.ok && ics.eventos === 1, JSON.stringify(ics.falhas || []));
 
+  // 4b. suíte de lançamento no navegador (validações + teto de duração de 7 dias)
+  const lanc = window.__ac4TestesLancamento();
+  ok('Suíte de lançamento (inclui teto de duração)', lanc === 'TODOS OS TESTES DE LANCAMENTO OK',
+     typeof lanc === 'string' ? lanc : JSON.stringify(lanc).slice(0, 200));
+
   // 5. remoção limpa o estado
   document.querySelector('#listaEscalas [data-acao="remover"]').click();
   await espera(300);

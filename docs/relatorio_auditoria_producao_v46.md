@@ -204,3 +204,17 @@ Recomendações (sem identificar usuários):
 ---
 
 *Pergunta em aberto para o gestor (bloqueia o item 1 do backlog): pela Portaria SSP nº 621/2026, a tarifa Azul/Vermelha é definida pelo dia de início da escala inteira, ou minuto a minuto (como o código faz hoje)?*
+
+---
+
+## Adendo — Resolução da Fase 1 (07/07/2026, mesma data)
+
+O gestor forneceu o texto integral da **Portaria SSP nº 621, de 15/06/2026** (DO/GO nº 24.801, de 17/06/2026), agora transcrito em [`docs/portaria-ssp-621-2026.md`](portaria-ssp-621-2026.md).
+
+**P1-A — RESOLVIDO (código estava correto; README estava errado).** O Anexo I da Portaria define os valores **por dia da semana em que a hora é trabalhada** (colunas Domingo…Sábado), sem qualquer menção a "dia de início da escala". O parágrafo único do Art. 1º define o noturno como "22h de um dia até 5h do dia seguinte", confirmando a regra do dia operacional aplicada em `calculo.mjs` (madrugada pertence ao noturno iniciado no dia anterior). O caso de teste `qui 20h→sex 6h = R$ 331,00` está aderente à norma (2h×30 + 7h×33 + 1h×40). Ação executada: README §Regras de cálculo reescrito para descrever a regra real, com exemplos e link para a transcrição da Portaria. `calculo.mjs` não foi alterado.
+
+**Observação de fronteira registrada:** o texto normativo ("diurno 5h01–21h59", "noturno 22h–5h") deixa o minuto das 5h00 e o intervalo 21h59–22h00 sem enquadramento literal contínuo; a aplicação usa a leitura contínua noturno=[22h00,05h00). Divergência máxima possível: 1 minuto por virada (≤ R$ 0,25/escala). Registrado em `docs/portaria-ssp-621-2026.md` como risco aceito.
+
+**P1-B — RESOLVIDO.** Teto de duração de **7 dias (168h)** implantado em `validarIntervaloEscala` (`js/modules/formato.mjs`, constante `DURACAO_MAX_HORAS`), valendo para o formulário e para a importação de `.ics` (eventos acima do teto são contados como ignorados). `calculo.mjs` intocado. Testes: 2 casos novos na suíte de lançamento (aceita exatamente 168h; rejeita typo de ano 2036) e a suíte `__ac4TestesLancamento` passou a rodar no smoke test do CI.
+
+Itens P2 seguintes do backlog (CSV injection, CI em PR, uptime) permanecem pendentes — ver §14.

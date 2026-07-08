@@ -32,22 +32,25 @@ Em dispositivos móveis, é possível usar a opção do navegador para adicionar
 
 ## Regras de cálculo
 
-Base normativa informada: Portaria SSP nº 621/2026, com vigência a partir de 01/07/2026.
+Base normativa: Portaria SSP nº 621, de 15 de junho de 2026 (DO/GO nº 24.801, de 17/06/2026), com efeitos a partir de 01/07/2026. Transcrição dos dispositivos relevantes em [docs/portaria-ssp-621-2026.md](docs/portaria-ssp-621-2026.md).
 
-Valores utilizados pela aplicação:
+Valores por hora, conforme o Anexo I da Portaria:
 
-| Faixa | Valor |
-| --- | ---: |
-| Azul diurna | R$ 30,00/h |
-| Azul noturna | R$ 33,00/h |
-| Vermelha diurna | R$ 40,00/h |
-| Vermelha noturna | R$ 45,00/h |
+| Faixa | Dias | Valor |
+| --- | --- | ---: |
+| Azul diurna | segunda a quinta | R$ 30,00/h |
+| Azul noturna | segunda a quinta | R$ 33,00/h |
+| Vermelha diurna | sexta, sábado e domingo | R$ 40,00/h |
+| Vermelha noturna | sexta, sábado e domingo | R$ 45,00/h |
 
-O horário noturno é considerado de 22h00 até 04h59. A partir de 05h00, o período volta a ser tratado como diurno.
+O período noturno vai das 22h de um dia até as 5h do dia seguinte; o restante é diurno.
 
-Na regra atual da aplicação, a tarifa azul ou vermelha é definida pelo dia de início da escala e mantida durante toda a escala. Escalas iniciadas em sexta-feira, sábado ou domingo são tratadas como vermelhas; escalas iniciadas nos demais dias são tratadas como azuis.
+A tarifa é definida **pelo dia da semana em que cada hora é efetivamente trabalhada**, apurada minuto a minuto — não pelo dia de início da escala. Uma escala que atravessa a virada do dia pode combinar faixas azuis e vermelhas. O período noturno pertence ao dia em que começou: a madrugada até as 4h59 é remunerada pela tarifa noturna do dia anterior.
 
-Exemplo: uma escala com início na sexta-feira às 18h e término no sábado às 08h é calculada integralmente como vermelha, mesmo atravessando a virada de dia.
+Exemplos:
+
+- Escala de quinta-feira 20h até sexta-feira 6h: 2h azuis diurnas (qui 20h–22h) + 7h azuis noturnas (noturno iniciado na quinta, 22h–5h) + 1h vermelha diurna (sex 5h–6h).
+- Escala de sexta-feira 18h até sábado 8h: integralmente vermelha (todas as horas caem em sexta/sábado).
 
 ## Privacidade e armazenamento
 
@@ -65,7 +68,8 @@ Os dados das escalas são armazenados somente no navegador do usuário.
 index.html            página única da aplicação
 404.html              página de erro para URLs inexistentes
 css/styles.css        estilos, temas, componentes e regras de impressão
-js/app.js             lógica de estado, cálculo, interface e exportações
+js/app.js             estado, interface, PWA e exportações
+js/modules/           regras puras: calculo.mjs (tarifas), formato.mjs (datas), agenda.mjs (.ics/links)
 js/theme.js           aplicação do tema antes do primeiro paint
 sw.js                 service worker para funcionamento offline
 manifest.webmanifest  manifesto PWA
