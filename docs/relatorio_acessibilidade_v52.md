@@ -34,21 +34,16 @@
 | **Texto faint sobre surface (escuro)** | 4,42:1 ❌ | **4,59:1** (`#71829a`→`#73859d`) | ✅ corrigido |
 | Borda ouro sobre navy (decorativa, alvo 3:1) | 12,26:1 | — | ✅ |
 
-## Itens residuais (menores) — recomendação, sem correção automática nesta versão
+## Itens antes residuais — CORRIGIDOS na v53 (aprovados pelo gestor)
 
-1. **`--text-faint` no tema claro (`#93a4b7`) — 2,55:1 sobre `--surface`.**
-   Falha o AA para texto. É usado apenas em textos **suplementares e pequenos**
-   (rótulo "(opcional)", `.table-note`, `.fim-hint`, dicas). Corrigir para o AA
-   pleno exige escurecer para ~`#6b7886` (4,5:1 sobre `#fff`), o que é uma
-   **mudança visível** em todas essas dicas e reduz a hierarquia entre "muted" e
-   "faint". Recomendação: aprovar com o gestor antes de aplicar, pois altera a
-   aparência das dicas em todo o app. *(Mudança de layout/estética depende de
-   pedido — regra do projeto.)*
-2. **Dois `<h1>` no DOM.** O segundo está em `#printReport` (título do relatório
-   **de impressão**, `display:none` em tela). É defensável como título do
-   documento impresso, mas o Lighthouse conta como heading duplicado.
-   Recomendação: se desejar 100% no critério de headings, trocar o `<h1>` do
-   relatório de impressão por `<p>` estilizado (sem impacto visual no PDF).
+1. **`--text-faint` no tema claro:** `#93a4b7` (2,55:1) → **`#64707c`** — passa o
+   AA em todas as superfícies claras (4,53:1 sobre `--surface-3`, 4,67:1 sobre
+   `--bg`, 5,06:1 sobre `--surface`). Escurece as dicas ("(opcional)",
+   `.table-note`, `.fim-hint`) — mudança visível aprovada para garantir
+   legibilidade.
+2. **Dois `<h1>` no DOM:** o `<h1>` do relatório de impressão virou
+   `<p class="pr-title">` (mesmo estilo no PDF, via `.pr-header .pr-title`).
+   Agora há **um único `<h1>`** na página (a marca na topbar).
 
 ## Correções aplicadas na v52
 
