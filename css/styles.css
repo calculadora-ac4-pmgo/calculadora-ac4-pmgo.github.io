@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Calculadora AC4 — v41
+   Calculadora AC4 — v42
    ========================================================================== */
 
 /* Inter (variable, 100–900) self-hosted — sem dependência do Google Fonts,
@@ -492,6 +492,7 @@ textarea.control { min-height: 74px; resize: vertical; }
 /* Elementos de UI exclusivos do bottom sheet mobile — inertes no desktop.
    O #escalaQtdPm segue funcionando em .qtd-control (bloco simples no desktop). */
 .field-ico,
+.mobile-datetime,
 .dur-chips,
 .dur-rapida-tag,
 .auto-tag,
@@ -1167,6 +1168,59 @@ textarea.control { min-height: 74px; resize: vertical; }
     min-height: 50px;
     font-size: 1rem;
     text-align: left;
+  }
+  .launch-panel #escalaInicio.control,
+  .launch-panel #escalaFim.control {
+    position: absolute;
+    width: 1px;
+    min-height: 1px;
+    height: 1px;
+    padding: 0;
+    border: 0;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .mobile-datetime {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(112px, 0.85fr);
+    gap: 10px;
+    width: 100%;
+    min-width: 0;
+  }
+  .mobile-datetime-part {
+    min-width: 0;
+    display: block;
+  }
+  .mobile-datetime-part span {
+    display: block;
+    margin-bottom: 6px;
+    color: var(--text-faint);
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+  .launch-panel .mobile-datetime-part .control {
+    min-height: 58px;
+    padding: 12px 10px;
+    border-color: var(--border-strong);
+    background: var(--surface-2);
+    color: var(--text);
+    font-size: 1.02rem;
+    font-weight: 800;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  .launch-panel .mobile-datetime-part input[type="time"].control {
+    font-size: 1.14rem;
+  }
+  .launch-panel .mobile-datetime-part .control::-webkit-date-and-time-value {
+    text-align: center;
+  }
+  .launch-panel .mobile-datetime-part .control::-webkit-calendar-picker-indicator {
+    opacity: 0.85;
   }
   .launch-panel .field .field-hint,
   .launch-panel .field .field-error,
