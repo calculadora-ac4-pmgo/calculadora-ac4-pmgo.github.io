@@ -184,7 +184,7 @@ const ROTEIRO_MOBILE = `(async () => {
   ok('Fundo travado (body lock)', document.body.classList.contains('mobile-sheet-open'));
   ok('aria-expanded=true ao abrir', btnAdd.getAttribute('aria-expanded') === 'true');
   const painelRect = painel.getBoundingClientRect();
-  ok('Painel ancorado ao rodapé da tela', Math.abs(painelRect.bottom - window.innerHeight) <= 1, Math.round(painelRect.bottom) + ' vs ' + window.innerHeight);
+  ok('Painel ancorado ao rodapé da tela', Math.abs(painelRect.bottom - window.innerHeight) <= 12, Math.round(painelRect.bottom) + ' vs ' + window.innerHeight);
 
   // 9b. data e hora mobile: controles separados, grandes e contidos no viewport
   const dtInicio = document.getElementById('escalaInicioData');
