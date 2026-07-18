@@ -10,6 +10,10 @@ import { spawn } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, extname } from 'node:path';
+/* Coerência financeira do cenário 2: o total renderizado na página deve bater
+   com o que a própria lógica de cálculo produz para as escalas semeadas. */
+import { calcularEscala, TABELA_OFICIAL } from '../js/modules/calculo.mjs';
+import { fmtMoeda } from '../js/modules/formato.mjs';
 
 const raiz = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -152,22 +156,30 @@ const MEDICAO_CARGA = `(async () => {
     appReady: document.documentElement.classList.contains('app-ready'),
     cards: document.querySelectorAll('#listaEscalas .escala-card').length,
     linhas: document.querySelectorAll('#listaEscalas tbody tr').length,
+    emptyState: !!document.querySelector('#listaEscalas .empty-state'),
+    totValor: (document.getElementById('totValor')?.textContent || '').replace(/\\u00a0/g, ' '),
     tabelaVisivel: (() => { const t = document.querySelector('.table-wrap'); return !!t && getComputedStyle(t).display !== 'none'; })(),
+    launchPanelFixed: (() => { const p = document.querySelector('.launch-panel'); return !!p && getComputedStyle(p).position === 'fixed'; })(),
     semOverflowX: document.documentElement.scrollWidth <= window.innerWidth + 1,
   });
 })()`;
 
-const SEMEAR_ESCALAS = `(() => {
-  const escalas = [
-    { id: 1, inicio: '2026-07-06T07:00', fim: '2026-07-06T19:00', descricao: 'Escala AC4', origem: 'AC4', qtdPm: 1 },
-    { id: 2, inicio: '2026-07-07T18:00', fim: '2026-07-08T08:00', descricao: 'Escala AC4', origem: 'AC4', qtdPm: 2 },
-    { id: 3, inicio: '2026-07-10T08:00', fim: '2026-07-11T08:00', descricao: '1ª CIA',     origem: 'AC4', qtdPm: 1 },
-    { id: 4, inicio: '2026-07-12T22:00', fim: '2026-07-13T05:00', descricao: 'Escala AC4', origem: 'AC4', qtdPm: 1 },
-    { id: 5, inicio: '2026-07-15T08:00', fim: '2026-07-15T18:00', descricao: 'Escala AC4', origem: 'AC4', qtdPm: 3 },
-  ];
-  localStorage.setItem('pmgoEscalas', JSON.stringify(escalas));
-  return escalas.length;
-})()`;
+/* Escalas de teste no formato exato persistido pela aplicação. Definidas no
+   Node para servirem tanto à semeadura quanto ao total esperado (coerência). */
+const ESCALAS_SEMENTE = [
+  { id: 1, inicio: '2026-07-06T07:00', fim: '2026-07-06T19:00', descricao: 'Escala AC4', origem: 'AC4', qtdPm: 1 },
+  { id: 2, inicio: '2026-07-07T18:00', fim: '2026-07-08T08:00', descricao: 'Escala AC4', origem: 'AC4', qtdPm: 2 },
+  { id: 3, inicio: '2026-07-10T08:00', fim: '2026-07-11T08:00', descricao: '1ª CIA',     origem: 'AC4', qtdPm: 1 },
+  { id: 4, inicio: '2026-07-12T22:00', fim: '2026-07-13T05:00', descricao: 'Escala AC4', origem: 'AC4', qtdPm: 1 },
+  { id: 5, inicio: '2026-07-15T08:00', fim: '2026-07-15T18:00', descricao: 'Escala AC4', origem: 'AC4', qtdPm: 3 },
+];
+
+/* Total que a página DEVE exibir, calculado pela mesma lógica de produção. */
+const TOTAL_ESPERADO = fmtMoeda(
+  ESCALAS_SEMENTE.reduce((s, e) => s + calcularEscala(e, TABELA_OFICIAL).valorCentavos * (e.qtdPm || 1), 0)
+).replace(new RegExp(String.fromCharCode(160), 'g'), ' ');
+
+const SEMEAR_ESCALAS = `localStorage.setItem('pmgoEscalas', ${JSON.stringify(JSON.stringify(ESCALAS_SEMENTE))}); 'ok'`;
 
 const LIMPAR_ESCALAS = `localStorage.removeItem('pmgoEscalas'); 'ok'`;
 
@@ -261,27 +273,30 @@ try {
   await navegar();
   const m1 = await avaliar(MEDICAO_CARGA);
   reportar('Cenário 1 — armazenamento vazio (390×844)', checksCarga(m1, [
+    { nome: 'Estado vazio presente em #listaEscalas', ok: m1.emptyState && m1.cards === 0, detalhe: '' },
     { nome: 'Sem overflow horizontal', ok: m1.semOverflowX, detalhe: '' },
   ]));
 
   /* Cenário 2 — armazenamento preenchido (5 escalas), mobile 390×844 */
-  const semeadas = await avaliar(SEMEAR_ESCALAS);
+  await avaliar(SEMEAR_ESCALAS);
   await navegar();
   const m2 = await avaliar(MEDICAO_CARGA);
   reportar('Cenário 2 — armazenamento preenchido (390×844)', checksCarga(m2, [
-    { nome: '5 escalas semeadas e renderizadas', ok: semeadas === 5 && m2.cards === 5 && m2.linhas === 5, detalhe: `${m2.cards} card(s) / ${m2.linhas} linha(s)` },
+    { nome: '5 escalas semeadas e renderizadas', ok: m2.cards === 5 && m2.linhas === 5 && !m2.emptyState, detalhe: `${m2.cards} card(s) / ${m2.linhas} linha(s)` },
+    { nome: 'Total exibido coerente com a lógica de cálculo', ok: m2.totValor === TOTAL_ESPERADO, detalhe: `${m2.totValor} (esperado ${TOTAL_ESPERADO})` },
   ]));
 
   /* Cenário 3 — interação de compartilhamento (mesma página carregada) */
   const i3 = await avaliar(INTERACAO_SHARE);
   const longAcima = (i3.longTasks || []).filter((d) => d > LIMITE_LONGTASK_MS);
+  const maiorLongTask = (i3.longTasks || []).length ? Math.max(...i3.longTasks) : 0;
   reportar('Cenário 3 — compartilhamento (390×844)', i3.erro
     ? [{ nome: 'Interação de compartilhar', ok: false, detalhe: i3.erro }]
     : [
       { nome: 'Diálogo #dialogShare abre', ok: i3.aberto, detalhe: '' },
       { nome: 'Dois frames pintados após o clique', ok: i3.frames === 'frames', detalhe: i3.frames },
       { nome: `Interação ≤ ${LIMITE_INTERACAO_MS} ms`, ok: i3.aberto && i3.frames === 'frames' && i3.duracaoMs <= LIMITE_INTERACAO_MS, detalhe: fmtMs(i3.duracaoMs) },
-      { nome: `Zero long task > ${LIMITE_LONGTASK_MS} ms na interação`, ok: longAcima.length === 0, detalhe: i3.semLongTask ? 'tipo longtask indisponível (não medido)' : ((i3.longTasks || []).map(fmtMs).join(' | ') || 'nenhuma') },
+      { nome: `Zero long task > ${LIMITE_LONGTASK_MS} ms na interação`, ok: longAcima.length === 0, detalhe: i3.semLongTask ? 'tipo longtask indisponível (não medido)' : `maior: ${fmtMs(maiorLongTask)}` },
     ]);
 
   /* Cenário 4 — desktop 1280×900 (armazenamento segue preenchido) */
@@ -290,9 +305,34 @@ try {
   const m4 = await avaliar(MEDICAO_CARGA);
   reportar('Cenário 4 — desktop (1280×900)', checksCarga(m4, [
     { nome: 'Tabela de escalas visível no desktop', ok: m4.tabelaVisivel && m4.linhas === 5, detalhe: `${m4.linhas} linha(s)` },
+    { nome: 'launch-panel não é fixed no desktop', ok: !m4.launchPanelFixed, detalhe: m4.launchPanelFixed ? 'position: fixed' : 'ok' },
     { nome: 'Sem overflow horizontal', ok: m4.semOverflowX, detalhe: '' },
   ]));
 
+  /* Cenário 5 — resiliência: erro proposital no init() não pode deixar a tela
+     presa em app-pending. A sabotagem remove #escalaInicio antes do init rodar
+     (o listener injetado registra primeiro), forçando o TypeError; o try/finally
+     do DOMContentLoaded deve revelar a aplicação mesmo assim. */
+  await avaliar(LIMPAR_ESCALAS);
+  const { identifier: idSabotagem } = await cdp.enviar('Page.addScriptToEvaluateOnNewDocument', {
+    source: `document.addEventListener('DOMContentLoaded', () => { document.getElementById('escalaInicio')?.remove(); }, { once: true });`,
+  }, sessionId);
+  await navegar();
+  const m5 = await avaliar(`(async () => {
+    await new Promise((r) => setTimeout(r, 200));
+    return JSON.stringify({
+      sabotado: !document.getElementById('escalaInicio'),
+      appPending: document.documentElement.classList.contains('app-pending'),
+      appReady: document.documentElement.classList.contains('app-ready'),
+    });
+  })()`);
+  await cdp.enviar('Page.removeScriptToEvaluateOnNewDocument', { identifier: idSabotagem }, sessionId);
+  reportar('Cenário 5 — resiliência (erro no init)', [
+    { nome: 'Sabotagem aplicada (init falhou de propósito)', ok: m5.sabotado, detalhe: m5.sabotado ? '#escalaInicio removido' : 'sabotagem não surtiu efeito' },
+    { nome: 'app-pending não permanece após erro no init', ok: !m5.appPending && m5.appReady, detalhe: m5.appPending ? 'tela presa em app-pending' : 'app-ready' },
+  ]);
+
+  await navegar(); /* recarrega sem sabotagem para deixar o storage limpo */
   await avaliar(LIMPAR_ESCALAS);
   console.log(falhou ? '\nCORE WEB VITALS: FALHOU.' : '\nCORE WEB VITALS OK — todos os orçamentos atendidos.');
   process.exitCode = falhou ? 1 : 0;

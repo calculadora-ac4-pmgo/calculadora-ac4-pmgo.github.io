@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Calculadora AC4 — v55
+   Calculadora AC4 — v56
    Módulo principal: estado, UI, persistência e exportações.
    Regras de negócio, formatação e agenda vivem em js/modules/.
    ========================================================================== */
@@ -30,7 +30,7 @@ import {
   /* Versão da aplicação (sincronizada pelo tools/bump-version.mjs). Serve para
      carimbar o log de erros e detectar clientes presos em cache antigo:
      se __ac4Version no console divergir do rodapé/CHANGELOG, o SW não atualizou. */
-  const APP_VERSION = '55';
+  const APP_VERSION = '56';
 
   const STORAGE = {
     escalas:   'pmgoEscalas',
