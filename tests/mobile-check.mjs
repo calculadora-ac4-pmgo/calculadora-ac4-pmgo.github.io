@@ -137,8 +137,9 @@ const ROTEIRO_MOBILE = `(async () => {
   const cardEscala = rect('#listaEscalas .escala-card');
   ok('Card da escala visível e confortável', cardEscala && cardEscala.height >= 124, cardEscala && Math.round(cardEscala.height) + 'px');
 
-  // 5. filtro de mês removido da interface
-  ok('Filtro "Todos os meses" removido', !document.getElementById('filtroMes'));
+  // 5. filtros responsivos disponíveis
+  ok('Filtros de busca, mês e origem disponíveis',
+     !!document.getElementById('filtroBusca') && !!document.getElementById('filtroMes') && !!document.getElementById('filtroOrigem'));
 
   // 6. tabela em modo cartão (thead oculto)
   const thead = document.querySelector('.escala-table thead');
@@ -170,8 +171,8 @@ const ROTEIRO_MOBILE = `(async () => {
      parseFloat(getComputedStyle(weekday).fontSize) >= 14,
      (weekday && weekday.textContent) + ' / ' + (money && money.textContent));
   const acoesCard = [...document.querySelectorAll('.escala-card .ec-action-btn')];
-  ok('Ações do card têm rótulo Editar, Duplicar, Excluir',
-     acoesCard.map((b) => b.textContent.trim()).join(' | ') === 'Editar | Duplicar | Excluir',
+  ok('Card mantém Editar visível e agrupa ações secundárias',
+     acoesCard.map((b) => b.textContent.trim()).join(' | ') === 'Editar | Mais',
      acoesCard.map((b) => b.textContent.trim()).join(' | '));
   const acoesGrandes = acoesCard.every((b) => {
     const r = b.getBoundingClientRect();
@@ -182,6 +183,38 @@ const ROTEIRO_MOBILE = `(async () => {
        const r = b.getBoundingClientRect();
        return Math.round(r.width) + '×' + Math.round(r.height);
      }).join(' | '));
+  document.querySelector('.escala-card .ec-more > summary').click();
+  const menuAcoes = [...document.querySelectorAll('.escala-card .ec-more-menu button')];
+  ok('Menu contém agenda, duplicação e exclusão',
+     menuAcoes.length === 3 && menuAcoes.every((b) => b.getBoundingClientRect().height >= 44),
+     menuAcoes.map((b) => b.textContent.trim()).join(' | '));
+  document.querySelector('.escala-card .ec-more').removeAttribute('open');
+
+  // 8d. busca, repetição e modelos locais da v61
+  const busca = document.getElementById('filtroBusca');
+  busca.value = 'unidade inexistente';
+  busca.dispatchEvent(new Event('input', { bubbles: true }));
+  ok('Busca filtra a lista em tempo real', document.querySelectorAll('.escala-card').length === 0);
+  busca.value = '';
+  busca.dispatchEvent(new Event('input', { bubbles: true }));
+  ok('Limpar busca restaura a lista', document.querySelectorAll('.escala-card').length === 1);
+
+  document.getElementById('btnSaveTemplate').click();
+  document.getElementById('templateName').value = 'Plantão 14h';
+  document.getElementById('templateForm').requestSubmit();
+  await espera(40);
+  const modelos = JSON.parse(localStorage.getItem('pmgoModelos') || '[]');
+  ok('Modelo favorito é salvo somente no aparelho', modelos.length === 1 && modelos[0].nome === 'Plantão 14h');
+  ok('Modelo salvo aparece no seletor', document.getElementById('templateSelect').options.length === 2);
+
+  document.getElementById('btnRepeatLast').click();
+  await espera(350);
+  ok('Repetir última preenche o dia seguinte sem salvar automaticamente',
+     document.getElementById('escalaInicio').value === '2026-07-07T07:00' &&
+     JSON.parse(localStorage.getItem('pmgoEscalas') || '[]').length === 1,
+     document.getElementById('escalaInicio').value);
+  document.getElementById('mobileLaunchClose').click();
+  await espera(300);
 
   // 9. bottom sheet de lançamento: abre por "Nova escala", fecha pelo X
   const painel = document.querySelector('.launch-panel');
@@ -210,11 +243,19 @@ const ROTEIRO_MOBILE = `(async () => {
   ok('Datetime-local nativo fica oculto no sheet mobile',
      inputNativoInicio && inputNativoInicio.getBoundingClientRect().width <= 1,
      inputNativoInicio && Math.round(inputNativoInicio.getBoundingClientRect().width) + 'px');
+  const inicioContido = [dtInicio, hrInicio].every((el) => {
+    const r = el.getBoundingClientRect();
+    return r.left >= 0 && r.right <= window.innerWidth + 1 && r.height >= 54;
+  });
+  ok('Fluxo básico começa com término personalizado recolhido',
+     inicioContido && document.getElementById('fieldFim').classList.contains('hidden'));
+  document.getElementById('toggleAdvanced').click();
+  await espera(30);
   const contidos = [dtInicio, hrInicio, dtFim, hrFim].every((el) => {
     const r = el.getBoundingClientRect();
     return r.left >= 0 && r.right <= window.innerWidth + 1 && r.height >= 54;
   });
-  ok('Campos data/hora não ultrapassam a tela', contidos,
+  ok('Mais detalhes revela campos sem ultrapassar a tela', contidos,
      [dtInicio, hrInicio, dtFim, hrFim].map((el) => {
        const r = el.getBoundingClientRect();
        return Math.round(r.left) + '-' + Math.round(r.right) + ' / ' + Math.round(r.height);
@@ -301,8 +342,8 @@ const ROTEIRO_MOBILE = `(async () => {
   return JSON.stringify(passos);
 })()`;
 
-/* iPhone: o Safari não dispara o evento nativo, então o banner de instalação
-   deve aparecer proativamente e a opção Instalar deve estar acessível. */
+/* iPhone: após uma visita engajada, o banner inteligente deve aparecer e a
+   opção Instalar continua acessível a qualquer momento no compartilhamento. */
 const ROTEIRO_IOS = `(async () => {
   const passos = [];
   const ok = (nome, cond, detalhe = '') => passos.push({ nome, ok: !!cond, detalhe: String(detalhe) });
@@ -310,7 +351,7 @@ const ROTEIRO_IOS = `(async () => {
   for (let i = 0; i < 50 && !document.getElementById('formEscala'); i++) await espera(100);
   ok('iOS detectado como iPhone', /iphone/i.test(navigator.userAgent));
   const banner = document.getElementById('pwaBanner');
-  ok('iOS: banner de instalação aparece no carregamento', !!banner && !banner.classList.contains('hidden'));
+  ok('iOS: banner aparece em visita engajada', !!banner && !banner.classList.contains('hidden'));
   const inst = document.getElementById('shareInstallOpt');
   ok('iOS: opção Instalar disponível', !!inst && !inst.classList.contains('hidden'));
   return JSON.stringify(passos);
@@ -338,7 +379,7 @@ const ROTEIRO_320 = `(async () => {
      barra && Math.round(barra.width) + 'px');
   const acoes = [...document.querySelectorAll('.escala-card .ec-action-btn')];
   ok('320px: ações continuam tocáveis',
-     acoes.length === 3 && acoes.every((b) => b.getBoundingClientRect().height >= 44),
+     acoes.length === 2 && acoes.every((b) => b.getBoundingClientRect().height >= 44),
      acoes.map((b) => Math.round(b.getBoundingClientRect().width) + '×' + Math.round(b.getBoundingClientRect().height)).join(' | '));
   localStorage.removeItem('pmgoEscalas');
   return JSON.stringify(passos);

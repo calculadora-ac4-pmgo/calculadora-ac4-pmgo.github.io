@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Calculadora AC4 — v60
+   Calculadora AC4 — v61
    Módulo principal: estado, UI, persistência e exportações.
    Regras de negócio, formatação e agenda vivem em js/modules/.
    ========================================================================== */
@@ -33,13 +33,15 @@ import {
   /* Versão da aplicação (sincronizada pelo tools/bump-version.mjs). Serve para
      carimbar o log de erros e detectar clientes presos em cache antigo:
      se __ac4Version no console divergir do rodapé/CHANGELOG, o SW não atualizou. */
-  const APP_VERSION = '60';
+  const APP_VERSION = '61';
 
   const STORAGE = {
     escalas:   'pmgoEscalas',
     config:    'pmgoConfig',
     theme:     'pmgoTheme',
     pwaBanner: 'pmgoPwaBanner',
+    pwaVisitas: 'pmgoPwaVisitas',
+    modelos:   'pmgoModelos',
     erros:     'pmgoErros',
     versao:    'pmgoVersion',
     schema:    'pmgoSchemaVersion',
@@ -50,7 +52,11 @@ import {
   let editandoId = null;
   let ultimaExcluida = null;
   let filtroMes = '';
+  let filtroOrigem = '';
+  let filtroBusca = '';
+  let modelos = [];
   let deferredInstallPrompt = null;
+  let mostrarInstalacaoAposConversao = () => {};
   let submetendo = false;
   let sheetAberto = false;
   let fundoInerte = [];
@@ -58,6 +64,16 @@ import {
   const lerLocal = (chave) => { try { return localStorage.getItem(chave); } catch { return null; } };
   const aposProximoPaint = (fn) => requestAnimationFrame(() => requestAnimationFrame(fn));
   const esperarProximoPaint = () => new Promise((resolve) => aposProximoPaint(resolve));
+
+  function setDetalhesAvancados(aberto) {
+    document.querySelectorAll('.advanced-field').forEach((el) => el.classList.toggle('hidden', !aberto));
+    const btn = $('toggleAdvanced');
+    if (!btn) return;
+    btn.setAttribute('aria-expanded', aberto ? 'true' : 'false');
+    btn.classList.toggle('is-open', aberto);
+    const titulo = btn.querySelector('span');
+    if (titulo) titulo.textContent = aberto ? 'Ocultar detalhes' : 'Mais detalhes';
+  }
 
   /* ---------------------------------------- bottom sheet mobile (lançamento) */
   const isMobileViewport = () => window.matchMedia('(max-width: 760px)').matches;
@@ -140,6 +156,7 @@ import {
       schemaVersion: STORAGE_SCHEMA_VERSION,
       exportadoEm: new Date().toISOString(),
       escalas,
+      modelos,
     };
     baixar(`${JSON.stringify(backup, null, 2)}\n`, `backup-calculadora-ac4-v${APP_VERSION}.json`, 'application/json;charset=utf-8');
     toast(`Backup gerado com ${escalas.length} escala${escalas.length === 1 ? '' : 's'}.`);
@@ -156,10 +173,14 @@ import {
       const fonte = Array.isArray(documento) ? documento : documento?.escalas;
       if (!Array.isArray(fonte)) throw new Error('formato');
       const resultado = desserializarEscalas(JSON.stringify(fonte));
+      const modelosBackup = !Array.isArray(documento) && Array.isArray(documento?.modelos)
+        ? normalizarModelos(documento.modelos)
+        : null;
       if (!resultado.escalas.length && fonte.length) throw new Error('sem-registros-validos');
       const detalhe = resultado.rejeitadas ? ` ${resultado.rejeitadas} registro(s) inválido(s) serão ignorados.` : '';
+      const detalheModelos = modelosBackup ? ` O backup contém ${modelosBackup.length} modelo(s).` : '';
       const ok = await dialogConfirmar(
-        `Restaurar ${resultado.escalas.length} escala${resultado.escalas.length === 1 ? '' : 's'} e substituir os dados atuais?${detalhe}`,
+        `Restaurar ${resultado.escalas.length} escala${resultado.escalas.length === 1 ? '' : 's'} e substituir os dados atuais?${detalhe}${detalheModelos}`,
         { textoOk: 'Restaurar', perigoso: false }
       );
       if (!ok) return;
@@ -167,6 +188,12 @@ import {
       escalas = resultado.escalas;
       cancelarEdicao();
       if (!salvar()) { escalas = anteriores; render(); return; }
+      if (modelosBackup) {
+        const modelosAnteriores = modelos;
+        modelos = modelosBackup;
+        if (!salvarModelos()) modelos = modelosAnteriores;
+        renderModelos();
+      }
       render();
       toast('Backup restaurado com sucesso.');
     } catch {
@@ -241,6 +268,12 @@ import {
     } catch { /* configuração oficial continua disponível no DOM */ }
   }
 
+  const normalizarModelos = (fonte) => Array.isArray(fonte)
+    ? fonte.filter((m) => m && typeof m.id === 'string' && typeof m.nome === 'string'
+      && Number.isFinite(Number(m.duracao)) && Number(m.duracao) > 0 && Number(m.duracao) <= 24)
+      .slice(0, 20)
+    : [];
+
   function carregar() {
     Object.entries(VALORES_OFICIAIS).forEach(([id, v]) => { if ($(id)) $(id).value = v; });
     salvarConfig();
@@ -256,6 +289,20 @@ import {
         registrarErro({ msg: `${carregadas.rejeitadas} registro(s) local(is) inválido(s) ignorado(s)`, src: 'storage', ln: 0, col: 0 });
       }
     } catch { escalas = []; }
+    try {
+      const salvos = JSON.parse(lerLocal(STORAGE.modelos) || '[]');
+      modelos = normalizarModelos(salvos);
+    } catch { modelos = []; }
+  }
+
+  function salvarModelos() {
+    try {
+      localStorage.setItem(STORAGE.modelos, JSON.stringify(modelos));
+      return true;
+    } catch {
+      toast('Não foi possível salvar o modelo neste navegador.', { erro: true });
+      return false;
+    }
   }
 
   /* --------------------------------------------------------------- tema */
@@ -412,6 +459,12 @@ import {
   function escalasOrdenadas() {
     let lista = [...escalas].sort((a, b) => (parseDateTimeLocal(a.inicio) || new Date(a.inicio)) - (parseDateTimeLocal(b.inicio) || new Date(b.inicio)));
     if (filtroMes) lista = lista.filter((e) => toInputMonth(parseDateTimeLocal(e.inicio) || new Date(e.inicio)) === filtroMes);
+    if (filtroOrigem) lista = lista.filter((e) => (e.origem || 'AC4') === filtroOrigem);
+    if (filtroBusca) {
+      const termo = filtroBusca.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR');
+      lista = lista.filter((e) => `${e.descricao || ''} ${labelOrigem(e.origem || 'AC4')}`
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR').includes(termo));
+    }
     return lista;
   }
 
@@ -634,7 +687,8 @@ import {
       haptic(10);
       const escalasAntes = clonarEscalas();
 
-      if (editandoId !== null) {
+      const novoRegistro = editandoId === null;
+      if (!novoRegistro) {
         const idx = escalas.findIndex((e) => e.id === editandoId);
         if (idx >= 0) escalas[idx] = { ...escalas[idx], ...dados, tabela: escalas[idx].tabela || tabelaAtual };
         cancelarEdicao();
@@ -648,6 +702,7 @@ import {
       }
       if (!salvar()) { escalas = escalasAntes; render(); return; }
       render();
+      if (novoRegistro) mostrarInstalacaoAposConversao();
       /* No mobile, salvar com sucesso fecha o bottom sheet. */
       if (isMobileViewport()) fecharPainelLancamentoMobile();
     } finally {
@@ -666,6 +721,7 @@ import {
     if ($('escalaQtdPm'))    $('escalaQtdPm').value = e.qtdPm || 1;
     if ($('escalaDescricao')) $('escalaDescricao').value = e.descricao === 'Escala AC4' ? '' : (e.descricao || '');
     if ($('escalaOrigem'))   $('escalaOrigem').value = e.origem || 'AC4';
+    setDetalhesAvancados(true);
     sincronizarTodosControlesDataHora();
     $('btnCancelEdit').classList.remove('hidden');
     $('formTitle').lastChild.textContent = ' Editar escala';
@@ -728,6 +784,7 @@ import {
     const inicio = $('escalaInicio')?.value || '';
     const fim = $('escalaFim')?.value || '';
     const intervalo = validarIntervaloEscala(inicio, fim);
+    $('btnSaveTemplate')?.classList.toggle('hidden', !intervalo.ok);
     if (!intervalo.ok) {
       el.classList.add('is-empty');
       atualizarBotaoSubmitMobile();
@@ -798,11 +855,111 @@ import {
     if ($('escalaOrigem'))   $('escalaOrigem').value = 'AC4';
     $('btnCancelEdit').classList.add('hidden');
     $('formTitle').lastChild.textContent = ' Lançar escala';
+    setDetalhesAvancados(false);
     ['fieldInicio', 'fieldFim'].forEach((f) => {
       $(f).classList.remove('invalid');
       $(f).querySelector('.control')?.removeAttribute('aria-invalid');
     });
     atualizarResumoLancamento();
+  }
+
+  function renderModelos() {
+    const select = $('templateSelect');
+    const wrap = $('templateSelectWrap');
+    if (!select || !wrap) return;
+    const selecionado = select.value;
+    select.innerHTML = '<option value="">Meus modelos</option>';
+    modelos.forEach((modelo) => {
+      const opt = document.createElement('option');
+      opt.value = modelo.id;
+      opt.textContent = modelo.nome;
+      select.appendChild(opt);
+    });
+    wrap.classList.toggle('hidden', modelos.length === 0);
+    if (modelos.some((m) => m.id === selecionado)) select.value = selecionado;
+    $('btnDeleteTemplate')?.classList.toggle('hidden', !select.value);
+  }
+
+  function preencherConfiguracaoRapida({ duracao, qtdPm = 1, descricao = '', origem = 'AC4' }, inicio = null) {
+    if (inicio) $('escalaInicio').value = inicio;
+    const horas = Number(duracao);
+    if ($('escalaDuracao')) $('escalaDuracao').value = [12, 14, 24].includes(horas) ? String(horas) : '';
+    const fim = calcularTerminoPorDuracao($('escalaInicio')?.value || '', horas);
+    if (fim) $('escalaFim').value = fim;
+    if ($('escalaQtdPm')) $('escalaQtdPm').value = String(Math.min(999, Math.max(1, Number(qtdPm) || 1)));
+    if ($('escalaDescricao')) $('escalaDescricao').value = descricao === 'Escala AC4' ? '' : (descricao || '');
+    if ($('escalaOrigem')) $('escalaOrigem').value = origem || 'AC4';
+    sincronizarTodosControlesDataHora();
+    atualizarResumoFim();
+    atualizarChipsDuracao();
+    atualizarResumoLancamento();
+    const temDetalhes = ![12, 14, 24].includes(horas) || !!descricao || (origem && origem !== 'AC4');
+    setDetalhesAvancados(temDetalhes);
+  }
+
+  function repetirUltimaEscala() {
+    const ultima = [...escalas].sort((a, b) => (parseDateTimeLocal(b.inicio) || new Date(b.inicio)) - (parseDateTimeLocal(a.inicio) || new Date(a.inicio)))[0];
+    if (!ultima) return;
+    const inicio = parseDateTimeLocal(ultima.inicio) || new Date(ultima.inicio);
+    const fim = parseDateTimeLocal(ultima.fim) || new Date(ultima.fim);
+    const duracao = (fim - inicio) / 3600000;
+    const proximoInicio = toInputLocal(new Date(inicio.getTime() + 24 * 3600000));
+    preencherConfiguracaoRapida({ ...ultima, duracao }, proximoInicio);
+    toast('Última escala preenchida para o dia seguinte. Confira e adicione.');
+  }
+
+  function abrirSalvarModelo() {
+    const inicio = parseDateTimeLocal($('escalaInicio')?.value || '');
+    const fim = parseDateTimeLocal($('escalaFim')?.value || '');
+    const duracao = inicio && fim ? (fim - inicio) / 3600000 : 0;
+    if (!(duracao > 0 && duracao <= 24)) {
+      toast('Informe o início e a duração antes de salvar um modelo.', { erro: true });
+      return;
+    }
+    $('templateName').value = '';
+    $('dialogTemplate')?.showModal();
+    aposProximoPaint(() => $('templateName')?.focus());
+  }
+
+  function salvarModeloAtual() {
+    const nome = ($('templateName')?.value || '').trim();
+    const inicio = parseDateTimeLocal($('escalaInicio')?.value || '');
+    const fim = parseDateTimeLocal($('escalaFim')?.value || '');
+    const duracao = inicio && fim ? (fim - inicio) / 3600000 : 0;
+    if (nome.length < 2 || !(duracao > 0 && duracao <= 24)) {
+      toast('Informe um nome e uma duração válida para o modelo.', { erro: true });
+      return false;
+    }
+    const existente = modelos.find((m) => m.nome.toLocaleLowerCase('pt-BR') === nome.toLocaleLowerCase('pt-BR'));
+    const modelo = {
+      id: existente?.id || gerarIdEscala(),
+      nome: nome.slice(0, 40),
+      duracao,
+      qtdPm: lerQtdPm(),
+      descricao: ($('escalaDescricao')?.value || '').trim(),
+      origem: $('escalaOrigem')?.value || 'AC4',
+    };
+    modelos = existente ? modelos.map((m) => m.id === existente.id ? modelo : m) : [...modelos, modelo].slice(-20);
+    if (!salvarModelos()) return false;
+    renderModelos();
+    $('templateSelect').value = modelo.id;
+    $('btnDeleteTemplate')?.classList.remove('hidden');
+    $('dialogTemplate')?.close();
+    toast(existente ? 'Modelo atualizado.' : 'Modelo salvo neste aparelho.');
+    return true;
+  }
+
+  async function excluirModeloSelecionado() {
+    const id = $('templateSelect')?.value || '';
+    const modelo = modelos.find((m) => m.id === id);
+    if (!modelo) return;
+    const ok = await dialogConfirmar(`Excluir o modelo “${modelo.nome}”?`);
+    if (!ok) return;
+    modelos = modelos.filter((m) => m.id !== id);
+    if (salvarModelos()) {
+      renderModelos();
+      toast('Modelo excluído.');
+    }
   }
 
   function duplicarEscala(id) {
@@ -1073,14 +1230,17 @@ import {
         <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
         <span>Editar</span>
       </button>
-      <button class="ec-action-btn" data-acao="duplicar" data-id="${id}" type="button">
-        <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
-        <span>Duplicar</span>
-      </button>
-      <button class="ec-action-btn delete" data-acao="remover" data-id="${id}" type="button">
-        <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
-        <span>Excluir</span>
-      </button>
+      <details class="ec-more">
+        <summary class="ec-action-btn" aria-label="Mais ações desta escala">
+          <svg class="icon icon-sm" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>
+          <span>Mais</span>
+        </summary>
+        <div class="ec-more-menu">
+          <button data-acao="agenda" data-id="${id}" type="button">Adicionar à agenda</button>
+          <button data-acao="duplicar" data-id="${id}" type="button">Duplicar para amanhã</button>
+          <button class="delete" data-acao="remover" data-id="${id}" type="button">Excluir escala</button>
+        </div>
+      </details>
     </div>`;
 
   /* Card de escala (mobile): leitura confortável + ações grandes.
@@ -1133,6 +1293,7 @@ import {
     $('pctDiurnas').textContent  = totMins ? `${((totDiurno  / totMins) * 100).toFixed(1).replace('.', ',')}% do total` : '0% do total';
     $('pctNoturnas').textContent = totMins ? `${((totNoturno / totMins) * 100).toFixed(1).replace('.', ',')}% do total` : '0% do total';
 
+    const filtrosAtivos = !!(filtroMes || filtroOrigem || filtroBusca);
     const sufixo = filtroMes ? ` em ${fmtMesRef(filtroMes)}` : ' no período';
     $('totQtd').textContent = `${lista.length} escala${lista.length === 1 ? '' : 's'}${sufixo}`;
     /* Resumo compacto do card de Valor (mobile): "96h · 8 escalas" */
@@ -1140,10 +1301,11 @@ import {
       $('metricResumoMobile').textContent = `${fmtHoras(totMins)} · ${lista.length} escala${lista.length === 1 ? '' : 's'}`;
     }
     $('btnClearAll').classList.toggle('hidden', escalas.length === 0);
+    $('btnRepeatLast')?.classList.toggle('hidden', escalas.length === 0);
 
     const container = $('listaEscalas');
     if (!lista.length) {
-      const msg = filtroMes ? 'Nenhuma escala neste mês. Selecione outro período.' : 'Preencha o formulário acima para iniciar o cálculo.';
+      const msg = filtrosAtivos ? 'Nenhuma escala corresponde aos filtros. Ajuste a busca ou o período.' : 'Preencha o formulário acima para iniciar o cálculo.';
       container.innerHTML = `
         <div class="empty-state">
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -1494,6 +1656,10 @@ import {
 
     const dismissed = lerLocal(STORAGE.pwaBanner);
     const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
+    let visitas = Number(lerLocal(STORAGE.pwaVisitas) || 0) + 1;
+    if (!Number.isFinite(visitas)) visitas = 1;
+    try { localStorage.setItem(STORAGE.pwaVisitas, String(Math.min(visitas, 99))); } catch {}
+    let usuarioEngajado = visitas >= 2 || escalas.length > 0;
 
     const mostrarBotaoInstalar = () => $('shareInstallOpt')?.classList.remove('hidden');
     const ocultarBotaoInstalar = () => $('shareInstallOpt')?.classList.add('hidden');
@@ -1526,14 +1692,22 @@ import {
       await instrucaoManual();
     }
 
-    /* Banner proativo: no iOS já aparece no carregamento (não há evento nativo);
-       no Android aparece quando o navegador sinaliza que dá para instalar. */
-    if (isIOS && !dismissed) $('pwaBanner')?.classList.remove('hidden');
+    /* A promoção não interrompe a primeira jornada. Ela aparece na segunda
+       visita, para quem já tem escalas ou após o primeiro lançamento. */
+    const mostrarBannerSeRelevante = () => {
+      if (dismissed || !usuarioEngajado) return;
+      if (isIOS || deferredInstallPrompt) $('pwaBanner')?.classList.remove('hidden');
+    };
+    mostrarInstalacaoAposConversao = () => {
+      usuarioEngajado = true;
+      mostrarBannerSeRelevante();
+    };
+    mostrarBannerSeRelevante();
 
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
       deferredInstallPrompt = e;
-      if (!dismissed) $('pwaBanner')?.classList.remove('hidden');
+      mostrarBannerSeRelevante();
       mostrarBotaoInstalar();
     });
 
@@ -1551,6 +1725,8 @@ import {
     initTema();
     carregar();
     initPWA();
+    renderModelos();
+    setDetalhesAvancados(false);
 
     $('escalaInicio').value = toInputLocal(new Date());
     sincronizarTodosControlesDataHora();
@@ -1560,6 +1736,23 @@ import {
       cancelarEdicao();
       if (isMobileViewport()) fecharPainelLancamentoMobile();
     });
+    on('toggleAdvanced', 'click', () => setDetalhesAvancados($('toggleAdvanced')?.getAttribute('aria-expanded') !== 'true'));
+    on('btnRepeatLast', 'click', () => {
+      repetirUltimaEscala();
+      if (isMobileViewport()) abrirPainelLancamentoMobile();
+    });
+    on('btnSaveTemplate', 'click', abrirSalvarModelo);
+    on('templateCancel', 'click', () => $('dialogTemplate')?.close());
+    on('templateForm', 'submit', (ev) => { ev.preventDefault(); salvarModeloAtual(); });
+    on('templateSelect', 'change', () => {
+      const id = $('templateSelect')?.value || '';
+      const modelo = modelos.find((m) => m.id === id);
+      $('btnDeleteTemplate')?.classList.toggle('hidden', !modelo);
+      if (!modelo) return;
+      preencherConfiguracaoRapida(modelo);
+      toast(`Modelo “${modelo.nome}” aplicado.`);
+    });
+    on('btnDeleteTemplate', 'click', excluirModeloSelecionado);
 
     on('btnTheme', 'click', () =>
       aplicarTema(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'));
@@ -1576,6 +1769,7 @@ import {
           if (!sheetAberto) return;
           if (editandoId === null) {
             setTituloSheet('Nova escala AC4');
+            setDetalhesAvancados(false);
             $('escalaInicio').value = toInputLocal(new Date());
             aplicarDuracao();
             sincronizarTodosControlesDataHora();
@@ -1615,6 +1809,8 @@ import {
 
     on('btnClearAll', 'click', limparTudo);
     on('filtroMes', 'change', () => { filtroMes = $('filtroMes')?.value || ''; render(); });
+    on('filtroOrigem', 'change', () => { filtroOrigem = $('filtroOrigem')?.value || ''; render(); });
+    on('filtroBusca', 'input', () => { filtroBusca = ($('filtroBusca')?.value || '').trim(); render(); });
 
     const aplicarDuracao = () => {
       const horas = Number($('escalaDuracao')?.value || 0);
@@ -1638,6 +1834,7 @@ import {
     on('escalaInicio',  'change', () => sincronizarControlesDataHora('escalaInicio'));
     const marcarDuracaoPersonalizada = () => {
       if ($('escalaDuracao')) $('escalaDuracao').value = '';
+      setDetalhesAvancados(true);
       sincronizarControlesDataHora('escalaFim');
       atualizarResumoFim();
       atualizarChipsDuracao();
@@ -1700,6 +1897,7 @@ import {
       else if (btn.dataset.acao === 'editar')    editarEscala(id);
       else if (btn.dataset.acao === 'duplicar')  duplicarEscala(id);
       else if (btn.dataset.acao === 'agenda')    agendarEscalaItem(id);
+      btn.closest('details')?.removeAttribute('open');
     });
 
     document.addEventListener('keydown', (e) => {
