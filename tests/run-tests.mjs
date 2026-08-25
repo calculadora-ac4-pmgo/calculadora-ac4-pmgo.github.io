@@ -3,6 +3,8 @@
    O app.js só toca o DOM dentro de funções; no carregamento bastam stubs. */
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join } from 'node:path';
+import { regraNormativaParaData, TABELA_OFICIAL } from '../js/modules/calculo.mjs';
+import { desserializarEscalas, detectarConflitos, STORAGE_SCHEMA_VERSION } from '../js/modules/persistencia.mjs';
 
 const raiz = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -59,5 +61,24 @@ const rodar = (nome, fn) => {
 rodar('__ac4Testes (regras de cálculo AC4)', globalThis.__ac4Testes);
 rodar('__ac4TestesExtras (CSV injection + invariantes)', globalThis.__ac4TestesExtras);
 rodar('__ac4TestesAgendamento (geração de .ics)', globalThis.__ac4TestesAgendamento);
+
+const validarHardeningV58 = () => {
+  const valida = desserializarEscalas(JSON.stringify([
+    { id: 10, inicio: '2026-07-10T18:00', fim: '2026-07-11T08:00', descricao: '<b>Unidade</b>', qtdPm: 2000 },
+    { inicio: 'inválido', fim: '2026-07-11T08:00' },
+  ]));
+  const conflitos = detectarConflitos(valida.escalas, { inicio: '2026-07-10T20:00', fim: '2026-07-11T06:00' });
+  const checks = [
+    [STORAGE_SCHEMA_VERSION === '1', 'schema versionado'],
+    [valida.escalas.length === 1 && valida.rejeitadas === 1, 'registro inválido rejeitado'],
+    [valida.escalas[0].id === '10' && valida.escalas[0].qtdPm === 999, 'registro normalizado'],
+    [conflitos.sobrepostas.length === 1, 'sobreposição detectada'],
+    [regraNormativaParaData('2026-07-01')?.id === TABELA_OFICIAL.id, 'regra selecionada pela vigência'],
+    [regraNormativaParaData('2026-06-30') === null, 'data sem norma conhecida não recebe regra'],
+  ];
+  const falhas = checks.filter(([ok]) => !ok).map(([, nome]) => nome);
+  return falhas.length ? falhas : 'TODOS OS TESTES V58 OK';
+};
+rodar('Hardening v58 (schema, conflitos e vigência)', validarHardeningV58);
 
 process.exit(falhou ? 1 : 0);

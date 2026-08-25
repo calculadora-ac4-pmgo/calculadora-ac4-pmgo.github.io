@@ -1,0 +1,7 @@
+# Toda mudança exige revisão do responsável técnico.
+* @welitonsp
+
+# Mudanças normativas, de cálculo e de entrega são áreas críticas.
+/js/modules/calculo.mjs @welitonsp
+/docs/portaria-ssp-621-2026.md @welitonsp
+/.github/workflows/ @welitonsp

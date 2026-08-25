@@ -193,6 +193,9 @@ const ROTEIRO_MOBILE = `(async () => {
   ok('Backdrop visível ao abrir', document.getElementById('mobileLaunchBackdrop').classList.contains('is-open'));
   ok('Fundo travado (body lock)', document.body.classList.contains('mobile-sheet-open'));
   ok('aria-expanded=true ao abrir', btnAdd.getAttribute('aria-expanded') === 'true');
+  ok('Sheet expõe semântica modal', painel.getAttribute('role') === 'dialog' && painel.getAttribute('aria-modal') === 'true');
+  ok('Foco entra no sheet', painel.contains(document.activeElement) || document.activeElement === painel, document.activeElement?.id || document.activeElement?.tagName);
+  ok('Conteúdo de fundo fica inerte', document.querySelector('.metrics')?.inert === true);
   const painelRect = painel.getBoundingClientRect();
   ok('Painel ancorado ao rodapé da tela', Math.abs(painelRect.bottom - window.innerHeight) <= 12, Math.round(painelRect.bottom) + ' vs ' + window.innerHeight);
 
@@ -279,6 +282,8 @@ const ROTEIRO_MOBILE = `(async () => {
   ok('Botão fechar recolhe o sheet', !painel.classList.contains('is-open'));
   ok('Fundo destravado ao fechar', !document.body.classList.contains('mobile-sheet-open'));
   ok('aria-expanded=false ao fechar', btnAdd.getAttribute('aria-expanded') === 'false');
+  ok('Semântica modal removida ao fechar', !painel.hasAttribute('role') && !painel.hasAttribute('aria-modal'));
+  ok('Conteúdo de fundo volta a ficar ativo', document.querySelector('.metrics')?.inert === false);
 
   // 14. instalar app sempre disponível via Compartilhar → Instalar
   ok('Compartilhar tem uma única opção de agenda', !document.getElementById('shareGoogleOpt') && !!document.getElementById('shareIcsOpt') && document.getElementById('shareIcsOpt').textContent.includes('Agenda'));

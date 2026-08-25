@@ -1,17 +1,18 @@
 /* Service Worker — Calculadora AC4
    Estratégia: network-first para o app shell (atualizações chegam rápido),
    com fallback ao cache quando offline. */
-const CACHE = 'ac4-v57';
+const CACHE = 'ac4-v58';
 const SHELL = [
   './',
   './index.html',
-  './css/styles.css?v=57',
-  './js/app.js?v=57',
-  './js/theme.js?v=57',
+  './css/styles.css?v=58',
+  './js/app.js?v=58',
+  './js/theme.js?v=58',
   // módulos importados sem query string (resolvidos pelo import de app.js)
   './js/modules/formato.mjs',
   './js/modules/calculo.mjs',
   './js/modules/agenda.mjs',
+  './js/modules/persistencia.mjs',
   './manifest.webmanifest',
   './assets/icon.svg',
   './assets/icon-maskable.svg',
@@ -42,15 +43,16 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   if (request.method !== 'GET') return;
-  // Terceiros (analytics, etc.) seguem direto para a rede, sem interceptação.
+  // Requisições de terceiros, se introduzidas no futuro, não são interceptadas.
   if (new URL(request.url).origin !== location.origin) return;
 
   event.respondWith(
     fetch(request, { cache: 'no-cache' })
-      .then((resp) => {
+      .then(async (resp) => {
         if (resp.ok) {
           const clone = resp.clone();
-          caches.open(CACHE).then((c) => c.put(request, clone));
+          const cache = await caches.open(CACHE);
+          await cache.put(request, clone);
         }
         return resp;
       })

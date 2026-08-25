@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Calculadora AC4 — v57
+   Calculadora AC4 — v58
    ========================================================================== */
 
 /* Inter (variable, 100–900) self-hosted — sem dependência do Google Fonts,
@@ -143,6 +143,8 @@ body {
   -webkit-font-smoothing: antialiased;
   transition: background-color 0.2s ease, color 0.2s ease;
 }
+.noscript-warning { padding: 16px; text-align: center; background: #fee2e2; color: #7f1d1d; font-weight: 600; }
+.btn-cancel-edit { margin-top: 8px; }
 
 img, svg { display: block; max-width: 100%; }
 button, input, select, textarea { font: inherit; }
@@ -845,6 +847,7 @@ textarea.control { min-height: 74px; resize: vertical; }
   animation: toastIn 0.25s ease-out;
 }
 .toast.error { background: var(--danger); }
+.toast.is-hiding { opacity: 0; transition: opacity 0.3s; }
 .toast-action {
   flex-shrink: 0;
   padding: 2px 4px;
@@ -1770,4 +1773,15 @@ textarea.control { min-height: 74px; resize: vertical; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+@media (forced-colors: active) {
+  :focus-visible {
+    outline: 2px solid CanvasText;
+    outline-offset: 2px;
+    box-shadow: none;
+  }
+  .btn, .btn-icon, .control, .dur-chip, .qtd-btn, .ec-action-btn {
+    border: 1px solid ButtonText;
+  }
 }

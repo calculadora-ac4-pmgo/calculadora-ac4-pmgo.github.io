@@ -10,13 +10,27 @@ import { parseDateTimeLocal } from './formato.mjs';
 
 export const PORTARIA_ATUAL = 'Portaria SSP nº 621/2026';
 export const VALORES_OFICIAIS = { valAD: '30', valAN: '33', valVD: '40', valVN: '45' };
+export const REGRA_NORMATIVA_ATUAL_ID = 'ssp-621-2026-07-01';
 
 /* Tabela oficial em centavos por hora — fallback quando nenhuma tabela
    vigente é injetada (testes, contexto sem DOM). */
 export const TABELA_OFICIAL = Object.freeze({
+  id: REGRA_NORMATIVA_ATUAL_ID,
   portaria: PORTARIA_ATUAL,
+  vigenciaInicio: '2026-07-01',
   valores: Object.freeze({ AD: 3000, AN: 3300, VD: 4000, VN: 4500 }),
 });
+
+/* Registro imutável e efetivo por data. Novas normas devem ser acrescentadas
+   sem editar entradas históricas; assim relatórios preservam a regra aplicada. */
+export const REGRAS_NORMATIVAS = Object.freeze([TABELA_OFICIAL]);
+
+export function regraNormativaParaData(valor, regras = REGRAS_NORMATIVAS) {
+  const data = String(valor || '').slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) return null;
+  return [...regras].reverse().find((regra) =>
+    data >= regra.vigenciaInicio && (!regra.vigenciaFim || data <= regra.vigenciaFim)) || null;
+}
 
 /**
  * @typedef {Object} Tabela Tabela de tarifas em centavos por hora.

@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Calculadora AC4 — v57
+   Calculadora AC4 — v58
    Módulo principal: estado, UI, persistência e exportações.
    Regras de negócio, formatação e agenda vivem em js/modules/.
    ========================================================================== */
@@ -10,7 +10,7 @@ import {
   csvTextoSeguro,
 } from './modules/formato.mjs';
 import {
-  PORTARIA_ATUAL, VALORES_OFICIAIS, labelOrigem,
+  PORTARIA_ATUAL, VALORES_OFICIAIS, TABELA_OFICIAL, regraNormativaParaData, labelOrigem,
   calcularEscala as calcularEscalaBase,
 } from './modules/calculo.mjs';
 import {
@@ -20,6 +20,9 @@ import {
   gerarLinkGoogleAgenda as gerarLinkGoogleAgendaBase,
   gerarLinkOutlookAgenda as gerarLinkOutlookAgendaBase,
 } from './modules/agenda.mjs';
+import {
+  STORAGE_SCHEMA_VERSION, gerarIdEscala, desserializarEscalas, detectarConflitos,
+} from './modules/persistencia.mjs';
 
 (() => {
   'use strict';
@@ -30,7 +33,7 @@ import {
   /* Versão da aplicação (sincronizada pelo tools/bump-version.mjs). Serve para
      carimbar o log de erros e detectar clientes presos em cache antigo:
      se __ac4Version no console divergir do rodapé/CHANGELOG, o SW não atualizou. */
-  const APP_VERSION = '57';
+  const APP_VERSION = '58';
 
   const STORAGE = {
     escalas:   'pmgoEscalas',
@@ -39,6 +42,7 @@ import {
     pwaBanner: 'pmgoPwaBanner',
     erros:     'pmgoErros',
     versao:    'pmgoVersion',
+    schema:    'pmgoSchemaVersion',
   };
 
   /* ------------------------------------------------------------ estado */
@@ -49,9 +53,43 @@ import {
   let deferredInstallPrompt = null;
   let submetendo = false;
   let sheetAberto = false;
+  let fundoInerte = [];
+  const clonarEscalas = () => JSON.parse(JSON.stringify(escalas));
+  const lerLocal = (chave) => { try { return localStorage.getItem(chave); } catch { return null; } };
 
   /* ---------------------------------------- bottom sheet mobile (lançamento) */
   const isMobileViewport = () => window.matchMedia('(max-width: 760px)').matches;
+
+  function setFundoInerte(inerte) {
+    if (inerte) {
+      const alvos = document.querySelectorAll(
+        'body > header, body > footer, body > .mobile-bar, #conteudo > :not(#launchPanel):not(#mobileLaunchBackdrop)'
+      );
+      fundoInerte = [...alvos].map((el) => ({ el, anterior: el.inert }));
+      fundoInerte.forEach(({ el }) => { el.inert = true; });
+      return;
+    }
+    fundoInerte.forEach(({ el, anterior }) => { el.inert = anterior; });
+    fundoInerte = [];
+  }
+
+  function configurarSemanticaSheet(aberto) {
+    const painel = $('launchPanel');
+    if (!painel) return;
+    if (aberto) {
+      painel.setAttribute('role', 'dialog');
+      painel.setAttribute('aria-modal', 'true');
+      painel.setAttribute('aria-labelledby', 'mobileLaunchTitle');
+      painel.setAttribute('tabindex', '-1');
+      setFundoInerte(true);
+    } else {
+      painel.removeAttribute('role');
+      painel.removeAttribute('aria-modal');
+      painel.setAttribute('aria-labelledby', 'formTitle');
+      painel.removeAttribute('tabindex');
+      setFundoInerte(false);
+    }
+  }
 
   function setMobileSheetOpen(aberto) {
     sheetAberto = aberto;
@@ -59,13 +97,17 @@ import {
     $('mobileLaunchBackdrop')?.classList.toggle('is-open', aberto);
     document.body.classList.toggle('mobile-sheet-open', aberto);
     $('mobileAdd')?.setAttribute('aria-expanded', aberto ? 'true' : 'false');
+    configurarSemanticaSheet(aberto && isMobileViewport());
   }
 
   function abrirPainelLancamentoMobile({ foco = false } = {}) {
     setMobileSheetOpen(true);
     /* O foco automático em mobile pode abrir teclado/picker e deslocar o sheet.
        Mantemos a opção para fluxos específicos, mas sem usar por padrão. */
-    if (foco) window.setTimeout(() => $('escalaInicio')?.focus({ preventScroll: true }), 260);
+    window.setTimeout(() => {
+      if (foco) $('escalaInicioData')?.focus({ preventScroll: true });
+      else $('launchPanel')?.focus({ preventScroll: true });
+    }, 260);
   }
 
   function fecharPainelLancamentoMobile({ devolverFoco = true } = {}) {
@@ -89,6 +131,47 @@ import {
     return arquivo;
   }
 
+  function exportarBackup() {
+    const backup = {
+      produto: 'Calculadora AC4',
+      appVersion: APP_VERSION,
+      schemaVersion: STORAGE_SCHEMA_VERSION,
+      exportadoEm: new Date().toISOString(),
+      escalas,
+    };
+    baixar(`${JSON.stringify(backup, null, 2)}\n`, `backup-calculadora-ac4-v${APP_VERSION}.json`, 'application/json;charset=utf-8');
+    toast(`Backup gerado com ${escalas.length} escala${escalas.length === 1 ? '' : 's'}.`);
+  }
+
+  async function restaurarBackup(file) {
+    if (!file) return;
+    if (file.size > 1024 * 1024) {
+      toast('O backup excede o limite de 1 MB.', { erro: true });
+      return;
+    }
+    try {
+      const documento = JSON.parse(await file.text());
+      const fonte = Array.isArray(documento) ? documento : documento?.escalas;
+      if (!Array.isArray(fonte)) throw new Error('formato');
+      const resultado = desserializarEscalas(JSON.stringify(fonte));
+      if (!resultado.escalas.length && fonte.length) throw new Error('sem-registros-validos');
+      const detalhe = resultado.rejeitadas ? ` ${resultado.rejeitadas} registro(s) inválido(s) serão ignorados.` : '';
+      const ok = await dialogConfirmar(
+        `Restaurar ${resultado.escalas.length} escala${resultado.escalas.length === 1 ? '' : 's'} e substituir os dados atuais?${detalhe}`,
+        { textoOk: 'Restaurar', perigoso: false }
+      );
+      if (!ok) return;
+      const anteriores = clonarEscalas();
+      escalas = resultado.escalas;
+      cancelarEdicao();
+      if (!salvar()) { escalas = anteriores; render(); return; }
+      render();
+      toast('Backup restaurado com sucesso.');
+    } catch {
+      toast('Arquivo de backup inválido ou incompatível.', { erro: true });
+    }
+  }
+
   /* -------------------------------------------- tabela de valores */
   const parseMoedaCampo = (id) => {
     const campo = $(id);
@@ -100,7 +183,12 @@ import {
   const tabelaVazia = () => ({ portaria: '', valores: { AD: 0, AN: 0, VD: 0, VN: 0 } });
 
   function lerTabelaAtual() {
-    return { portaria: PORTARIA_ATUAL, valores: { AD: parseMoedaCampo('valAD'), AN: parseMoedaCampo('valAN'), VD: parseMoedaCampo('valVD'), VN: parseMoedaCampo('valVN') } };
+    return {
+      id: TABELA_OFICIAL.id,
+      portaria: PORTARIA_ATUAL,
+      vigenciaInicio: TABELA_OFICIAL.vigenciaInicio,
+      valores: { AD: parseMoedaCampo('valAD'), AN: parseMoedaCampo('valAN'), VD: parseMoedaCampo('valVD'), VN: parseMoedaCampo('valVN') },
+    };
   }
 
   function validarTabelaAtual() {
@@ -131,15 +219,24 @@ import {
 
   /* --------------------------------------------- persistência */
   function salvar() {
-    localStorage.setItem(STORAGE.escalas, JSON.stringify(escalas));
-    sessionStorage.removeItem(STORAGE.escalas);
+    try {
+      localStorage.setItem(STORAGE.escalas, JSON.stringify(escalas));
+      localStorage.setItem(STORAGE.schema, STORAGE_SCHEMA_VERSION);
+      sessionStorage.removeItem(STORAGE.escalas);
+      return true;
+    } catch {
+      toast('Não foi possível salvar neste navegador. Exporte os dados e confira o espaço disponível.', { erro: true });
+      return false;
+    }
   }
 
   /* Só grava a configuração — quem precisar refletir a mudança na tela chama
      render() no ponto de uso. Evita a renderização dupla no init() (CWV F-01). */
   function salvarConfig() {
     const val = (id) => ($(id) ? $(id).value : VALORES_OFICIAIS[id]);
-    localStorage.setItem(STORAGE.config, JSON.stringify({ ad: val('valAD'), an: val('valAN'), vd: val('valVD'), vn: val('valVN') }));
+    try {
+      localStorage.setItem(STORAGE.config, JSON.stringify({ ad: val('valAD'), an: val('valAN'), vd: val('valVD'), vn: val('valVN') }));
+    } catch { /* configuração oficial continua disponível no DOM */ }
   }
 
   function carregar() {
@@ -148,24 +245,30 @@ import {
     try {
       const legado = sessionStorage.getItem(STORAGE.escalas);
       if (legado) { const p = JSON.parse(legado); if (Array.isArray(p) && p.length) localStorage.setItem(STORAGE.escalas, legado); sessionStorage.removeItem(STORAGE.escalas); }
-      const e = JSON.parse(localStorage.getItem(STORAGE.escalas) || '[]');
-      if (Array.isArray(e)) escalas = e.filter((x) => x && x.inicio && x.fim);
+      const carregadas = desserializarEscalas(localStorage.getItem(STORAGE.escalas));
+      escalas = carregadas.escalas;
+      /* Regrava o formato normalizado e registra a versão do schema. Registros
+         inválidos são descartados antes de alcançar cálculo/renderização. */
+      salvar();
+      if (carregadas.rejeitadas) {
+        registrarErro({ msg: `${carregadas.rejeitadas} registro(s) local(is) inválido(s) ignorado(s)`, src: 'storage', ln: 0, col: 0 });
+      }
     } catch { escalas = []; }
   }
 
   /* --------------------------------------------------------------- tema */
   function aplicarTema(tema) {
     document.documentElement.dataset.theme = tema;
-    localStorage.setItem(STORAGE.theme, tema);
+    try { localStorage.setItem(STORAGE.theme, tema); } catch { /* preferência não persistirá */ }
     $('icon-sun')?.classList.toggle('hidden', tema !== 'dark');
     $('icon-moon')?.classList.toggle('hidden', tema === 'dark');
   }
 
   function initTema() {
-    const salvo = localStorage.getItem(STORAGE.theme);
+    const salvo = lerLocal(STORAGE.theme);
     aplicarTema(salvo || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
-      if (!localStorage.getItem(STORAGE.theme)) aplicarTema(e.matches ? 'dark' : 'light');
+      if (!lerLocal(STORAGE.theme)) aplicarTema(e.matches ? 'dark' : 'light');
     });
   }
 
@@ -184,7 +287,7 @@ import {
       el.appendChild(btn);
     }
     region.appendChild(el);
-    setTimeout(() => { el.style.transition = 'opacity 0.3s'; el.style.opacity = '0'; setTimeout(() => el.remove(), 320); }, acao ? 6000 : 3500);
+    setTimeout(() => { el.classList.add('is-hiding'); setTimeout(() => el.remove(), 320); }, acao ? 6000 : 3500);
   }
 
   /* ------------------------------------------------ observabilidade
@@ -439,6 +542,7 @@ import {
     const inicio = $('escalaInicio').value;
     const fim    = $('escalaFim').value;
     const intervalo = validarIntervaloEscala(inicio, fim);
+    const semNormaConhecida = intervalo.ok && !regraNormativaParaData(inicio);
     let ok = true;
 
     const marca = (fieldId, invalido) => {
@@ -447,11 +551,14 @@ import {
       if (ctrl) ctrl.setAttribute('aria-invalid', invalido ? 'true' : 'false');
       if (invalido) ok = false;
     };
-    marca('fieldInicio', !intervalo.ok && intervalo.campo === 'inicio');
+    $('inicioErro').textContent = semNormaConhecida
+      ? `A base normativa atual só é aplicável a partir de ${TABELA_OFICIAL.vigenciaInicio.split('-').reverse().join('/')}.`
+      : 'Informe a data e hora de início.';
+    marca('fieldInicio', (!intervalo.ok && intervalo.campo === 'inicio') || semNormaConhecida);
     marca('fieldFim', !intervalo.ok && intervalo.campo === 'fim');
 
     if (!ok) {
-      toast(intervalo.mensagem || 'Confira os campos obrigatórios da escala.', { erro: true });
+      toast(semNormaConhecida ? $('inicioErro').textContent : (intervalo.mensagem || 'Confira os campos obrigatórios da escala.'), { erro: true });
       return null;
     }
 
@@ -482,10 +589,20 @@ import {
         if (!ok) return;
       }
 
+      const conflitos = detectarConflitos(escalas, dados, editandoId);
+      if (conflitos.duplicadas.length || conflitos.sobrepostas.length) {
+        const mensagem = conflitos.duplicadas.length
+          ? 'Já existe uma escala com o mesmo início e término. Deseja adicionar mesmo assim?'
+          : `Esta escala se sobrepõe a ${conflitos.sobrepostas.length} lançamento${conflitos.sobrepostas.length === 1 ? '' : 's'}. Deseja continuar?`;
+        const ok = await dialogConfirmar(mensagem, { textoOk: 'Continuar', perigoso: false });
+        if (!ok) return;
+      }
+
       const tabelaAtual = validarTabelaAtual();
       if (!tabelaAtual) return;
 
       haptic(10);
+      const escalasAntes = clonarEscalas();
 
       if (editandoId !== null) {
         const idx = escalas.findIndex((e) => e.id === editandoId);
@@ -493,13 +610,13 @@ import {
         cancelarEdicao();
         toast('Escala atualizada.');
       } else {
-        escalas.push({ id: Date.now() + Math.random(), ...dados, tabela: tabelaAtual });
+        escalas.push({ id: gerarIdEscala(), ...dados, tabela: tabelaAtual });
         if ($('escalaDescricao')) $('escalaDescricao').value = '';
         if ($('escalaQtdPm'))    $('escalaQtdPm').value = '1';
         if ($('escalaOrigem'))   $('escalaOrigem').value = 'AC4';
         toast('Escala adicionada.');
       }
-      salvar();
+      if (!salvar()) { escalas = escalasAntes; render(); return; }
       render();
       /* No mobile, salvar com sucesso fecha o bottom sheet. */
       if (isMobileViewport()) fecharPainelLancamentoMobile();
@@ -663,27 +780,38 @@ import {
     const e = escalas.find((x) => x.id === id);
     if (!e) return;
     const umDia = 24 * 3600000;
+    const escalasAntes = clonarEscalas();
     escalas.push({
       ...e,
-      id: Date.now() + Math.random(),
+      id: gerarIdEscala(),
       inicio: toInputLocal(new Date((parseDateTimeLocal(e.inicio) || new Date(e.inicio)).getTime() + umDia)),
       fim:    toInputLocal(new Date((parseDateTimeLocal(e.fim) || new Date(e.fim)).getTime() + umDia)),
     });
+    if (!salvar()) { escalas = escalasAntes; render(); return; }
     haptic([10, 30, 10]);
-    salvar(); render();
+    render();
     toast('Escala duplicada para o dia seguinte.');
   }
 
   function removerEscala(id) {
     const e = escalas.find((x) => x.id === id);
     if (!e) return;
+    const escalasAntes = clonarEscalas();
     ultimaExcluida = e;
     escalas = escalas.filter((x) => x.id !== id);
     if (editandoId === id) cancelarEdicao();
+    if (!salvar()) { escalas = escalasAntes; ultimaExcluida = null; render(); return; }
     haptic([10, 20]);
-    salvar(); render();
+    render();
     toast('Escala removida.', {
-      acao: { rotulo: 'Desfazer', fn: () => { if (ultimaExcluida) { escalas.push(ultimaExcluida); ultimaExcluida = null; salvar(); render(); } } },
+      acao: { rotulo: 'Desfazer', fn: () => {
+        if (!ultimaExcluida) return;
+        const antes = clonarEscalas(), restaurada = ultimaExcluida;
+        escalas.push(restaurada);
+        if (!salvar()) { escalas = antes; render(); return; }
+        ultimaExcluida = null;
+        render();
+      } },
     });
   }
 
@@ -691,7 +819,10 @@ import {
     if (!escalas.length) return;
     const ok = await dialogConfirmar(`Remover todas as ${escalas.length} escala${escalas.length === 1 ? '' : 's'}? Esta ação não pode ser desfeita.`);
     if (!ok) return;
-    escalas = []; cancelarEdicao(); salvar(); render();
+    const escalasAntes = clonarEscalas();
+    escalas = []; cancelarEdicao();
+    if (!salvar()) { escalas = escalasAntes; render(); return; }
+    render();
     toast('Todas as escalas foram removidas.');
   }
 
@@ -810,7 +941,7 @@ import {
     const dlg = $('dialogShare');
     if (!dlg) { compartilharWhatsApp(); return; }
     const nativeBtn = $('shareNative');
-    if (nativeBtn) nativeBtn.style.display = navigator.share ? '' : 'none';
+    if (nativeBtn) nativeBtn.classList.toggle('hidden', !navigator.share);
     dlg.showModal();
   }
 
@@ -1318,7 +1449,7 @@ import {
     const jaInstalado = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
     if (jaInstalado) return;
 
-    const dismissed = localStorage.getItem(STORAGE.pwaBanner);
+    const dismissed = lerLocal(STORAGE.pwaBanner);
     const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
 
     const mostrarBotaoInstalar = () => $('shareInstallOpt')?.classList.remove('hidden');
@@ -1367,7 +1498,7 @@ import {
     on('pwaBannerInstall', 'click', instalar);
     on('pwaBannerClose', 'click', () => {
       $('pwaBanner')?.classList.add('hidden');
-      localStorage.setItem(STORAGE.pwaBanner, '1');
+      try { localStorage.setItem(STORAGE.pwaBanner, '1'); } catch { /* banner apenas não persistirá */ }
     });
   }
 
@@ -1427,6 +1558,12 @@ import {
     initFeedback();
     on('shareCsvOpt', 'click', () => { $('dialogShare')?.close(); exportarCSV(); });
     on('sharePdfOpt', 'click', () => { $('dialogShare')?.close(); imprimirRelatorio(); });
+    on('shareBackupOpt', 'click', () => { $('dialogShare')?.close(); exportarBackup(); });
+    on('shareRestoreOpt', 'click', () => { $('dialogShare')?.close(); $('restoreInput')?.click(); });
+    on('restoreInput', 'change', async (ev) => {
+      await restaurarBackup(ev.target.files?.[0]);
+      ev.target.value = '';
+    });
     on('shareClose',  'click', () => $('dialogShare')?.close());
 
     on('btnClearAll', 'click', limparTudo);
@@ -1509,7 +1646,7 @@ import {
     on('listaEscalas', 'click', (ev) => {
       const btn = ev.target.closest('[data-acao]');
       if (!btn) return;
-      const id = parseFloat(btn.dataset.id);
+      const id = btn.dataset.id;
       if (btn.dataset.acao === 'remover')        removerEscala(id);
       else if (btn.dataset.acao === 'editar')    editarEscala(id);
       else if (btn.dataset.acao === 'duplicar')  duplicarEscala(id);
@@ -1517,6 +1654,18 @@ import {
     });
 
     document.addEventListener('keydown', (e) => {
+      if (sheetAberto && e.key === 'Tab') {
+        const painel = $('launchPanel');
+        const focaveis = [...painel.querySelectorAll(
+          'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href]'
+        )].filter((el) => el.offsetParent !== null);
+        if (focaveis.length) {
+          const primeiro = focaveis[0], ultimo = focaveis[focaveis.length - 1];
+          if (e.shiftKey && document.activeElement === primeiro) { e.preventDefault(); ultimo.focus(); }
+          else if (!e.shiftKey && document.activeElement === ultimo) { e.preventDefault(); primeiro.focus(); }
+          else if (!painel.contains(document.activeElement)) { e.preventDefault(); primeiro.focus(); }
+        }
+      }
       if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); submeterFormulario(); }
       if (e.key === 'Escape') {
         if (editandoId !== null) cancelarEdicao();
@@ -1529,6 +1678,14 @@ import {
     if ('serviceWorker' in navigator && location.protocol === 'https:') {
       navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).catch(() => {});
     }
+
+    window.addEventListener('storage', (ev) => {
+      if (ev.key !== STORAGE.escalas) return;
+      escalas = desserializarEscalas(ev.newValue).escalas;
+      cancelarEdicao();
+      render();
+      toast('Dados atualizados por outra aba.');
+    });
   }
 
   /* Derruba a barreira de primeiro paint (CWV F-02): o <html> nasce com
