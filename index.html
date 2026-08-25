@@ -15,8 +15,8 @@
   <!-- Preload da fonte principal — reduz reflow/CLS do font-swap da Inter -->
   <link rel="preload" href="assets/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 
-  <link rel="stylesheet" href="css/styles.css?v=61">
-  <script src="js/theme.js?v=61"></script>
+  <link rel="stylesheet" href="css/styles.css?v=62">
+  <script src="js/theme.js?v=62"></script>
 </head>
 <body>
 
@@ -345,6 +345,46 @@
       <input type="hidden" id="valVN" value="45">
     </div>
 
+    <!-- Planejamento mensal local — resumo compacto, otimizado para celular -->
+    <section class="planning-panel" aria-labelledby="planningTitle">
+      <div class="planning-header">
+        <div>
+          <p class="planning-eyebrow" id="planningMonth">Mês atual</p>
+          <h2 id="planningTitle">Planejamento AC4</h2>
+        </div>
+        <button class="btn btn-outline btn-sm planning-goal-btn" id="btnPlanningGoal" type="button">Definir meta</button>
+      </div>
+      <div class="planning-main">
+        <div class="planning-total">
+          <span>Estimativa do mês</span>
+          <strong id="planningValue">R$ 0,00</strong>
+          <small id="planningHours">0h · 0 escalas</small>
+        </div>
+        <div class="planning-comparison" id="planningComparison">Sem dados do mês anterior</div>
+      </div>
+      <button class="planning-toggle" id="planningToggle" type="button" aria-expanded="false" aria-controls="planningDetails">
+        <span>Ver detalhes do mês</span>
+        <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+      </button>
+      <div class="planning-details" id="planningDetails">
+        <div class="planning-progress hidden" id="planningProgress">
+          <div class="planning-progress-head">
+            <span id="planningProgressLabel">Meta mensal</span>
+            <strong id="planningProgressValue">0%</strong>
+          </div>
+          <div class="planning-progress-track" role="progressbar" id="planningProgressTrack" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <span id="planningProgressBar"></span>
+          </div>
+        </div>
+        <div class="planning-hours" aria-label="Distribuição de horas diurnas e noturnas">
+          <div class="planning-hours-bar" id="planningHoursBar"><span class="planning-day" id="planningDayBar"></span><span class="planning-night" id="planningNightBar"></span></div>
+          <div class="planning-hours-labels"><span id="planningDayLabel">Dia 0h</span><span id="planningNightLabel">Noite 0h</span></div>
+        </div>
+        <div class="planning-status-grid" id="planningStatusGrid" aria-label="Situação das escalas do mês"></div>
+        <button class="planning-alert hidden" id="planningAlert" type="button"></button>
+      </div>
+    </section>
+
     <div class="feed">
       <div class="feed-header">
         <h2>Escalas lançadas</h2>
@@ -377,6 +417,16 @@
               <option value="GEAI">GEAI</option>
             </select>
           </label>
+          <label class="feed-filter" for="filtroStatus">
+            <span class="sr-only">Filtrar por situação</span>
+            <select class="control" id="filtroStatus">
+              <option value="">Todas as situações</option>
+              <option value="planejada">Planejadas</option>
+              <option value="realizada">Realizadas</option>
+              <option value="conferida">Conferidas</option>
+              <option value="recebida">Recebidas</option>
+            </select>
+          </label>
           <button class="btn btn-danger-soft btn-sm hidden" id="btnClearAll">Limpar tudo</button>
         </div>
       </div>
@@ -407,7 +457,7 @@
         &copy; <span class="footer-year"></span> Weliton Pinheiro &mdash; Todos os direitos reservados.
       </p>
       <p class="site-footer-meta">
-        Calculadora AC4 &middot; PMGO &middot; v61 &middot;
+        Calculadora AC4 &middot; PMGO &middot; v62 &middot;
         <a href="#" id="footerPrivacidade" class="footer-link">Privacidade</a> &middot;
         <a href="#" id="footerFeedback" class="footer-link">Feedback</a> &middot;
         <a href="https://github.com/calculadora-ac4-pmgo" target="_blank" rel="noopener noreferrer" class="footer-link">GitHub</a>
@@ -508,6 +558,24 @@
       <div class="dialog-actions template-dialog-actions">
         <button class="btn btn-ghost" id="templateCancel" type="button">Cancelar</button>
         <button class="btn btn-primary" id="templateSave" type="submit">Salvar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Meta mensal: permanece somente no navegador -->
+  <dialog class="confirm-dialog planning-dialog" id="dialogPlanningGoal" aria-modal="true" aria-labelledby="planningGoalTitle">
+    <form class="dialog-body" id="planningGoalForm" method="dialog">
+      <h3 class="agenda-title" id="planningGoalTitle">Meta mensal</h3>
+      <p class="agenda-sub" id="planningGoalMonth"></p>
+      <label class="fb-label" for="planningGoalValue">Valor estimado (R$)</label>
+      <input class="control" id="planningGoalValue" type="number" min="0" max="99999999" step="0.01" inputmode="decimal" placeholder="Ex.: 3000,00">
+      <label class="fb-label planning-goal-hours-label" for="planningGoalHours">Horas no mês</label>
+      <input class="control" id="planningGoalHours" type="number" min="0" max="744" step="0.5" inputmode="decimal" placeholder="Ex.: 72">
+      <p class="fb-hint">Campos opcionais. As metas ficam somente neste aparelho e não têm efeito financeiro oficial.</p>
+      <div class="dialog-actions template-dialog-actions">
+        <button class="btn btn-ghost" id="planningGoalCancel" type="button">Cancelar</button>
+        <button class="btn btn-danger-soft hidden" id="planningGoalClear" type="button">Remover meta</button>
+        <button class="btn btn-primary" type="submit">Salvar</button>
       </div>
     </form>
   </dialog>
@@ -617,7 +685,7 @@
     </div>
   </dialog>
 
-  <script type="module" src="js/app.js?v=61"></script>
+  <script type="module" src="js/app.js?v=62"></script>
 
   <!-- Relatório profissional de impressão — populado pelo JS antes de window.print() -->
   <section id="printReport">

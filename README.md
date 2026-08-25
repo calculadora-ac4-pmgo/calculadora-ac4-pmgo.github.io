@@ -26,6 +26,10 @@ Em dispositivos móveis, é possível usar a opção do navegador para adicionar
 - Atalho para repetir a última escala no dia seguinte, com conferência antes de salvar.
 - Modelos favoritos locais para reaplicar duração, quantidade, unidade e origem.
 - Busca por unidade e filtros por mês e origem.
+- Painel mensal com valor estimado, total de horas, comparação com o mês anterior e distribuição dia/noite.
+- Metas mensais opcionais de valor e horas, armazenadas somente no navegador.
+- Acompanhamento das escalas pelos estados Planejada, Realizada, Conferida e Recebida.
+- Filtro por situação e aviso de escalas passadas ainda não atualizadas.
 - Adição de escalas à agenda: no celular abre o aplicativo de agenda padrão do aparelho (via `.ics`); no computador abre a agenda web escolhida (Google Agenda ou Outlook).
 - Exportação de planilha em `.csv`.
 - Geração de relatório em PDF pela função de impressão do navegador.
@@ -106,7 +110,7 @@ A aplicação oferece recursos de exportação para apoiar conferência e organi
 - `.ics`: arquivo de calendário compatível com aplicações como Google Calendar, Outlook e similares.
 - `.csv`: planilha simples para abertura em Excel, Google Sheets ou ferramentas equivalentes.
 - PDF: relatório gerado pela função de impressão ou salvamento em PDF do navegador, com layout otimizado para A4.
-- JSON: backup versionado para restauração das escalas no próprio navegador.
+- JSON: backup versionado para restauração das escalas, modelos e metas no próprio navegador.
 
 As exportações refletem os dados informados e calculados no navegador, mantendo o caráter de simulação e conferência preliminar.
 

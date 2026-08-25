@@ -138,8 +138,42 @@ const ROTEIRO_MOBILE = `(async () => {
   ok('Card da escala visível e confortável', cardEscala && cardEscala.height >= 124, cardEscala && Math.round(cardEscala.height) + 'px');
 
   // 5. filtros responsivos disponíveis
-  ok('Filtros de busca, mês e origem disponíveis',
-     !!document.getElementById('filtroBusca') && !!document.getElementById('filtroMes') && !!document.getElementById('filtroOrigem'));
+  ok('Filtros de busca, mês, origem e situação disponíveis',
+     !!document.getElementById('filtroBusca') && !!document.getElementById('filtroMes') &&
+     !!document.getElementById('filtroOrigem') && !!document.getElementById('filtroStatus'));
+
+  // 5b. planejamento mensal e ciclo de situação (v62)
+  const filtroMes = document.getElementById('filtroMes');
+  filtroMes.value = '2026-07';
+  filtroMes.dispatchEvent(new Event('change', { bubbles: true }));
+  ok('Painel mensal resume valor, horas e quantidade',
+     document.getElementById('planningValue').textContent.includes('420,00') &&
+     document.getElementById('planningHours').textContent.includes('14h') &&
+     document.getElementById('planningHours').textContent.includes('1 escala'));
+  ok('Detalhes do planejamento começam recolhidos no celular',
+     !document.querySelector('.planning-panel').classList.contains('is-expanded') &&
+     document.getElementById('planningToggle').getBoundingClientRect().height >= 44);
+  document.getElementById('planningToggle').click();
+  const statusCards = [...document.querySelectorAll('.planning-status')];
+  ok('Resumo de situações usa quatro alvos de toque grandes',
+     statusCards.length === 4 && statusCards.every((b) => b.getBoundingClientRect().height >= 44));
+  const statusSelect = document.querySelector('.escala-card .status-select');
+  statusSelect.value = 'realizada';
+  statusSelect.dispatchEvent(new Event('change', { bubbles: true }));
+  await espera(50);
+  ok('Alterar situação persiste no aparelho',
+     JSON.parse(localStorage.getItem('pmgoEscalas') || '[]')[0].status === 'realizada');
+  ok('Painel atualiza contagem por situação',
+     document.querySelector('[data-status-filter="realizada"] strong')?.textContent === '1');
+
+  document.getElementById('btnPlanningGoal').click();
+  document.getElementById('planningGoalValue').value = '1000';
+  document.getElementById('planningGoalHours').value = '40';
+  document.getElementById('planningGoalForm').requestSubmit();
+  await espera(50);
+  const metas = JSON.parse(localStorage.getItem('pmgoMetasMensais') || '{}');
+  ok('Meta mensal fica somente no aparelho', metas['2026-07']?.valorCentavos === 100000 && metas['2026-07']?.horas === 40);
+  ok('Progresso da meta fica visível', !document.getElementById('planningProgress').classList.contains('hidden'));
 
   // 6. tabela em modo cartão (thead oculto)
   const thead = document.querySelector('.escala-table thead');
