@@ -15,8 +15,8 @@
   <!-- Preload da fonte principal — reduz reflow/CLS do font-swap da Inter -->
   <link rel="preload" href="assets/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 
-  <link rel="stylesheet" href="css/styles.css?v=63">
-  <script src="js/theme.js?v=63"></script>
+  <link rel="stylesheet" href="css/styles.css?v=64">
+  <script src="js/theme.js?v=64"></script>
 </head>
 <body>
 
@@ -43,6 +43,25 @@
         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
           <path d="M18 6 6 18M6 6l12 12"/>
         </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Atualização PWA: aparece quando a nova versão já está pronta. -->
+  <div class="update-banner hidden" id="updateBanner" role="status" aria-live="polite" aria-label="Atualização disponível">
+    <div class="update-banner-content">
+      <span class="update-banner-icon" aria-hidden="true">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><path d="M20 11a8.1 8.1 0 0 0-15.5-2M4 4v5h5"/><path d="M4 13a8.1 8.1 0 0 0 15.5 2M20 20v-5h-5"/></svg>
+      </span>
+      <div>
+        <strong>Atualização disponível</strong>
+        <p>Nova versão pronta para usar.</p>
+      </div>
+    </div>
+    <div class="update-banner-actions">
+      <button class="btn btn-primary btn-sm" id="updateNow" type="button">Atualizar agora</button>
+      <button class="btn-icon update-later" id="updateLater" type="button" aria-label="Atualizar depois">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
       </button>
     </div>
   </div>
@@ -457,7 +476,7 @@
         &copy; <span class="footer-year"></span> Weliton Pinheiro &mdash; Todos os direitos reservados.
       </p>
       <p class="site-footer-meta">
-        Calculadora AC4 &middot; PMGO &middot; v63 &middot;
+        Calculadora AC4 &middot; PMGO &middot; v64 &middot;
         <a href="#" id="footerNovidades" class="footer-link">Novidades</a> &middot;
         <a href="#" id="footerPrivacidade" class="footer-link">Privacidade</a> &middot;
         <a href="#" id="footerFeedback" class="footer-link">Feedback</a> &middot;
@@ -496,7 +515,7 @@
   <dialog class="confirm-dialog whats-new-dialog" id="dialogNovidades" aria-modal="true" aria-labelledby="novidadesTitle" aria-describedby="novidadesIntro">
     <div class="whats-new-body">
       <div class="whats-new-topbar">
-        <span class="whats-new-badge">Nova versão <strong>v63</strong></span>
+        <span class="whats-new-badge">Nova versão <strong>v64</strong></span>
         <button class="btn-icon whats-new-close" id="novidadesFechar" type="button" aria-label="Fechar novidades">
           <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
         </button>
@@ -506,8 +525,8 @@
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3-1.7 4.3L6 9l4.3 1.7L12 15l1.7-4.3L18 9l-4.3-1.7L12 3Z"/><path d="m19 15-.8 2.2L16 18l2.2.8L19 21l.8-2.2L22 18l-2.2-.8L19 15Z"/></svg>
         </span>
         <div>
-          <h2 id="novidadesTitle">A Calculadora AC4 evoluiu</h2>
-          <p id="novidadesIntro">Mais organização para acompanhar suas escalas direto pelo celular.</p>
+          <h2 id="novidadesTitle">Atualizar ficou mais simples</h2>
+          <p id="novidadesIntro">A Calculadora AC4 agora ajuda você a usar sempre a versão mais recente.</p>
         </div>
       </div>
       <ul class="whats-new-list">
@@ -515,28 +534,27 @@
           <span class="whats-new-item-icon" aria-hidden="true">
             <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m7 16 4-5 4 3 5-7"/></svg>
           </span>
-          <div><strong>Planejamento mensal</strong><span>Veja valor, horas, comparação e distribuição dia/noite.</span></div>
+          <div><strong>Aviso de nova versão</strong><span>Você será informado quando uma atualização estiver pronta.</span></div>
         </li>
         <li>
           <span class="whats-new-item-icon" aria-hidden="true">
-            <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg>
+            <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 11a8.1 8.1 0 0 0-15.5-2M4 4v5h5"/><path d="M4 13a8.1 8.1 0 0 0 15.5 2M20 20v-5h-5"/></svg>
           </span>
-          <div><strong>Metas no próprio aparelho</strong><span>Defina objetivos mensais de valor e horas com privacidade.</span></div>
+          <div><strong>Atualização com um toque</strong><span>Toque em “Atualizar agora” para aplicar e continuar usando.</span></div>
         </li>
         <li>
           <span class="whats-new-item-icon" aria-hidden="true">
-            <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 11 3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+            <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg>
           </span>
-          <div><strong>Acompanhamento completo</strong><span>Marque cada escala como planejada, realizada, conferida ou recebida.</span></div>
+          <div><strong>Seus dados permanecem seguros</strong><span>Escalas, metas e modelos continuam salvos somente neste aparelho.</span></div>
         </li>
       </ul>
       <p class="whats-new-privacy">
         <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
-        Suas escalas e metas continuam armazenadas somente neste aparelho.
+        A atualização não apaga escalas, metas, modelos ou configurações.
       </p>
       <div class="whats-new-actions">
-        <button class="btn btn-ghost" id="novidadesEntendi" type="button">Entendi</button>
-        <button class="btn btn-primary" id="novidadesExplorar" type="button">Ver planejamento</button>
+        <button class="btn btn-primary" id="novidadesContinuar" type="button">Continuar usando</button>
       </div>
     </div>
   </dialog>
@@ -736,7 +754,7 @@
     </div>
   </dialog>
 
-  <script type="module" src="js/app.js?v=63"></script>
+  <script type="module" src="js/app.js?v=64"></script>
 
   <!-- Relatório profissional de impressão — populado pelo JS antes de window.print() -->
   <section id="printReport">

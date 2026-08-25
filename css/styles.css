@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Calculadora AC4 — v63
+   Calculadora AC4 — v64
    ========================================================================== */
 
 /* Inter (variable, 100–900) self-hosted — sem dependência do Google Fonts,
@@ -213,6 +213,45 @@ button { color: inherit; }
 .pwa-banner-content p { font-size: 0.75rem; color: rgba(255,255,255,0.72); }
 .pwa-banner-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .pwa-banner-close { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); color: #fff; }
+
+/* ===== ATUALIZAÇÃO PWA ===== */
+.update-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  background: color-mix(in srgb, var(--navy-900) 97%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--gold-500) 58%, transparent);
+  box-shadow: 0 14px 34px -24px rgb(7 20 38 / 0.9);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  animation: slideDown 0.3s ease-out;
+}
+.update-banner-content { display: flex; align-items: center; gap: 10px; min-width: 0; color: #fff; }
+.update-banner-content > div { min-width: 0; }
+.update-banner-content strong { display: block; font-size: 0.88rem; line-height: 1.2; }
+.update-banner-content p { margin-top: 2px; color: rgba(255,255,255,0.74); font-size: 0.75rem; line-height: 1.3; }
+.update-banner-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 38px;
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  background: rgba(214, 173, 85, 0.16);
+  border: 1px solid rgba(242, 221, 155, 0.32);
+  color: var(--gold-300);
+}
+.update-banner-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.update-banner-actions .btn { min-height: 44px; white-space: nowrap; }
+.update-later { width: 44px; height: 44px; color: #fff; background: rgba(255,255,255,0.09); border-color: rgba(255,255,255,0.2); }
+.update-banner.is-updating .update-later { visibility: hidden; }
 
 /* ===== TOPBAR ===== */
 .topbar {
@@ -1325,6 +1364,11 @@ textarea.control { min-height: 74px; resize: vertical; }
 }
 
 @media (max-width: 760px) {
+  .update-banner { gap: 8px; padding: 8px 10px; }
+  .update-banner-content { gap: 8px; }
+  .update-banner-icon { flex-basis: 36px; width: 36px; height: 36px; }
+  .update-banner-actions { gap: 6px; }
+  .update-banner-actions .btn { padding-inline: 12px; }
   .topbar-inner { padding: 12px 14px; gap: 12px; }
   /* Topbar compacto: flex em vez de grid */
   .topbar-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
@@ -1419,7 +1463,7 @@ textarea.control { min-height: 74px; resize: vertical; }
      saturate) forçam re-rasterização cara a cada toque/abertura de teclado,
      inflando o INP dos campos do formulário. Desligamos o filtro e usamos
      fundo sólido equivalente — o desktop (>760px) mantém o efeito de vidro. */
-  .panel, .feed, .metric-card, .legal-alert, .topbar, .mobile-bar, .pwa-banner {
+  .panel, .feed, .metric-card, .legal-alert, .topbar, .mobile-bar, .pwa-banner, .update-banner {
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
   }
@@ -1962,6 +2006,8 @@ textarea.control { min-height: 74px; resize: vertical; }
 }
 
 @media (max-width: 360px) {
+  .update-banner-content p { display: none; }
+  .update-banner-content strong { font-size: 0.76rem; }
   .mobile-add-label { font-size: 0; }
   .mobile-add-label::after { content: 'Nova'; font-size: 0.8rem; }
   .mobile-bar { gap: 8px; padding-inline: 10px; }

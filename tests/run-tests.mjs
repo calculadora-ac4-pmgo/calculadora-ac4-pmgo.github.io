@@ -3,6 +3,7 @@
    O app.js só toca o DOM dentro de funções; no carregamento bastam stubs. */
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join } from 'node:path';
+import { readFileSync } from 'node:fs';
 import { regraNormativaParaData, TABELA_OFICIAL } from '../js/modules/calculo.mjs';
 import { desserializarEscalas, detectarConflitos, normalizarEscala, STORAGE_SCHEMA_VERSION } from '../js/modules/persistencia.mjs';
 
@@ -82,5 +83,19 @@ const validarHardeningV58 = () => {
   return falhas.length ? falhas : 'TODOS OS TESTES V58 OK';
 };
 rodar('Hardening v58 (schema, conflitos e vigência)', validarHardeningV58);
+
+const validarAtualizacaoPWA = () => {
+  const sw = readFileSync(join(raiz, 'sw.js'), 'utf8');
+  const blocoInstall = sw.slice(sw.indexOf("self.addEventListener('install'"), sw.indexOf("self.addEventListener('message'"));
+  const checks = [
+    [sw.includes("event.data?.type === 'SKIP_WAITING'"), 'worker aceita atualização solicitada pela interface'],
+    [sw.includes("const SW_VERSION = '64'") && sw.includes("event.data?.type === 'GET_VERSION'"), 'worker informa sua versão antes do aviso'],
+    [sw.includes('self.addEventListener(\'message\''), 'canal de mensagem registrado'],
+    [!blocoInstall.includes('skipWaiting'), 'instalação não força recarga durante preenchimento'],
+  ];
+  const falhas = checks.filter(([ok]) => !ok).map(([, nome]) => nome);
+  return falhas.length ? falhas : 'ATUALIZAÇÃO PWA SEGURA OK';
+};
+rodar('Atualização PWA v64 (espera + ativação explícita)', validarAtualizacaoPWA);
 
 process.exit(falhou ? 1 : 0);

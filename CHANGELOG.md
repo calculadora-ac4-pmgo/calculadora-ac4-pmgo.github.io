@@ -1,5 +1,14 @@
 # Changelog
 
+## v64 — Atualização segura da PWA
+
+- Aviso mobile-first quando uma nova versão já está pronta para ser aplicada.
+- Botão “Atualizar agora” com ativação controlada e recarregamento único do aplicativo.
+- Opção de adiar a atualização sem interromper uma escala em preenchimento.
+- Verificação de novas versões na abertura, ao recuperar a conexão e ao retornar ao aplicativo.
+- Service Worker passa a aguardar a confirmação do usuário em vez de assumir o controle durante o uso.
+- Escalas, metas, modelos e configurações locais permanecem preservados durante a atualização.
+
 ## v63 — Novidades da versão
 
 - Apresentação profissional das novidades após uma atualização, exibida uma única vez por versão.

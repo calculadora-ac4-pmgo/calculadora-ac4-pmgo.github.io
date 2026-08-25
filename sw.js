@@ -1,13 +1,14 @@
 /* Service Worker — Calculadora AC4
    Estratégia: network-first para o app shell (atualizações chegam rápido),
    com fallback ao cache quando offline. */
-const CACHE = 'ac4-v63';
+const CACHE = 'ac4-v64';
+const SW_VERSION = '64';
 const SHELL = [
   './',
   './index.html',
-  './css/styles.css?v=63',
-  './js/app.js?v=63',
-  './js/theme.js?v=63',
+  './css/styles.css?v=64',
+  './js/app.js?v=64',
+  './js/theme.js?v=64',
   // módulos importados sem query string (resolvidos pelo import de app.js)
   './js/modules/formato.mjs',
   './js/modules/calculo.mjs',
@@ -28,8 +29,14 @@ self.addEventListener('install', (event) => {
       // cache: 'reload' ignora o cache HTTP e busca direto do servidor,
       // evitando misturar versões de HTML e JS/CSS.
       .then((c) => c.addAll(SHELL.map((u) => new Request(u, { cache: 'reload' }))))
-      .then(() => self.skipWaiting())
   );
+});
+
+/* A nova versão aguarda o comando explícito da interface. Isso evita
+   recarregar o aplicativo enquanto uma escala ainda está sendo preenchida. */
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
+  if (event.data?.type === 'GET_VERSION') event.ports[0]?.postMessage({ version: SW_VERSION });
 });
 
 self.addEventListener('activate', (event) => {
