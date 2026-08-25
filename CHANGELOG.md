@@ -1,5 +1,13 @@
 # Changelog
 
+## v63 — Novidades da versão
+
+- Apresentação profissional das novidades após uma atualização, exibida uma única vez por versão.
+- Bottom sheet mobile-first com resumo objetivo das novas funcionalidades e alvos de toque acessíveis.
+- Atalho “Novidades” no rodapé para consultar novamente o conteúdo quando quiser.
+- Preferência de visualização armazenada somente no aparelho, sem rastreamento adicional.
+- Instalações novas continuam entrando diretamente no fluxo principal, sem interrupção desnecessária.
+
 ## v62 — Planejamento AC4 mobile-first
 
 - Painel mensal compacto com valor estimado, horas, quantidade de escalas e comparação com o mês anterior.

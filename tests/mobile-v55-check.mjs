@@ -103,6 +103,9 @@ try {
   await capturar('03-resultado-20-pms-390.png');
   await avaliar(`(async()=>{const w=ms=>new Promise(r=>setTimeout(r,ms));document.getElementById('btnSubmit').click();await w(350)})()`);
   await capturar('04-cards-escalas-390.png');
+  await avaliar(`(async()=>{const w=ms=>new Promise(r=>setTimeout(r,ms));document.getElementById('footerNovidades').click();await w(350)})()`);
+  await capturar('07-novidades-v63-390.png');
+  await avaliar(`document.getElementById('novidadesEntendi').click()`);
   await avaliar(`document.getElementById('btnTheme').click()`);
   await capturar('05-modo-escuro-390.png');
 

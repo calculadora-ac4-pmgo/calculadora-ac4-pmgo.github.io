@@ -30,6 +30,7 @@ Em dispositivos móveis, é possível usar a opção do navegador para adicionar
 - Metas mensais opcionais de valor e horas, armazenadas somente no navegador.
 - Acompanhamento das escalas pelos estados Planejada, Realizada, Conferida e Recebida.
 - Filtro por situação e aviso de escalas passadas ainda não atualizadas.
+- Apresentação das novidades após cada atualização, com acesso permanente pelo rodapé.
 - Adição de escalas à agenda: no celular abre o aplicativo de agenda padrão do aparelho (via `.ics`); no computador abre a agenda web escolhida (Google Agenda ou Outlook).
 - Exportação de planilha em `.csv`.
 - Geração de relatório em PDF pela função de impressão do navegador.

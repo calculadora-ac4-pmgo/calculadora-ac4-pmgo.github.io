@@ -243,6 +243,18 @@ const ROTEIRO = `(async () => {
   document.getElementById('fbFechar').click();
   ok('Feedback: dialog fecha sem enviar', !dlgFb.open);
 
+  // 6b. central de novidades: pode ser reaberta e registra a versão vista
+  document.getElementById('footerNovidades').click();
+  await espera(100);
+  const dlgNovidades = document.getElementById('dialogNovidades');
+  ok('Novidades: dialog abre pelo rodapé', !!dlgNovidades && dlgNovidades.open);
+  ok('Novidades: apresenta versão e funcionalidades',
+     dlgNovidades.querySelector('.whats-new-badge')?.textContent.includes('v63') &&
+     dlgNovidades.querySelectorAll('.whats-new-list li').length === 3);
+  document.getElementById('novidadesEntendi').click();
+  ok('Novidades: fecha e registra somente a versão vista',
+     !dlgNovidades.open && localStorage.getItem('pmgoNovidadesVistas') === '63');
+
   localStorage.removeItem('pmgoEscalas');
   return JSON.stringify(passos);
 })()`;
@@ -281,6 +293,20 @@ try {
   const pdf = await cdp.enviar('Page.printToPDF', { printBackground: false }, sessionId);
   const kb = Math.round(((pdf.data || '').length * 3 / 4) / 1024);
   passos.push({ nome: 'PDF gerado pelo CSS de impressão (≥10KB)', ok: kb >= 10, detalhe: `${kb}KB` });
+
+  // Atualização real: uma versão anterior deve receber as novidades automaticamente uma única vez.
+  await cdp.enviar('Runtime.evaluate', {
+    expression: `localStorage.setItem('pmgoVersion','62'); localStorage.removeItem('pmgoNovidadesVistas');`,
+  }, sessionId);
+  const atualizou = cdp.aguardarEvento('Page.loadEventFired');
+  await cdp.enviar('Page.navigate', { url: `http://127.0.0.1:${porta}/` }, sessionId);
+  await atualizou;
+  const avisoAtualizacao = await cdp.enviar('Runtime.evaluate', {
+    expression: `(async()=>{const sl=ms=>new Promise(r=>setTimeout(r,ms));await sl(400);const d=document.getElementById('dialogNovidades');const aberto=!!d?.open;document.getElementById('novidadesEntendi')?.click();return aberto})()`,
+    awaitPromise: true, returnByValue: true,
+  }, sessionId);
+  passos.push({ nome: 'Atualização exibe novidades automaticamente uma única vez',
+    ok: avisoAtualizacao.result.value === true, detalhe: String(avisoAtualizacao.result.value) });
 
   // 6. localStorage corrompido: grava lixo, recarrega e confirma que o app sobe vazio sem quebrar.
   await cdp.enviar('Runtime.evaluate', {
