@@ -258,9 +258,16 @@ const ROTEIRO_MOBILE = `(async () => {
   ok('Chips de duração visíveis no mobile', getComputedStyle(document.getElementById('durChips')).display !== 'none');
   ok('Select de duração oculto no mobile', getComputedStyle(document.querySelector('#fieldDuracao > .control')).display === 'none');
   chip24.click();
-  await espera(30);
+  await espera(80);
   ok('Chip 24h fica ativo ao tocar', chip24.classList.contains('is-active') && document.getElementById('escalaDuracao').value === '24');
   ok('Chip 24h recalcula término', document.getElementById('escalaFim').value === '2026-07-11T18:00', document.getElementById('escalaFim').value);
+  const submitResult = document.getElementById('btnSubmitResult');
+  ok('CTA mantém área estável para o resultado',
+     !!submitResult && !submitResult.classList.contains('hidden') && submitResult.getAttribute('aria-hidden') === 'false');
+  const toastRegion = document.getElementById('toastRegion');
+  const toastStyle = getComputedStyle(toastRegion);
+  ok('Região de avisos isolada contra CLS',
+     toastRegion.getBoundingClientRect().height > 0 && toastStyle.contain.includes('layout'));
 
   // 12. stepper de Qtd. PM
   const qtd = document.getElementById('escalaQtdPm');

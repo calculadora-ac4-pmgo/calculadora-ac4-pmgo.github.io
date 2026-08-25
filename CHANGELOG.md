@@ -1,5 +1,13 @@
 # Changelog
 
+## v60 — Performance orientada por dados reais
+
+- Otimização do INP nos fluxos de adicionar escala, duração rápida e abertura mobile.
+- Pré-processamento do compartilhamento para reduzir a latência do botão do WhatsApp.
+- Fila de avisos com geometria estável para eliminar deslocamentos do `toastRegion`.
+- CTA de lançamento com espaço reservado para evitar deslocamento do rótulo e do valor.
+- Beacon oficial da Cloudflare atualizado para o formato `type="module"` recomendado.
+
 ## v59 — Métricas de Uso com Privacidade
 
 - Restauração do Cloudflare Web Analytics para análise agregada de utilização.
