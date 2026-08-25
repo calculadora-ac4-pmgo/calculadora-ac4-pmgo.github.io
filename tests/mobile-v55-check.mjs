@@ -95,7 +95,7 @@ try {
   };
 
   await navegar(390, 844);
-  await avaliar(`(async()=>{const w=ms=>new Promise(r=>setTimeout(r,ms));for(let i=0;i<50&&!document.getElementById('formEscala');i++)await w(50);localStorage.removeItem('pmgoEscalas');document.getElementById('mobileAdd').click();await w(300);document.getElementById('escalaDuracao').value='';document.getElementById('escalaFim').value='';document.getElementById('escalaFim').dispatchEvent(new Event('change',{bubbles:true}));document.getElementById('launchResumo').scrollIntoView({block:'center'});await w(100)})()`);
+  await avaliar(`(async()=>{const w=ms=>new Promise(r=>setTimeout(r,ms));for(let i=0;i<50&&!document.getElementById('formEscala');i++)await w(50);localStorage.removeItem('pmgoEscalas');document.getElementById('mobileAdd').click();await w(300);document.getElementById('escalaDuracao').value='';document.getElementById('launchResumo').scrollIntoView({block:'center'});await w(100)})()`);
   await capturar('01-formulario-antes-calculo-390.png');
   await avaliar(`(async()=>{const w=ms=>new Promise(r=>setTimeout(r,ms));const i=document.getElementById('escalaInicio'),d=document.getElementById('escalaDuracao');i.value='2026-07-10T18:00';i.dispatchEvent(new Event('change',{bubbles:true}));d.value='14';d.dispatchEvent(new Event('change',{bubbles:true}));document.getElementById('launchResumo').scrollIntoView({block:'center'});await w(100)})()`);
   await capturar('02-resultado-1-pm-390.png');

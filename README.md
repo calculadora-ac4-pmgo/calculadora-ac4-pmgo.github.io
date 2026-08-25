@@ -23,12 +23,16 @@ Em dispositivos móveis, é possível usar a opção do navegador para adicionar
 - Consolidação de total de horas, quantidade de escalas e valor estimado.
 - Filtro por mês quando houver escalas em períodos diferentes.
 - Edição, duplicação e exclusão de escalas lançadas.
+- Atalho para repetir a última escala no dia seguinte, com conferência antes de salvar.
+- Modelos favoritos locais para reaplicar duração, quantidade, unidade e origem.
+- Busca por unidade e filtros por mês e origem.
 - Adição de escalas à agenda: no celular abre o aplicativo de agenda padrão do aparelho (via `.ics`); no computador abre a agenda web escolhida (Google Agenda ou Outlook).
 - Exportação de planilha em `.csv`.
 - Geração de relatório em PDF pela função de impressão do navegador.
 - Tema claro/escuro com persistência da preferência do usuário.
 - Funcionamento como PWA, com suporte offline após o primeiro carregamento em navegadores compatíveis.
-- Refinamento Premium Mobile-First: destaque do resultado automático, melhor visualização para uso individual e administrativo, botão contextual, cards refinados, acessibilidade e melhorias para uso com uma mão.
+- Refinamento Premium Mobile-First: formulário progressivo, destaque do resultado automático, cards compactos, botão contextual, acessibilidade e melhorias para uso com uma mão.
+- Promoção de instalação PWA após sinais de interesse, mantendo a primeira jornada livre de interrupções.
 
 ## Regras de cálculo
 

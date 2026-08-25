@@ -1,5 +1,14 @@
 # Changelog
 
+## v61 — Lançamento em segundos
+
+- Formulário progressivo: o fluxo principal mostra só os campos essenciais e mantém término personalizado, unidade e origem em “Mais detalhes”.
+- Atalho “Repetir última” preenche a próxima escala sem salvar automaticamente.
+- Modelos favoritos locais para reaplicar duração, quantidade, unidade e origem.
+- Busca por unidade e filtros por mês e origem na lista de escalas.
+- Cards mobile mais compactos, com edição visível e ações secundárias agrupadas.
+- Promoção de instalação inteligente após engajamento, sem interromper a primeira visita.
+
 ## v60 — Performance orientada por dados reais
 
 - Otimização do INP nos fluxos de adicionar escala, duração rápida e abertura mobile.

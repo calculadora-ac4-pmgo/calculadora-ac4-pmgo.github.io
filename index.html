@@ -15,8 +15,8 @@
   <!-- Preload da fonte principal — reduz reflow/CLS do font-swap da Inter -->
   <link rel="preload" href="assets/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 
-  <link rel="stylesheet" href="css/styles.css?v=60">
-  <script src="js/theme.js?v=60"></script>
+  <link rel="stylesheet" href="css/styles.css?v=61">
+  <script src="js/theme.js?v=61"></script>
 </head>
 <body>
 
@@ -175,6 +175,26 @@
             Lançar escala
           </h2>
 
+          <div class="quick-launch-tools" aria-label="Atalhos de lançamento">
+            <button type="button" class="quick-launch-btn hidden" id="btnRepeatLast">
+              <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+              Repetir última
+            </button>
+            <label class="template-select-wrap hidden" id="templateSelectWrap" for="templateSelect">
+              <span class="sr-only">Aplicar modelo salvo</span>
+              <select class="control template-select" id="templateSelect">
+                <option value="">Meus modelos</option>
+              </select>
+            </label>
+            <button type="button" class="quick-launch-btn quick-launch-delete hidden" id="btnDeleteTemplate" aria-label="Excluir modelo selecionado" title="Excluir modelo selecionado">
+              <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+            </button>
+            <button type="button" class="quick-launch-btn hidden" id="btnSaveTemplate">
+              <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
+              Salvar modelo
+            </button>
+          </div>
+
           <form id="formEscala" novalidate>
             <div class="launch-grid">
 
@@ -210,7 +230,15 @@
                 </div>
               </div>
 
-              <div class="field" id="fieldFim">
+              <div class="launch-full launch-advanced-toggle-wrap">
+                <button type="button" class="launch-advanced-toggle" id="toggleAdvanced" aria-expanded="false" aria-controls="fieldFim fieldDescricao fieldOrigem">
+                  <span>Mais detalhes</span>
+                  <small>Término personalizado, unidade e origem</small>
+                  <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                </button>
+              </div>
+
+              <div class="field advanced-field hidden" id="fieldFim">
                 <label for="escalaFim"><span class="field-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg></span>Término<span class="auto-tag"> (automático)</span></label>
                 <input type="datetime-local" class="control" id="escalaFim" required aria-required="true" aria-describedby="fimErro fimResumo">
                 <div class="mobile-datetime" aria-label="Término da escala">
@@ -258,7 +286,7 @@
                 <p class="field-hint" id="hintQtdPm">Valor multiplicado pelo nº de PMs</p>
               </div>
 
-              <div class="field" id="fieldDescricao">
+              <div class="field advanced-field hidden" id="fieldDescricao">
                 <label for="escalaDescricao"><span class="field-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M6 21V7l6-4 6 4v14M10 9h4M10 13h4M10 17h4"/></svg></span>Unidade <span class="field-optional">(opcional)</span></label>
                 <input type="text" class="control" id="escalaDescricao" maxlength="80"
                        placeholder="Ex.: 1ª CIA, BPChq, RPMon..."
@@ -266,7 +294,7 @@
                 <p class="field-hint" id="hintDescricao">Somente a unidade — não insira dados pessoais.</p>
               </div>
 
-              <div class="field" id="fieldOrigem">
+              <div class="field advanced-field hidden" id="fieldOrigem">
                 <label for="escalaOrigem"><span class="field-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7"/></svg></span>Origem</label>
                 <select class="control" id="escalaOrigem">
                   <option value="AC4">AC4</option>
@@ -321,6 +349,34 @@
       <div class="feed-header">
         <h2>Escalas lançadas</h2>
         <div class="feed-tools">
+          <label class="feed-filter" for="filtroBusca">
+            <span class="sr-only">Buscar por unidade</span>
+            <input class="control" id="filtroBusca" type="search" placeholder="Buscar unidade" autocomplete="off">
+          </label>
+          <label class="feed-filter" for="filtroMes">
+            <span class="sr-only">Filtrar por mês</span>
+            <select class="control" id="filtroMes"><option value="">Todos os meses</option></select>
+          </label>
+          <label class="feed-filter" for="filtroOrigem">
+            <span class="sr-only">Filtrar por origem</span>
+            <select class="control" id="filtroOrigem">
+              <option value="">Todas as origens</option>
+              <option value="AC4">AC4</option>
+              <option value="AGETOP">AGETOP</option>
+              <option value="DETRAN">DETRAN</option>
+              <option value="PREFEITURAS">Prefeituras</option>
+              <option value="GOINFRA">GOINFRA</option>
+              <option value="FREAP">FREAP</option>
+              <option value="CONVENIO_ENEM">Conv. ENEM</option>
+              <option value="CONVENIO_TRE">Conv. TRE</option>
+              <option value="CONVENIO_UEG">Conv. UEG</option>
+              <option value="CONVENIO_SEDUC">Conv. SEDUC</option>
+              <option value="CONVENIO_SAMU">Conv. SAMU</option>
+              <option value="CONVENIO_AGR">Conv. AGR</option>
+              <option value="FAZENDARIO_SEC_ECON">Fazendário / Sec. Econ.</option>
+              <option value="GEAI">GEAI</option>
+            </select>
+          </label>
           <button class="btn btn-danger-soft btn-sm hidden" id="btnClearAll">Limpar tudo</button>
         </div>
       </div>
@@ -351,7 +407,7 @@
         &copy; <span class="footer-year"></span> Weliton Pinheiro &mdash; Todos os direitos reservados.
       </p>
       <p class="site-footer-meta">
-        Calculadora AC4 &middot; PMGO &middot; v60 &middot;
+        Calculadora AC4 &middot; PMGO &middot; v61 &middot;
         <a href="#" id="footerPrivacidade" class="footer-link">Privacidade</a> &middot;
         <a href="#" id="footerFeedback" class="footer-link">Feedback</a> &middot;
         <a href="https://github.com/calculadora-ac4-pmgo" target="_blank" rel="noopener noreferrer" class="footer-link">GitHub</a>
@@ -440,6 +496,20 @@
         <button class="btn btn-danger-soft" id="dialogOk">Confirmar</button>
       </div>
     </div>
+  </dialog>
+
+  <!-- Salvar configuração atual como modelo local -->
+  <dialog class="confirm-dialog template-dialog" id="dialogTemplate" aria-modal="true" aria-labelledby="templateDialogTitle">
+    <form class="dialog-body" id="templateForm" method="dialog">
+      <h3 class="agenda-title" id="templateDialogTitle">Salvar modelo</h3>
+      <p class="agenda-sub">Guarde duração, quantidade, unidade e origem para preencher novas escalas rapidamente.</p>
+      <label class="fb-label" for="templateName">Nome do modelo</label>
+      <input class="control" id="templateName" maxlength="40" required placeholder="Ex.: AC4 noturna 14h" autocomplete="off">
+      <div class="dialog-actions template-dialog-actions">
+        <button class="btn btn-ghost" id="templateCancel" type="button">Cancelar</button>
+        <button class="btn btn-primary" id="templateSave" type="submit">Salvar</button>
+      </div>
+    </form>
   </dialog>
 
   <!-- Bottom sheet de compartilhamento -->
@@ -547,7 +617,7 @@
     </div>
   </dialog>
 
-  <script type="module" src="js/app.js?v=60"></script>
+  <script type="module" src="js/app.js?v=61"></script>
 
   <!-- Relatório profissional de impressão — populado pelo JS antes de window.print() -->
   <section id="printReport">
