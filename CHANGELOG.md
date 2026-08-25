@@ -1,5 +1,11 @@
 # Changelog
 
+## v59 — Métricas de Uso com Privacidade
+
+- Restauração do Cloudflare Web Analytics para análise agregada de utilização.
+- Política de segurança ajustada exclusivamente para os endpoints oficiais da Cloudflare.
+- Aviso de privacidade atualizado: sem cookies e sem envio dos dados lançados na calculadora.
+
 ## v58 — Hardening e Governança
 
 - Pipeline reproduzível com dependências travadas e Actions fixadas por SHA.

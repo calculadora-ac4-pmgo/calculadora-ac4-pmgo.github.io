@@ -1,6 +1,6 @@
 {
   "name": "calculadora-ac4-pmgo",
-  "version": "58.0.0",
+  "version": "59.0.0",
   "private": true,
   "description": "Calculadora AC4 — aplicação web estática/PWA para simulação e conferência preliminar.",
   "engines": {
