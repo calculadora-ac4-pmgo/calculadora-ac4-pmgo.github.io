@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Calculadora AC4 — v63
+   Calculadora AC4 — v64
    Módulo principal: estado, UI, persistência e exportações.
    Regras de negócio, formatação e agenda vivem em js/modules/.
    ========================================================================== */
@@ -33,7 +33,7 @@ import {
   /* Versão da aplicação (sincronizada pelo tools/bump-version.mjs). Serve para
      carimbar o log de erros e detectar clientes presos em cache antigo:
      se __ac4Version no console divergir do rodapé/CHANGELOG, o SW não atualizou. */
-  const APP_VERSION = '63';
+  const APP_VERSION = '64';
 
   const STORAGE = {
     escalas:   'pmgoEscalas',
@@ -61,6 +61,9 @@ import {
   let metasMensais = {};
   let versaoAnterior = null;
   let deferredInstallPrompt = null;
+  let workerAtualizacao = null;
+  let atualizacaoPendente = false;
+  let recarregandoPorAtualizacao = false;
   let mostrarInstalacaoAposConversao = () => {};
   let submetendo = false;
   let sheetAberto = false;
@@ -483,11 +486,7 @@ import {
     };
     on('footerNovidades', 'click', (ev) => { ev.preventDefault(); abrirNovidades(); });
     on('novidadesFechar', 'click', fechar);
-    on('novidadesEntendi', 'click', fechar);
-    on('novidadesExplorar', 'click', () => {
-      fechar();
-      aposProximoPaint(() => document.querySelector('.planning-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
-    });
+    on('novidadesContinuar', 'click', fechar);
     dlg.addEventListener('close', marcarNovidadesVistas);
 
     /* Instalações novas começam direto no fluxo principal. O aviso automático
@@ -1875,6 +1874,109 @@ import {
     return resultados.every((r) => r.ok) ? 'TODOS OS TESTES DE AGENDAMENTO OK' : resultados;
   };
 
+  /* -------------------------------------------- atualização segura da PWA */
+  function exibirBannerAtualizacao(worker) {
+    if (!worker) return;
+    workerAtualizacao = worker;
+    atualizacaoPendente = true;
+    $('pwaBanner')?.classList.add('hidden');
+    $('updateBanner')?.classList.remove('hidden', 'is-updating');
+    const btn = $('updateNow');
+    if (btn) { btn.disabled = false; btn.textContent = 'Atualizar agora'; }
+  }
+
+  function ocultarBannerAtualizacao() {
+    $('updateBanner')?.classList.add('hidden');
+  }
+
+  function aplicarAtualizacaoPWA() {
+    if (!workerAtualizacao || recarregandoPorAtualizacao) return;
+    recarregandoPorAtualizacao = true;
+    $('updateBanner')?.classList.add('is-updating');
+    const btn = $('updateNow');
+    if (btn) { btn.disabled = true; btn.textContent = 'Atualizando…'; }
+    workerAtualizacao.postMessage({ type: 'SKIP_WAITING' });
+
+    /* Rede ou navegador podem atrasar a troca do worker. O usuário recupera o
+       controle sem entrar em ciclo de recarregamento. */
+    setTimeout(() => {
+      if (!recarregandoPorAtualizacao) return;
+      recarregandoPorAtualizacao = false;
+      $('updateBanner')?.classList.remove('is-updating');
+      if (btn) { btn.disabled = false; btn.textContent = 'Tentar novamente'; }
+      toast('Não foi possível aplicar agora. Tente novamente.', { erro: true });
+    }, 8000);
+  }
+
+  function consultarVersaoWorker(worker) {
+    return new Promise((resolve) => {
+      if (typeof globalThis.MessageChannel !== 'function') { resolve(null); return; }
+      const canal = new globalThis.MessageChannel();
+      const limite = setTimeout(() => resolve(null), 1200);
+      canal.port1.onmessage = (event) => {
+        clearTimeout(limite);
+        resolve(String(event.data?.version || '') || null);
+      };
+      try { worker.postMessage({ type: 'GET_VERSION' }, [canal.port2]); }
+      catch { clearTimeout(limite); resolve(null); }
+    });
+  }
+
+  async function avaliarWorkerAtualizacao(worker) {
+    if (!worker) return;
+    const versaoWorker = await consultarVersaoWorker(worker);
+    if (versaoWorker === APP_VERSION) {
+      /* A página atual já pertence à mesma versão. Ativa apenas o cache novo,
+         sem aviso ou reload redundante. */
+      worker.postMessage({ type: 'SKIP_WAITING' });
+      return;
+    }
+    exibirBannerAtualizacao(worker);
+  }
+
+  async function initAtualizacoesPWA() {
+    on('updateNow', 'click', aplicarAtualizacaoPWA);
+    on('updateLater', 'click', ocultarBannerAtualizacao);
+
+    /* Gancho restrito ao ambiente local para validar a interface sem instalar
+       um Service Worker real durante os testes HTTP. */
+    if (['localhost', '127.0.0.1'].includes(location.hostname)) {
+      window.__ac4SimularAtualizacao = () => exibirBannerAtualizacao({
+        postMessage: (mensagem) => { window.__ac4UltimaMensagemSW = mensagem; },
+      });
+    }
+
+    if (!('serviceWorker' in navigator) || location.protocol !== 'https:') return;
+
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!recarregandoPorAtualizacao) return;
+      recarregandoPorAtualizacao = false;
+      window.location.reload();
+    });
+
+    try {
+      const registro = await navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' });
+      const acompanharInstalacao = (worker) => {
+        if (!worker) return;
+        if (worker.state === 'installed') { avaliarWorkerAtualizacao(worker); return; }
+        worker.addEventListener('statechange', () => {
+          if (worker.state === 'installed' && navigator.serviceWorker.controller) avaliarWorkerAtualizacao(worker);
+        });
+      };
+
+      if (registro.waiting && navigator.serviceWorker.controller) avaliarWorkerAtualizacao(registro.waiting);
+      registro.addEventListener('updatefound', () => acompanharInstalacao(registro.installing));
+      acompanharInstalacao(registro.installing);
+
+      const verificar = () => registro.update().catch(() => {});
+      verificar();
+      window.addEventListener('online', verificar);
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) verificar(); });
+    } catch {
+      /* Offline ou navegador sem suporte completo: o app segue pelo cache. */
+    }
+  }
+
   /* -------------------------------------------- PWA install prompt */
   function initPWA() {
     const jaInstalado = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
@@ -1921,7 +2023,7 @@ import {
     /* A promoção não interrompe a primeira jornada. Ela aparece na segunda
        visita, para quem já tem escalas ou após o primeiro lançamento. */
     const mostrarBannerSeRelevante = () => {
-      if (dismissed || !usuarioEngajado) return;
+      if (dismissed || !usuarioEngajado || atualizacaoPendente) return;
       if (isIOS || deferredInstallPrompt) $('pwaBanner')?.classList.remove('hidden');
     };
     mostrarInstalacaoAposConversao = () => {
@@ -1951,6 +2053,7 @@ import {
     initTema();
     carregar();
     initPWA();
+    initAtualizacoesPWA();
     initNovidades();
     renderModelos();
     setDetalhesAvancados(false);
@@ -2181,10 +2284,6 @@ import {
     });
 
     render();
-
-    if ('serviceWorker' in navigator && location.protocol === 'https:') {
-      navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).catch(() => {});
-    }
 
     window.addEventListener('storage', (ev) => {
       if (ev.key !== STORAGE.escalas) return;

@@ -137,12 +137,24 @@ const ROTEIRO_MOBILE = `(async () => {
   document.getElementById('footerNovidades').click();
   await espera(350);
   const novidades = rect('#dialogNovidades');
-  const acaoNovidades = rect('#novidadesExplorar');
+  const acaoNovidades = rect('#novidadesContinuar');
   ok('Novidades usa bottom sheet ajustado ao celular',
      novidades && Math.abs(novidades.width - window.innerWidth) <= 1 && Math.abs(novidades.bottom - window.innerHeight) <= 1,
      novidades && Math.round(novidades.width) + '×' + Math.round(novidades.height) + ' · base ' + Math.round(novidades.bottom) + '/' + window.innerHeight);
   ok('Ação principal das novidades possui alvo ≥ 44px', acaoNovidades && acaoNovidades.height >= 44);
-  document.getElementById('novidadesEntendi').click();
+  document.getElementById('novidadesContinuar').click();
+
+  // 3c. atualização PWA pronta para telas pequenas
+  window.__ac4SimularAtualizacao();
+  const updateBanner = rect('#updateBanner');
+  const updateNow = rect('#updateNow');
+  const updateLater = rect('#updateLater');
+  ok('Aviso de atualização cabe no celular sem overflow',
+     updateBanner && updateBanner.width <= window.innerWidth + 1 && document.documentElement.scrollWidth <= window.innerWidth + 1,
+     updateBanner && Math.round(updateBanner.width) + 'px');
+  ok('Ações da atualização possuem alvos ≥ 44px',
+     updateNow && updateLater && updateNow.height >= 44 && updateLater.width >= 44 && updateLater.height >= 44);
+  document.getElementById('updateLater').click();
 
   // 4. card da escala: leitura confortável e ações tocáveis
   const cardEscala = rect('#listaEscalas .escala-card');

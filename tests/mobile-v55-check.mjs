@@ -104,8 +104,11 @@ try {
   await avaliar(`(async()=>{const w=ms=>new Promise(r=>setTimeout(r,ms));document.getElementById('btnSubmit').click();await w(350)})()`);
   await capturar('04-cards-escalas-390.png');
   await avaliar(`(async()=>{const w=ms=>new Promise(r=>setTimeout(r,ms));document.getElementById('footerNovidades').click();await w(350)})()`);
-  await capturar('07-novidades-v63-390.png');
-  await avaliar(`document.getElementById('novidadesEntendi').click()`);
+  await capturar('08-novidades-v64-390.png');
+  await avaliar(`document.getElementById('novidadesContinuar').click()`);
+  await avaliar(`(async()=>{const w=ms=>new Promise(r=>setTimeout(r,ms));window.__ac4SimularAtualizacao();await w(350)})()`);
+  await capturar('09-atualizacao-v64-390.png');
+  await avaliar(`document.getElementById('updateLater').click()`);
   await avaliar(`document.getElementById('btnTheme').click()`);
   await capturar('05-modo-escuro-390.png');
 

@@ -218,6 +218,22 @@ const ROTEIRO = `(async () => {
      !!analytics && analytics.type === 'module' && analytics.dataset.cfBeacon?.includes('3b1137c9d2024604bff681a3d09a202e'));
   dlgShare.close();
 
+  // 4g. aviso de atualização: anúncio acessível e opção de adiar sem recarregar
+  window.__ac4SimularAtualizacao();
+  const updateBanner = document.getElementById('updateBanner');
+  ok('Atualização PWA: aviso acessível fica visível',
+     !updateBanner.classList.contains('hidden') && updateBanner.getAttribute('role') === 'status' &&
+     updateBanner.getAttribute('aria-live') === 'polite');
+  ok('Atualização PWA: oferece ação principal explícita',
+     document.getElementById('updateNow').textContent.trim() === 'Atualizar agora');
+  document.getElementById('updateNow').click();
+  await espera(20);
+  ok('Atualização PWA: botão solicita ativação ao Service Worker',
+     window.__ac4UltimaMensagemSW?.type === 'SKIP_WAITING' &&
+     document.getElementById('updateNow').textContent.includes('Atualizando'));
+  document.getElementById('updateLater').click();
+  ok('Atualização PWA: usuário pode adiar sem perder o fluxo', updateBanner.classList.contains('hidden'));
+
   // 5. remoção limpa o estado
   document.querySelector('#listaEscalas [data-acao="remover"]').click();
   await espera(300);
@@ -249,11 +265,11 @@ const ROTEIRO = `(async () => {
   const dlgNovidades = document.getElementById('dialogNovidades');
   ok('Novidades: dialog abre pelo rodapé', !!dlgNovidades && dlgNovidades.open);
   ok('Novidades: apresenta versão e funcionalidades',
-     dlgNovidades.querySelector('.whats-new-badge')?.textContent.includes('v63') &&
+     dlgNovidades.querySelector('.whats-new-badge')?.textContent.includes('v64') &&
      dlgNovidades.querySelectorAll('.whats-new-list li').length === 3);
-  document.getElementById('novidadesEntendi').click();
+  document.getElementById('novidadesContinuar').click();
   ok('Novidades: fecha e registra somente a versão vista',
-     !dlgNovidades.open && localStorage.getItem('pmgoNovidadesVistas') === '63');
+     !dlgNovidades.open && localStorage.getItem('pmgoNovidadesVistas') === '64');
 
   localStorage.removeItem('pmgoEscalas');
   return JSON.stringify(passos);
@@ -296,13 +312,13 @@ try {
 
   // Atualização real: uma versão anterior deve receber as novidades automaticamente uma única vez.
   await cdp.enviar('Runtime.evaluate', {
-    expression: `localStorage.setItem('pmgoVersion','62'); localStorage.removeItem('pmgoNovidadesVistas');`,
+    expression: `localStorage.setItem('pmgoVersion','63'); localStorage.removeItem('pmgoNovidadesVistas');`,
   }, sessionId);
   const atualizou = cdp.aguardarEvento('Page.loadEventFired');
   await cdp.enviar('Page.navigate', { url: `http://127.0.0.1:${porta}/` }, sessionId);
   await atualizou;
   const avisoAtualizacao = await cdp.enviar('Runtime.evaluate', {
-    expression: `(async()=>{const sl=ms=>new Promise(r=>setTimeout(r,ms));await sl(400);const d=document.getElementById('dialogNovidades');const aberto=!!d?.open;document.getElementById('novidadesEntendi')?.click();return aberto})()`,
+    expression: `(async()=>{const sl=ms=>new Promise(r=>setTimeout(r,ms));await sl(400);const d=document.getElementById('dialogNovidades');const aberto=!!d?.open;document.getElementById('novidadesContinuar')?.click();return aberto})()`,
     awaitPromise: true, returnByValue: true,
   }, sessionId);
   passos.push({ nome: 'Atualização exibe novidades automaticamente uma única vez',

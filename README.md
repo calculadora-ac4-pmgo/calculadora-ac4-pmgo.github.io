@@ -31,6 +31,7 @@ Em dispositivos móveis, é possível usar a opção do navegador para adicionar
 - Acompanhamento das escalas pelos estados Planejada, Realizada, Conferida e Recebida.
 - Filtro por situação e aviso de escalas passadas ainda não atualizadas.
 - Apresentação das novidades após cada atualização, com acesso permanente pelo rodapé.
+- Aviso de atualização da PWA com aplicação em um toque, sem interromper lançamentos em andamento.
 - Adição de escalas à agenda: no celular abre o aplicativo de agenda padrão do aparelho (via `.ics`); no computador abre a agenda web escolhida (Google Agenda ou Outlook).
 - Exportação de planilha em `.csv`.
 - Geração de relatório em PDF pela função de impressão do navegador.
