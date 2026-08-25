@@ -15,8 +15,8 @@
   <!-- Preload da fonte principal — reduz reflow/CLS do font-swap da Inter -->
   <link rel="preload" href="assets/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 
-  <link rel="stylesheet" href="css/styles.css?v=59">
-  <script src="js/theme.js?v=59"></script>
+  <link rel="stylesheet" href="css/styles.css?v=60">
+  <script src="js/theme.js?v=60"></script>
 </head>
 <body>
 
@@ -291,8 +291,8 @@
                   <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                     <path d="M12 5v14M5 12h14"/>
                   </svg>
-                  <span id="btnSubmitLabel">Adicionar escala</span>
-                  <span class="submit-result hidden" id="btnSubmitResult"></span>
+                  <span id="btnSubmitLabel">Adicionar</span>
+                  <span class="submit-result" id="btnSubmitResult" aria-hidden="true"></span>
                 </button>
                 <button type="button" class="btn btn-ghost btn-block btn-cancel-edit hidden" id="btnCancelEdit">Cancelar edição</button>
               </div>
@@ -351,7 +351,7 @@
         &copy; <span class="footer-year"></span> Weliton Pinheiro &mdash; Todos os direitos reservados.
       </p>
       <p class="site-footer-meta">
-        Calculadora AC4 &middot; PMGO &middot; v59 &middot;
+        Calculadora AC4 &middot; PMGO &middot; v60 &middot;
         <a href="#" id="footerPrivacidade" class="footer-link">Privacidade</a> &middot;
         <a href="#" id="footerFeedback" class="footer-link">Feedback</a> &middot;
         <a href="https://github.com/calculadora-ac4-pmgo" target="_blank" rel="noopener noreferrer" class="footer-link">GitHub</a>
@@ -547,7 +547,7 @@
     </div>
   </dialog>
 
-  <script type="module" src="js/app.js?v=59"></script>
+  <script type="module" src="js/app.js?v=60"></script>
 
   <!-- Relatório profissional de impressão — populado pelo JS antes de window.print() -->
   <section id="printReport">
@@ -581,7 +581,7 @@
   </section>
 
   <!-- Cloudflare Web Analytics: métricas agregadas, sem cookies e sem acesso aos dados da calculadora. -->
-  <script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token":"3b1137c9d2024604bff681a3d09a202e"}'></script>
+  <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token":"3b1137c9d2024604bff681a3d09a202e"}'></script>
 
 </body>
 </html>

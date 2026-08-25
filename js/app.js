@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Calculadora AC4 — v59
+   Calculadora AC4 — v60
    Módulo principal: estado, UI, persistência e exportações.
    Regras de negócio, formatação e agenda vivem em js/modules/.
    ========================================================================== */
@@ -33,7 +33,7 @@ import {
   /* Versão da aplicação (sincronizada pelo tools/bump-version.mjs). Serve para
      carimbar o log de erros e detectar clientes presos em cache antigo:
      se __ac4Version no console divergir do rodapé/CHANGELOG, o SW não atualizou. */
-  const APP_VERSION = '59';
+  const APP_VERSION = '60';
 
   const STORAGE = {
     escalas:   'pmgoEscalas',
@@ -56,6 +56,8 @@ import {
   let fundoInerte = [];
   const clonarEscalas = () => JSON.parse(JSON.stringify(escalas));
   const lerLocal = (chave) => { try { return localStorage.getItem(chave); } catch { return null; } };
+  const aposProximoPaint = (fn) => requestAnimationFrame(() => requestAnimationFrame(fn));
+  const esperarProximoPaint = () => new Promise((resolve) => aposProximoPaint(resolve));
 
   /* ---------------------------------------- bottom sheet mobile (lançamento) */
   const isMobileViewport = () => window.matchMedia('(max-width: 760px)').matches;
@@ -273,21 +275,46 @@ import {
   }
 
   /* --------------------------------------------------------------- toast */
-  function toast(msg, { erro = false, acao = null } = {}) {
+  const filaToasts = [];
+  let toastAtivo = null;
+
+  function exibirProximoToast() {
+    if (toastAtivo || !filaToasts.length) return;
+    const { msg, erro, acao } = filaToasts.shift();
     const region = $('toastRegion');
+    if (!region) return;
     const el = document.createElement('div');
     el.className = 'toast' + (erro ? ' error' : '');
     el.setAttribute('role', 'status');
     el.innerHTML = `<span>${escapeHTML(msg)}</span>`;
+    let encerrado = false;
+    let timer = null;
+    const encerrar = () => {
+      if (encerrado) return;
+      encerrado = true;
+      clearTimeout(timer);
+      el.classList.add('is-hiding');
+      setTimeout(() => {
+        el.remove();
+        toastAtivo = null;
+        exibirProximoToast();
+      }, 320);
+    };
     if (acao) {
       const btn = document.createElement('button');
       btn.className = 'toast-action';
       btn.textContent = acao.rotulo;
-      btn.addEventListener('click', () => { acao.fn(); el.remove(); });
+      btn.addEventListener('click', () => { acao.fn(); encerrar(); });
       el.appendChild(btn);
     }
-    region.appendChild(el);
-    setTimeout(() => { el.classList.add('is-hiding'); setTimeout(() => el.remove(), 320); }, acao ? 6000 : 3500);
+    region.replaceChildren(el);
+    toastAtivo = el;
+    timer = setTimeout(encerrar, acao ? 6000 : 3500);
+  }
+
+  function toast(msg, { erro = false, acao = null } = {}) {
+    filaToasts.push({ msg, erro, acao });
+    exibirProximoToast();
   }
 
   /* ------------------------------------------------ observabilidade
@@ -577,6 +604,9 @@ import {
     const btn = $('btnSubmit');
     if (btn) btn.disabled = true;
     try {
+      /* Entrega primeiro o feedback visual do toque. A validação, persistência
+         e renderização começam após o navegador apresentar esse frame. */
+      await esperarProximoPaint();
       const dados = validarFormulario();
       if (!dados) return;
 
@@ -678,17 +708,16 @@ import {
     const label = $('btnSubmitLabel');
     const valor = $('btnSubmitResult');
     if (!label || !valor) return;
+    label.textContent = editandoId === null ? 'Adicionar' : 'Salvar';
     if (!resultado) {
-      label.textContent = editandoId === null ? 'Adicionar escala' : 'Salvar alterações';
       valor.textContent = '';
-      valor.classList.add('hidden');
+      valor.setAttribute('aria-hidden', 'true');
       return;
     }
-    label.textContent = editandoId === null ? 'Adicionar' : 'Salvar';
     valor.textContent = qtd > 1
       ? `TOTAL ${fmtMoeda(resultado.valorCentavos * qtd)}`
       : fmtMoeda(resultado.valorCentavos);
-    valor.classList.remove('hidden');
+    valor.setAttribute('aria-hidden', 'false');
   }
 
   /* Apresentação mobile do resultado. Toda a inteligência financeira continua
@@ -912,16 +941,27 @@ import {
     return texto;
   }
 
+  let resumoCompartilhamentoCache = '';
+  let urlWhatsAppCache = '';
+
+  function prepararCompartilhamento() {
+    resumoCompartilhamentoCache = gerarTextoResumo();
+    urlWhatsAppCache = `https://wa.me/?text=${encodeURIComponent(resumoCompartilhamentoCache)}`;
+  }
+
+  const obterResumoCompartilhamento = () => resumoCompartilhamentoCache || gerarTextoResumo();
+
   async function compartilharWhatsApp() {
     const lista = escalasOrdenadas();
     if (!lista.length) { toast('Adicione escalas antes de compartilhar.', { erro: true }); return; }
-    window.open(`https://wa.me/?text=${encodeURIComponent(gerarTextoResumo())}`, '_blank', 'noopener');
+    const url = urlWhatsAppCache || `https://wa.me/?text=${encodeURIComponent(obterResumoCompartilhamento())}`;
+    window.open(url, '_blank', 'noopener');
   }
 
   async function compartilharNativo() {
     const lista = escalasOrdenadas();
     if (!lista.length) { toast('Adicione escalas antes de compartilhar.', { erro: true }); return; }
-    try { await navigator.share({ title: 'Relatório AC4', text: gerarTextoResumo() }); }
+    try { await navigator.share({ title: 'Relatório AC4', text: obterResumoCompartilhamento() }); }
     catch (e) { if (e.name !== 'AbortError') compartilharWhatsApp(); }
   }
 
@@ -929,7 +969,7 @@ import {
     const lista = escalasOrdenadas();
     if (!lista.length) { toast('Adicione escalas antes de copiar.', { erro: true }); return; }
     try {
-      await navigator.clipboard.writeText(gerarTextoResumo());
+      await navigator.clipboard.writeText(obterResumoCompartilhamento());
       haptic([10, 10]);
       toast('Resumo copiado para a área de transferência!');
     } catch { toast('Não foi possível copiar automaticamente.', { erro: true }); }
@@ -940,9 +980,12 @@ import {
     if (!lista.length) { toast('Adicione escalas antes de compartilhar.', { erro: true }); return; }
     const dlg = $('dialogShare');
     if (!dlg) { compartilharWhatsApp(); return; }
+    resumoCompartilhamentoCache = '';
+    urlWhatsAppCache = '';
     const nativeBtn = $('shareNative');
     if (nativeBtn) nativeBtn.classList.toggle('hidden', !navigator.share);
     dlg.showModal();
+    aposProximoPaint(prepararCompartilhamento);
   }
 
   /* ------------------------------------------------ canal de feedback
@@ -1526,15 +1569,19 @@ import {
 
     on('mobileAdd', 'click', () => {
       if (isMobileViewport()) {
-        /* nova escala: pré-preenche o início com agora; ao editar, preserva */
-        if (editandoId === null) {
-          setTituloSheet('Nova escala AC4');
-          $('escalaInicio').value = toInputLocal(new Date());
-          aplicarDuracao();          /* recalcula término se já havia duração escolhida */
-          sincronizarTodosControlesDataHora();
-        }
-        atualizarResumoLancamento();
+        /* Abre primeiro para que o toque seja apresentado imediatamente; o
+           preenchimento e o cálculo seguem depois do primeiro paint. */
         abrirPainelLancamentoMobile();
+        aposProximoPaint(() => {
+          if (!sheetAberto) return;
+          if (editandoId === null) {
+            setTituloSheet('Nova escala AC4');
+            $('escalaInicio').value = toInputLocal(new Date());
+            aplicarDuracao();
+            sincronizarTodosControlesDataHora();
+          }
+          atualizarResumoLancamento();
+        });
         return;
       }
       document.querySelector('.launch-panel')?.scrollIntoView({ behavior: 'smooth' });
@@ -1614,8 +1661,10 @@ import {
     document.querySelectorAll('#durChips .dur-chip').forEach((chip) => {
       chip.addEventListener('click', () => {
         if ($('escalaDuracao')) $('escalaDuracao').value = chip.dataset.horas;
-        aplicarDuracao();
         atualizarChipsDuracao();
+        aposProximoPaint(() => {
+          if ($('escalaDuracao')?.value === chip.dataset.horas) aplicarDuracao();
+        });
       });
     });
 

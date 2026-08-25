@@ -211,6 +211,36 @@ const INTERACAO_SHARE = `(async () => {
   });
 })()`;
 
+/* Regressão orientada pelo RUM do Cloudflare: os seletores abaixo apareceram
+   entre as interações com INP acima do ideal em tráfego real. */
+const INTERACOES_CTA = `(async () => {
+  const espera = (ms) => new Promise((r) => setTimeout(r, ms));
+  const doisFrames = () => Promise.race([
+    new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r('frames')))),
+    espera(1500).then(() => 'timeout'),
+  ]);
+  const medir = async (acao) => {
+    const t0 = performance.now();
+    acao();
+    const frames = await doisFrames();
+    return { ms: performance.now() - t0, frames };
+  };
+
+  const abrir = await medir(() => document.getElementById('mobileAdd').click());
+  document.getElementById('escalaInicio').value = '2026-08-20T08:00';
+  const chip = [...document.querySelectorAll('#durChips .dur-chip')].find((el) => el.dataset.horas === '14');
+  const duracao = await medir(() => chip.click());
+  const antes = JSON.parse(localStorage.getItem('pmgoEscalas') || '[]').length;
+  const enviar = await medir(() => document.getElementById('btnSubmit').click());
+  await espera(120);
+  const depois = JSON.parse(localStorage.getItem('pmgoEscalas') || '[]').length;
+  return JSON.stringify({
+    abrir, duracao, enviar,
+    adicionou: depois === antes + 1,
+    toastUnico: document.querySelectorAll('#toastRegion > .toast').length <= 1,
+  });
+})()`;
+
 const fmtMs = (n) => `${n.toFixed(1)} ms`;
 const fmtCls = (n) => n.toFixed(4);
 
@@ -299,17 +329,33 @@ try {
       { nome: `Zero long task > ${LIMITE_LONGTASK_MS} ms na interação`, ok: longAcima.length === 0, detalhe: i3.semLongTask ? 'tipo longtask indisponível (não medido)' : `maior: ${fmtMs(maiorLongTask)}` },
     ]);
 
-  /* Cenário 4 — desktop 1280×900 (armazenamento segue preenchido) */
+  /* Cenário 4 — CTAs identificados no Cloudflare RUM */
+  const i4 = await avaliar(INTERACOES_CTA);
+  const checkInteracao = (nome, medida) => ({
+    nome: `${nome} ≤ ${LIMITE_INTERACAO_MS} ms`,
+    ok: medida.frames === 'frames' && medida.ms <= LIMITE_INTERACAO_MS,
+    detalhe: fmtMs(medida.ms),
+  });
+  reportar('Cenário 4 — CTAs críticos do Cloudflare RUM (390×844)', [
+    checkInteracao('Abrir lançamento mobile', i4.abrir),
+    checkInteracao('Selecionar duração rápida', i4.duracao),
+    checkInteracao('Adicionar escala', i4.enviar),
+    { nome: 'Envio persiste exatamente uma escala', ok: i4.adicionou, detalhe: '' },
+    { nome: 'Fila mantém no máximo um toast visível', ok: i4.toastUnico, detalhe: '' },
+  ]);
+
+  /* Cenário 5 — desktop 1280×900 (armazenamento segue preenchido) */
   await viewportDesktop();
+  await avaliar(SEMEAR_ESCALAS);
   await navegar();
   const m4 = await avaliar(MEDICAO_CARGA);
-  reportar('Cenário 4 — desktop (1280×900)', checksCarga(m4, [
+  reportar('Cenário 5 — desktop (1280×900)', checksCarga(m4, [
     { nome: 'Tabela de escalas visível no desktop', ok: m4.tabelaVisivel && m4.linhas === 5, detalhe: `${m4.linhas} linha(s)` },
     { nome: 'launch-panel não é fixed no desktop', ok: !m4.launchPanelFixed, detalhe: m4.launchPanelFixed ? 'position: fixed' : 'ok' },
     { nome: 'Sem overflow horizontal', ok: m4.semOverflowX, detalhe: '' },
   ]));
 
-  /* Cenário 5 — resiliência: erro proposital no init() não pode deixar a tela
+  /* Cenário 6 — resiliência: erro proposital no init() não pode deixar a tela
      presa em app-pending. A sabotagem remove #escalaInicio antes do init rodar
      (o listener injetado registra primeiro), forçando o TypeError; o try/finally
      do DOMContentLoaded deve revelar a aplicação mesmo assim. */
@@ -327,7 +373,7 @@ try {
     });
   })()`);
   await cdp.enviar('Page.removeScriptToEvaluateOnNewDocument', { identifier: idSabotagem }, sessionId);
-  reportar('Cenário 5 — resiliência (erro no init)', [
+  reportar('Cenário 6 — resiliência (erro no init)', [
     { nome: 'Sabotagem aplicada (init falhou de propósito)', ok: m5.sabotado, detalhe: m5.sabotado ? '#escalaInicio removido' : 'sabotagem não surtiu efeito' },
     { nome: 'app-pending não permanece após erro no init', ok: !m5.appPending && m5.appReady, detalhe: m5.appPending ? 'tela presa em app-pending' : 'app-ready' },
   ]);

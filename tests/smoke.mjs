@@ -215,7 +215,7 @@ const ROTEIRO = `(async () => {
   ok('Backup e restauração disponíveis', dlgShare.open && !!document.getElementById('shareBackupOpt') && !!document.getElementById('shareRestoreOpt'));
   const analytics = [...document.scripts].find((s) => s.src === 'https://static.cloudflareinsights.com/beacon.min.js');
   ok('Cloudflare Web Analytics configurado',
-     !!analytics && analytics.dataset.cfBeacon?.includes('3b1137c9d2024604bff681a3d09a202e'));
+     !!analytics && analytics.type === 'module' && analytics.dataset.cfBeacon?.includes('3b1137c9d2024604bff681a3d09a202e'));
   dlgShare.close();
 
   // 5. remoção limpa o estado
