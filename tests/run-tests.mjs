@@ -4,7 +4,7 @@
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join } from 'node:path';
 import { regraNormativaParaData, TABELA_OFICIAL } from '../js/modules/calculo.mjs';
-import { desserializarEscalas, detectarConflitos, STORAGE_SCHEMA_VERSION } from '../js/modules/persistencia.mjs';
+import { desserializarEscalas, detectarConflitos, normalizarEscala, STORAGE_SCHEMA_VERSION } from '../js/modules/persistencia.mjs';
 
 const raiz = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -68,10 +68,12 @@ const validarHardeningV58 = () => {
     { inicio: 'inválido', fim: '2026-07-11T08:00' },
   ]));
   const conflitos = detectarConflitos(valida.escalas, { inicio: '2026-07-10T20:00', fim: '2026-07-11T06:00' });
+  const comStatus = normalizarEscala({ inicio: '2026-08-10T08:00', fim: '2026-08-10T20:00', status: 'recebida' });
   const checks = [
-    [STORAGE_SCHEMA_VERSION === '1', 'schema versionado'],
+    [STORAGE_SCHEMA_VERSION === '2', 'schema versionado'],
     [valida.escalas.length === 1 && valida.rejeitadas === 1, 'registro inválido rejeitado'],
     [valida.escalas[0].id === '10' && valida.escalas[0].qtdPm === 999, 'registro normalizado'],
+    [valida.escalas[0].status === 'planejada' && comStatus.status === 'recebida', 'situação normalizada e legado migrado'],
     [conflitos.sobrepostas.length === 1, 'sobreposição detectada'],
     [regraNormativaParaData('2026-07-01')?.id === TABELA_OFICIAL.id, 'regra selecionada pela vigência'],
     [regraNormativaParaData('2026-06-30') === null, 'data sem norma conhecida não recebe regra'],

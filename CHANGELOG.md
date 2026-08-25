@@ -1,5 +1,16 @@
 # Changelog
 
+## v62 — Planejamento AC4 mobile-first
+
+- Painel mensal compacto com valor estimado, horas, quantidade de escalas e comparação com o mês anterior.
+- Metas opcionais de valor e horas, armazenadas somente no aparelho e separadas por mês.
+- Ciclo de acompanhamento por escala: Planejada, Realizada, Conferida e Recebida.
+- Aviso local para escalas passadas que ainda permanecem como planejadas.
+- Filtro por situação e atalhos de filtro diretamente no painel mensal.
+- Distribuição visual de horas diurnas e noturnas sem bibliotecas externas.
+- PDF, CSV e compartilhamento incluem a situação e respeitam os filtros ativos; o backup também preserva as metas.
+- Migração defensiva do armazenamento para o schema v2, preservando escalas antigas.
+
 ## v61 — Lançamento em segundos
 
 - Formulário progressivo: o fluxo principal mostra só os campos essenciais e mantém término personalizado, unidade e origem em “Mais detalhes”.

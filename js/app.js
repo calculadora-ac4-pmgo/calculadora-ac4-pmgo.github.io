@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Calculadora AC4 — v61
+   Calculadora AC4 — v62
    Módulo principal: estado, UI, persistência e exportações.
    Regras de negócio, formatação e agenda vivem em js/modules/.
    ========================================================================== */
@@ -21,7 +21,7 @@ import {
   gerarLinkOutlookAgenda as gerarLinkOutlookAgendaBase,
 } from './modules/agenda.mjs';
 import {
-  STORAGE_SCHEMA_VERSION, gerarIdEscala, desserializarEscalas, detectarConflitos,
+  STORAGE_SCHEMA_VERSION, STATUS_ESCALA, gerarIdEscala, desserializarEscalas, detectarConflitos,
 } from './modules/persistencia.mjs';
 
 (() => {
@@ -33,7 +33,7 @@ import {
   /* Versão da aplicação (sincronizada pelo tools/bump-version.mjs). Serve para
      carimbar o log de erros e detectar clientes presos em cache antigo:
      se __ac4Version no console divergir do rodapé/CHANGELOG, o SW não atualizou. */
-  const APP_VERSION = '61';
+  const APP_VERSION = '62';
 
   const STORAGE = {
     escalas:   'pmgoEscalas',
@@ -42,6 +42,7 @@ import {
     pwaBanner: 'pmgoPwaBanner',
     pwaVisitas: 'pmgoPwaVisitas',
     modelos:   'pmgoModelos',
+    metas:     'pmgoMetasMensais',
     erros:     'pmgoErros',
     versao:    'pmgoVersion',
     schema:    'pmgoSchemaVersion',
@@ -54,7 +55,9 @@ import {
   let filtroMes = '';
   let filtroOrigem = '';
   let filtroBusca = '';
+  let filtroStatus = '';
   let modelos = [];
+  let metasMensais = {};
   let deferredInstallPrompt = null;
   let mostrarInstalacaoAposConversao = () => {};
   let submetendo = false;
@@ -64,6 +67,13 @@ import {
   const lerLocal = (chave) => { try { return localStorage.getItem(chave); } catch { return null; } };
   const aposProximoPaint = (fn) => requestAnimationFrame(() => requestAnimationFrame(fn));
   const esperarProximoPaint = () => new Promise((resolve) => aposProximoPaint(resolve));
+  const STATUS_INFO = Object.freeze({
+    planejada: { label: 'Planejada', curto: 'Planejadas' },
+    realizada: { label: 'Realizada', curto: 'Realizadas' },
+    conferida: { label: 'Conferida', curto: 'Conferidas' },
+    recebida: { label: 'Recebida', curto: 'Recebidas' },
+  });
+  const statusEscala = (e) => STATUS_ESCALA.includes(e?.status) ? e.status : 'planejada';
 
   function setDetalhesAvancados(aberto) {
     document.querySelectorAll('.advanced-field').forEach((el) => el.classList.toggle('hidden', !aberto));
@@ -157,6 +167,7 @@ import {
       exportadoEm: new Date().toISOString(),
       escalas,
       modelos,
+      metasMensais,
     };
     baixar(`${JSON.stringify(backup, null, 2)}\n`, `backup-calculadora-ac4-v${APP_VERSION}.json`, 'application/json;charset=utf-8');
     toast(`Backup gerado com ${escalas.length} escala${escalas.length === 1 ? '' : 's'}.`);
@@ -176,6 +187,9 @@ import {
       const modelosBackup = !Array.isArray(documento) && Array.isArray(documento?.modelos)
         ? normalizarModelos(documento.modelos)
         : null;
+      const metasBackup = !Array.isArray(documento) && documento?.metasMensais
+        ? normalizarMetas(documento.metasMensais)
+        : null;
       if (!resultado.escalas.length && fonte.length) throw new Error('sem-registros-validos');
       const detalhe = resultado.rejeitadas ? ` ${resultado.rejeitadas} registro(s) inválido(s) serão ignorados.` : '';
       const detalheModelos = modelosBackup ? ` O backup contém ${modelosBackup.length} modelo(s).` : '';
@@ -193,6 +207,11 @@ import {
         modelos = modelosBackup;
         if (!salvarModelos()) modelos = modelosAnteriores;
         renderModelos();
+      }
+      if (metasBackup) {
+        const metasAnteriores = metasMensais;
+        metasMensais = metasBackup;
+        if (!salvarMetas()) metasMensais = metasAnteriores;
       }
       render();
       toast('Backup restaurado com sucesso.');
@@ -274,6 +293,16 @@ import {
       .slice(0, 20)
     : [];
 
+  const normalizarMetas = (fonte) => {
+    if (!fonte || typeof fonte !== 'object' || Array.isArray(fonte)) return {};
+    return Object.fromEntries(Object.entries(fonte).filter(([mes, meta]) => /^\d{4}-\d{2}$/.test(mes)
+      && meta && typeof meta === 'object').map(([mes, meta]) => {
+      const valorCentavos = Math.max(0, Math.min(9_999_999_900, Math.round(Number(meta.valorCentavos) || 0)));
+      const horas = Math.max(0, Math.min(744, Number(meta.horas) || 0));
+      return [mes, { valorCentavos, horas }];
+    }).filter(([, meta]) => meta.valorCentavos > 0 || meta.horas > 0));
+  };
+
   function carregar() {
     Object.entries(VALORES_OFICIAIS).forEach(([id, v]) => { if ($(id)) $(id).value = v; });
     salvarConfig();
@@ -293,6 +322,8 @@ import {
       const salvos = JSON.parse(lerLocal(STORAGE.modelos) || '[]');
       modelos = normalizarModelos(salvos);
     } catch { modelos = []; }
+    try { metasMensais = normalizarMetas(JSON.parse(lerLocal(STORAGE.metas) || '{}')); }
+    catch { metasMensais = {}; }
   }
 
   function salvarModelos() {
@@ -301,6 +332,16 @@ import {
       return true;
     } catch {
       toast('Não foi possível salvar o modelo neste navegador.', { erro: true });
+      return false;
+    }
+  }
+
+  function salvarMetas() {
+    try {
+      localStorage.setItem(STORAGE.metas, JSON.stringify(metasMensais));
+      return true;
+    } catch {
+      toast('Não foi possível salvar a meta neste navegador.', { erro: true });
       return false;
     }
   }
@@ -460,6 +501,7 @@ import {
     let lista = [...escalas].sort((a, b) => (parseDateTimeLocal(a.inicio) || new Date(a.inicio)) - (parseDateTimeLocal(b.inicio) || new Date(b.inicio)));
     if (filtroMes) lista = lista.filter((e) => toInputMonth(parseDateTimeLocal(e.inicio) || new Date(e.inicio)) === filtroMes);
     if (filtroOrigem) lista = lista.filter((e) => (e.origem || 'AC4') === filtroOrigem);
+    if (filtroStatus) lista = lista.filter((e) => statusEscala(e) === filtroStatus);
     if (filtroBusca) {
       const termo = filtroBusca.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR');
       lista = lista.filter((e) => `${e.descricao || ''} ${labelOrigem(e.origem || 'AC4')}`
@@ -694,7 +736,7 @@ import {
         cancelarEdicao();
         toast('Escala atualizada.');
       } else {
-        escalas.push({ id: gerarIdEscala(), ...dados, tabela: tabelaAtual });
+        escalas.push({ id: gerarIdEscala(), ...dados, status: 'planejada', tabela: tabelaAtual });
         if ($('escalaDescricao')) $('escalaDescricao').value = '';
         if ($('escalaQtdPm'))    $('escalaQtdPm').value = '1';
         if ($('escalaOrigem'))   $('escalaOrigem').value = 'AC4';
@@ -1029,6 +1071,137 @@ import {
     if (sel.value !== filtroMes) sel.value = filtroMes;
   }
 
+  const mesPainelAtual = () => {
+    if (filtroMes) return filtroMes;
+    const atual = toInputMonth(new Date());
+    if (escalas.some((e) => toInputMonth(parseDateTimeLocal(e.inicio) || new Date(e.inicio)) === atual)) return atual;
+    const meses = escalas.map((e) => toInputMonth(parseDateTimeLocal(e.inicio) || new Date(e.inicio))).sort();
+    return meses.at(-1) || atual;
+  };
+  const mesAnterior = (mes) => {
+    const [ano, numero] = mes.split('-').map(Number);
+    return toInputMonth(new Date(ano, numero - 2, 1, 12));
+  };
+
+  function resumoPlanejamento(lista) {
+    const resultados = lista.map((e) => calcularEscala(e));
+    return {
+      qtd: lista.length,
+      mins: resultados.reduce((s, r) => s + r.mins, 0),
+      diurno: resultados.reduce((s, r) => s + r.minDiurno, 0),
+      noturno: resultados.reduce((s, r) => s + r.minNoturno, 0),
+      valor: resultados.reduce((s, r, i) => s + r.valorCentavos * (lista[i].qtdPm || 1), 0),
+    };
+  }
+
+  function renderPlanejamento() {
+    const mes = mesPainelAtual();
+    const listaMes = escalas.filter((e) => toInputMonth(parseDateTimeLocal(e.inicio) || new Date(e.inicio)) === mes);
+    const listaAnterior = escalas.filter((e) => toInputMonth(parseDateTimeLocal(e.inicio) || new Date(e.inicio)) === mesAnterior(mes));
+    const atual = resumoPlanejamento(listaMes);
+    const anterior = resumoPlanejamento(listaAnterior);
+    $('planningMonth').textContent = fmtMesRef(mes);
+    $('planningValue').textContent = fmtMoeda(atual.valor);
+    $('planningHours').textContent = `${fmtHoras(atual.mins)} · ${atual.qtd} escala${atual.qtd === 1 ? '' : 's'}`;
+
+    const comparacao = $('planningComparison');
+    comparacao.className = 'planning-comparison';
+    if (!anterior.qtd) {
+      comparacao.textContent = 'Sem dados do mês anterior';
+    } else {
+      const variacao = anterior.valor ? ((atual.valor - anterior.valor) / anterior.valor) * 100 : 0;
+      const sinal = variacao > 0 ? '↑' : variacao < 0 ? '↓' : '→';
+      comparacao.textContent = `${sinal} ${Math.abs(variacao).toFixed(0)}% em relação a ${fmtMesRef(mesAnterior(mes))}`;
+      comparacao.classList.add(variacao > 0 ? 'is-up' : variacao < 0 ? 'is-down' : 'is-flat');
+    }
+
+    const totalHoras = atual.diurno + atual.noturno;
+    const pctDia = totalHoras ? (atual.diurno / totalHoras) * 100 : 50;
+    $('planningDayBar').style.width = `${pctDia}%`;
+    $('planningNightBar').style.width = `${100 - pctDia}%`;
+    $('planningDayLabel').textContent = `Dia ${fmtHoras(atual.diurno)}`;
+    $('planningNightLabel').textContent = `Noite ${fmtHoras(atual.noturno)}`;
+
+    const contagens = Object.fromEntries(STATUS_ESCALA.map((status) => [status, 0]));
+    listaMes.forEach((e) => { contagens[statusEscala(e)] += 1; });
+    $('planningStatusGrid').innerHTML = STATUS_ESCALA.map((status) => `
+      <button class="planning-status planning-status--${status}" type="button" data-status-filter="${status}" aria-label="Filtrar escalas ${STATUS_INFO[status].curto.toLocaleLowerCase('pt-BR')}">
+        <strong>${contagens[status]}</strong><span>${STATUS_INFO[status].curto}</span>
+      </button>`).join('');
+
+    const meta = metasMensais[mes];
+    const progresso = $('planningProgress');
+    progresso.classList.toggle('hidden', !meta);
+    $('btnPlanningGoal').textContent = meta ? 'Editar meta' : 'Definir meta';
+    if (meta) {
+      const metasAtivas = [];
+      const percentuais = [];
+      if (meta.valorCentavos > 0) {
+        metasAtivas.push(fmtMoeda(meta.valorCentavos));
+        percentuais.push((atual.valor / meta.valorCentavos) * 100);
+      }
+      if (meta.horas > 0) {
+        metasAtivas.push(`${String(meta.horas).replace('.', ',')}h`);
+        percentuais.push(((atual.mins / 60) / meta.horas) * 100);
+      }
+      const percentual = Math.max(0, Math.min(100, Math.min(...percentuais)));
+      $('planningProgressLabel').textContent = `Meta: ${metasAtivas.join(' · ')}`;
+      $('planningProgressValue').textContent = `${Math.round(percentual)}%`;
+      $('planningProgressBar').style.width = `${percentual}%`;
+      $('planningProgressTrack').setAttribute('aria-valuenow', String(Math.round(percentual)));
+    }
+
+    const agora = new Date();
+    const atrasadas = listaMes.filter((e) => statusEscala(e) === 'planejada' && (parseDateTimeLocal(e.fim) || new Date(e.fim)) < agora).length;
+    const alerta = $('planningAlert');
+    alerta.classList.toggle('hidden', atrasadas === 0);
+    alerta.textContent = atrasadas
+      ? `${atrasadas} escala${atrasadas === 1 ? '' : 's'} passada${atrasadas === 1 ? '' : 's'} ainda marcada${atrasadas === 1 ? '' : 's'} como planejada${atrasadas === 1 ? '' : 's'}. Revisar`
+      : '';
+  }
+
+  function abrirMetaMensal() {
+    const mes = mesPainelAtual();
+    const meta = metasMensais[mes] || {};
+    $('planningGoalMonth').textContent = fmtMesRef(mes);
+    $('planningGoalValue').value = meta.valorCentavos ? (meta.valorCentavos / 100).toFixed(2) : '';
+    $('planningGoalHours').value = meta.horas || '';
+    $('planningGoalClear').classList.toggle('hidden', !metasMensais[mes]);
+    $('dialogPlanningGoal')?.showModal();
+  }
+
+  function salvarMetaMensal() {
+    const mes = mesPainelAtual();
+    const valorCentavos = Math.max(0, Math.round(Number($('planningGoalValue')?.value || 0) * 100));
+    const horas = Math.max(0, Math.min(744, Number($('planningGoalHours')?.value || 0)));
+    if (!valorCentavos && !horas) delete metasMensais[mes];
+    else metasMensais[mes] = { valorCentavos, horas };
+    if (!salvarMetas()) return false;
+    $('dialogPlanningGoal')?.close();
+    renderPlanejamento();
+    toast(valorCentavos || horas ? 'Meta mensal salva neste aparelho.' : 'Meta mensal removida.');
+    return true;
+  }
+
+  function removerMetaMensal() {
+    delete metasMensais[mesPainelAtual()];
+    if (!salvarMetas()) return;
+    $('dialogPlanningGoal')?.close();
+    renderPlanejamento();
+    toast('Meta mensal removida.');
+  }
+
+  function atualizarStatusEscala(id, status) {
+    if (!STATUS_ESCALA.includes(status)) return;
+    const escala = escalas.find((e) => String(e.id) === String(id));
+    if (!escala || statusEscala(escala) === status) return;
+    const anterior = statusEscala(escala);
+    escala.status = status;
+    if (!salvar()) { escala.status = anterior; render(); return; }
+    render();
+    toast(`Escala marcada como ${STATUS_INFO[status].label.toLocaleLowerCase('pt-BR')}.`);
+  }
+
   /* ------------------------------------------------------- compartilhar */
   function gerarTextoResumo() {
     const lista = escalasOrdenadas();
@@ -1075,6 +1248,7 @@ import {
       const unidStr = e.descricao && e.descricao !== 'Escala AC4' ? e.descricao : '—';
       const oriStr  = (e.origem || 'AC4').replace('CONVENIO_', 'Conv. ').replace('FAZENDARIO_SEC_ECON', 'Fazendário/Sec.Econ.');
       texto += `📍 Unidade: ${unidStr}  |  Origem: ${oriStr}\n`;
+      texto += `📌 Situação: ${STATUS_INFO[statusEscala(e)].label}\n`;
 
       if (qtd > 1) {
         texto += `👮 ${qtd} PMs  ·  ${fmtMoeda(r.valorCentavos)}/PM\n`;
@@ -1224,6 +1398,16 @@ import {
       .join('-');
   const fmtMoedaLinha = (centavos) => fmtMoeda(centavos).replace(/\u00a0/g, ' ');
 
+  const seletorStatusHTML = (e, classe = '') => {
+    const atual = statusEscala(e);
+    return `<label class="status-control ${classe}">
+      <span class="sr-only">Situação da escala</span>
+      <select class="status-select status-select--${atual}" data-status-id="${escapeHTML(String(e.id))}" aria-label="Situação da escala">
+        ${STATUS_ESCALA.map((status) => `<option value="${status}"${status === atual ? ' selected' : ''}>${STATUS_INFO[status].label}</option>`).join('')}
+      </select>
+    </label>`;
+  };
+
   const botoesCardMobileHTML = (id) => `
     <div class="ec-card-actions" aria-label="Ações da escala">
       <button class="ec-action-btn" data-acao="editar" data-id="${id}" type="button">
@@ -1269,6 +1453,7 @@ import {
             : `<div class="ec-qtd">${rotuloQuantidadePm(qtd)}</div>
                <div class="ec-per-pm">${fmtMoedaLinha(r.valorCentavos)} por PM</div>
                <div class="ec-total">TOTAL ${fmtMoedaLinha(valorTotal)}</div>`}
+          ${seletorStatusHTML(e, 'ec-status')}
         </div>
         ${botoesCardMobileHTML(e.id)}
       </div>`;
@@ -1293,7 +1478,7 @@ import {
     $('pctDiurnas').textContent  = totMins ? `${((totDiurno  / totMins) * 100).toFixed(1).replace('.', ',')}% do total` : '0% do total';
     $('pctNoturnas').textContent = totMins ? `${((totNoturno / totMins) * 100).toFixed(1).replace('.', ',')}% do total` : '0% do total';
 
-    const filtrosAtivos = !!(filtroMes || filtroOrigem || filtroBusca);
+    const filtrosAtivos = !!(filtroMes || filtroOrigem || filtroBusca || filtroStatus);
     const sufixo = filtroMes ? ` em ${fmtMesRef(filtroMes)}` : ' no período';
     $('totQtd').textContent = `${lista.length} escala${lista.length === 1 ? '' : 's'}${sufixo}`;
     /* Resumo compacto do card de Valor (mobile): "96h · 8 escalas" */
@@ -1302,6 +1487,7 @@ import {
     }
     $('btnClearAll').classList.toggle('hidden', escalas.length === 0);
     $('btnRepeatLast')?.classList.toggle('hidden', escalas.length === 0);
+    renderPlanejamento();
 
     const container = $('listaEscalas');
     if (!lista.length) {
@@ -1322,7 +1508,7 @@ import {
         <table class="escala-table">
           <thead><tr>
             <th>Dia</th><th>Data</th><th>Início</th><th>Término</th>
-            <th>Tipo</th><th>Horas</th><th>Valor</th><th>Ações</th>
+            <th>Tipo</th><th>Situação</th><th>Horas</th><th>Valor</th><th>Ações</th>
           </tr></thead>
           <tbody>`;
 
@@ -1350,6 +1536,7 @@ import {
           <td data-label="Início">${fmtHora(e.inicio)}</td>
           <td data-label="Término">${fimStr}</td>
           <td data-label="Tipo"><div class="chips">${tipoChips.join('')}</div></td>
+          <td data-label="Situação">${seletorStatusHTML(e, 'table-status')}</td>
           <td data-label="Horas">${fmtHoras(r.mins)}</td>
           <td data-label="Valor" class="value-cell">${fmtMoeda(valorTotal)}${qtd > 1 ? `<span class="table-note">${fmtMoeda(r.valorCentavos)}/PM</span>` : ''}</td>
           <td data-label="Ações">${botoesAcaoHTML(e.id)}</td>
@@ -1360,7 +1547,7 @@ import {
       html += `
         <tfoot>
           <tr class="table-total-row">
-            <td colspan="5">Total geral (${lista.length} escalas)</td>
+            <td colspan="6">Total geral (${lista.length} escalas)</td>
             <td>${fmtHoras(totMins)}</td>
             <td class="value-cell">${fmtMoeda(totValor)}</td>
             <td></td>
@@ -1410,6 +1597,7 @@ import {
       const fimStr   = mesmodia ? fmtHora(e.fim) : `${fmtData(e.fim)} ${fmtHora(e.fim)}`;
       const unidade  = e.descricao && e.descricao !== 'Escala AC4' ? escapeHTML(e.descricao) : '—';
       const origem   = escapeHTML(labelOrigem(e.origem));
+      const situacao = STATUS_INFO[statusEscala(e)].label;
       const valorCell = qtd > 1
         ? `${fmtMoeda(valor)}<small>${fmtMoeda(r.valorCentavos)}/PM</small>`
         : fmtMoeda(valor);
@@ -1423,6 +1611,7 @@ import {
           <td class="pr-center">${fmtHoras(r.mins)}</td>
           <td>${unidade}</td>
           <td>${origem}</td>
+          <td>${situacao}</td>
           <td class="pr-center">${fmtHoras(r.minDiurno)}</td>
           <td class="pr-center">${fmtHoras(r.minNoturno)}</td>
           <td class="pr-valor">${valorCell}</td>
@@ -1432,7 +1621,7 @@ import {
     const totalRow = lista.length > 1 ? `
       <tfoot>
         <tr class="pr-total-row">
-          <td colspan="8">TOTAL GERAL</td>
+          <td colspan="9">TOTAL GERAL</td>
           <td class="pr-center">${fmtHoras(totDiurno)}</td>
           <td class="pr-center">${fmtHoras(totNoturno)}</td>
           <td class="pr-valor">${fmtMoeda(totValor)}</td>
@@ -1445,7 +1634,7 @@ import {
           <tr>
             <th>N.º</th><th>Dia</th><th>Data</th><th>Início</th>
             <th>Término</th><th>Duração</th><th>Unidade</th>
-            <th>Origem Remunerado</th><th>H. Diurnas</th>
+            <th>Origem Remunerado</th><th>Situação</th><th>H. Diurnas</th>
             <th>H. Noturnas</th><th>Valor Estimado</th>
           </tr>
         </thead>
@@ -1567,7 +1756,7 @@ import {
     /* Campos de texto livre passam por csvTextoSeguro antes das aspas —
        impede que "=..." digitado na Unidade vire fórmula no Excel. */
     const celTexto = (s) => `"${csvTextoSeguro(s).replace(/"/g, '""')}"`;
-    const linhas = [['Unidade', 'Origem', 'Início', 'Término', 'Qtd. PM', 'Horas', 'H. diurnas', 'H. noturnas', 'Portaria', 'Valor/PM (R$)', 'Valor total (R$)'].join(sep)];
+    const linhas = [['Unidade', 'Origem', 'Situação', 'Início', 'Término', 'Qtd. PM', 'Horas', 'H. diurnas', 'H. noturnas', 'Portaria', 'Valor/PM (R$)', 'Valor total (R$)'].join(sep)];
     let total = 0;
     lista.forEach((e) => {
       const r = calcularEscala(e);
@@ -1577,6 +1766,7 @@ import {
       linhas.push([
         celTexto(e.descricao || 'Escala AC4'),
         celTexto(e.origem || 'AC4'),
+        celTexto(STATUS_INFO[statusEscala(e)].label),
         fmtDataHora(e.inicio), fmtDataHora(e.fim),
         qtd,
         (r.mins / 60).toFixed(2).replace('.', ','),
@@ -1587,7 +1777,7 @@ import {
         num(valorTotal),
       ].join(sep));
     });
-    linhas.push(['TOTAL', '', '', '', '', '', '', '', '', '', num(total)].join(sep));
+    linhas.push(['TOTAL', '', '', '', '', '', '', '', '', '', '', num(total)].join(sep));
     baixar('﻿' + linhas.join('\r\n'), 'escalas-ac4.csv', 'text/csv;charset=utf-8');
     toast('Planilha CSV gerada.');
   }
@@ -1753,6 +1943,34 @@ import {
       toast(`Modelo “${modelo.nome}” aplicado.`);
     });
     on('btnDeleteTemplate', 'click', excluirModeloSelecionado);
+    on('btnPlanningGoal', 'click', abrirMetaMensal);
+    on('planningToggle', 'click', () => {
+      const painel = document.querySelector('.planning-panel');
+      const aberto = !painel?.classList.contains('is-expanded');
+      painel?.classList.toggle('is-expanded', aberto);
+      $('planningToggle')?.setAttribute('aria-expanded', aberto ? 'true' : 'false');
+      const texto = $('planningToggle')?.querySelector('span');
+      if (texto) texto.textContent = aberto ? 'Ocultar detalhes do mês' : 'Ver detalhes do mês';
+    });
+    on('planningGoalCancel', 'click', () => $('dialogPlanningGoal')?.close());
+    on('planningGoalClear', 'click', removerMetaMensal);
+    on('planningGoalForm', 'submit', (ev) => { ev.preventDefault(); salvarMetaMensal(); });
+    on('planningStatusGrid', 'click', (ev) => {
+      const btn = ev.target.closest('[data-status-filter]');
+      if (!btn) return;
+      filtroStatus = btn.dataset.statusFilter || '';
+      if ($('filtroStatus')) $('filtroStatus').value = filtroStatus;
+      render();
+      document.querySelector('.feed')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    on('planningAlert', 'click', () => {
+      filtroMes = mesPainelAtual();
+      filtroStatus = 'planejada';
+      if ($('filtroMes')) $('filtroMes').value = filtroMes;
+      if ($('filtroStatus')) $('filtroStatus').value = filtroStatus;
+      render();
+      document.querySelector('.feed')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
 
     on('btnTheme', 'click', () =>
       aplicarTema(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'));
@@ -1810,6 +2028,7 @@ import {
     on('btnClearAll', 'click', limparTudo);
     on('filtroMes', 'change', () => { filtroMes = $('filtroMes')?.value || ''; render(); });
     on('filtroOrigem', 'change', () => { filtroOrigem = $('filtroOrigem')?.value || ''; render(); });
+    on('filtroStatus', 'change', () => { filtroStatus = $('filtroStatus')?.value || ''; render(); });
     on('filtroBusca', 'input', () => { filtroBusca = ($('filtroBusca')?.value || '').trim(); render(); });
 
     const aplicarDuracao = () => {
@@ -1898,6 +2117,10 @@ import {
       else if (btn.dataset.acao === 'duplicar')  duplicarEscala(id);
       else if (btn.dataset.acao === 'agenda')    agendarEscalaItem(id);
       btn.closest('details')?.removeAttribute('open');
+    });
+    on('listaEscalas', 'change', (ev) => {
+      const select = ev.target.closest('[data-status-id]');
+      if (select) atualizarStatusEscala(select.dataset.statusId, select.value);
     });
 
     document.addEventListener('keydown', (e) => {

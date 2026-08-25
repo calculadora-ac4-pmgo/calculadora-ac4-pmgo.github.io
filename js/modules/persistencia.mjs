@@ -4,7 +4,8 @@
 import { formatarDataHoraInput, validarIntervaloEscala } from './formato.mjs';
 import { tabelaEscalaValida } from './calculo.mjs';
 
-export const STORAGE_SCHEMA_VERSION = '1';
+export const STORAGE_SCHEMA_VERSION = '2';
+export const STATUS_ESCALA = Object.freeze(['planejada', 'realizada', 'conferida', 'recebida']);
 
 export function gerarIdEscala() {
   if (globalThis.crypto && typeof globalThis.crypto.randomUUID === 'function') {
@@ -32,6 +33,7 @@ export function normalizarEscala(item) {
 
   const qtd = Number.parseInt(item.qtdPm, 10);
   const tabela = normalizarTabela(item.tabela);
+  const status = STATUS_ESCALA.includes(item.status) ? item.status : 'planejada';
   return {
     id: item.id == null || item.id === '' ? gerarIdEscala() : String(item.id).slice(0, 120),
     inicio: formatarDataHoraInput(intervalo.inicio),
@@ -39,6 +41,7 @@ export function normalizarEscala(item) {
     descricao: String(item.descricao || 'Escala AC4').trim().slice(0, 80) || 'Escala AC4',
     origem: String(item.origem || 'AC4').slice(0, 40) || 'AC4',
     qtdPm: Number.isFinite(qtd) ? Math.min(999, Math.max(1, qtd)) : 1,
+    status,
     ...(tabela ? { tabela } : {}),
   };
 }
