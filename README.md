@@ -59,7 +59,7 @@ Os dados das escalas são armazenados somente no navegador do usuário.
 - As escalas lançadas, as configurações e a preferência de tema ficam em `localStorage` e **persistem** após fechar a aba ou o aplicativo.
 - A aplicação **não solicita nem armazena dados pessoais** (nome, RG, CPF, matrícula ou similares), em conformidade com a LGPD.
 - Nenhuma escala, valor ou configuração é enviada para servidor.
-- O site **não carrega scripts de analytics ou rastreamento de terceiros**.
+- O site utiliza **Cloudflare Web Analytics**, sem cookies e sem rastreamento individual, para estatísticas agregadas de acesso. A ferramenta não recebe escalas, valores ou configurações digitadas na calculadora.
 - Os dados locais podem ser perdidos ao limpar os dados do navegador ou ao usar modo anônimo/privado.
 
 ## Estrutura do projeto
