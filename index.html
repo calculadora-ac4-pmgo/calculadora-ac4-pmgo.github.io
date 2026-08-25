@@ -5,8 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Calculadora AC4</title>
   <meta name="description" content="Calculadora de escalas AC4 para simulação de horas diurnas, horas noturnas, valor estimado, exportação para agenda e relatório em PDF.">
+  <meta name="referrer" content="no-referrer">
   <meta name="theme-color" content="#0b1f3a">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://cloudflareinsights.com https://static.cloudflareinsights.com; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="assets/icon-192.png">
@@ -14,13 +15,13 @@
   <!-- Preload da fonte principal — reduz reflow/CLS do font-swap da Inter -->
   <link rel="preload" href="assets/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 
-  <link rel="stylesheet" href="css/styles.css?v=57">
-  <script src="js/theme.js?v=57"></script>
+  <link rel="stylesheet" href="css/styles.css?v=58">
+  <script src="js/theme.js?v=58"></script>
 </head>
 <body>
 
   <noscript>
-    <p style="padding:16px;text-align:center;background:#fee2e2;color:#7f1d1d;font-weight:600">
+    <p class="noscript-warning">
       A Calculadora AC4 precisa de JavaScript habilitado no navegador para funcionar.
     </p>
   </noscript>
@@ -150,7 +151,7 @@
     </section>
 
     <!-- Backdrop do bottom sheet mobile (inerte no desktop) -->
-    <div class="mobile-launch-backdrop" id="mobileLaunchBackdrop"></div>
+    <div class="mobile-launch-backdrop" id="mobileLaunchBackdrop" aria-hidden="true"></div>
 
     <!-- CARD: Lançar Escala -->
     <section class="panel launch-panel" id="launchPanel" aria-labelledby="formTitle">
@@ -179,18 +180,18 @@
 
               <div class="field" id="fieldInicio">
                 <label for="escalaInicio"><span class="field-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg></span>Início</label>
-                <input type="datetime-local" class="control" id="escalaInicio" required aria-required="true">
+                <input type="datetime-local" class="control" id="escalaInicio" required aria-required="true" aria-describedby="inicioErro">
                 <div class="mobile-datetime" aria-label="Início da escala">
                   <label class="mobile-datetime-part" for="escalaInicioData">
                     <span>Data</span>
-                    <input type="date" class="control" id="escalaInicioData" inputmode="numeric">
+                    <input type="date" class="control" id="escalaInicioData" inputmode="numeric" aria-describedby="inicioErro">
                   </label>
                   <label class="mobile-datetime-part" for="escalaInicioHora">
                     <span>Hora</span>
-                    <input type="time" class="control" id="escalaInicioHora" inputmode="numeric" step="60">
+                    <input type="time" class="control" id="escalaInicioHora" inputmode="numeric" step="60" aria-describedby="inicioErro">
                   </label>
                 </div>
-                <p class="field-error" role="alert">Informe a data e hora de início.</p>
+                <p class="field-error" id="inicioErro" role="alert">Informe a data e hora de início.</p>
               </div>
 
               <div class="field" id="fieldDuracao">
@@ -211,18 +212,18 @@
 
               <div class="field" id="fieldFim">
                 <label for="escalaFim"><span class="field-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg></span>Término<span class="auto-tag"> (automático)</span></label>
-                <input type="datetime-local" class="control" id="escalaFim" required aria-required="true">
+                <input type="datetime-local" class="control" id="escalaFim" required aria-required="true" aria-describedby="fimErro fimResumo">
                 <div class="mobile-datetime" aria-label="Término da escala">
                   <label class="mobile-datetime-part" for="escalaFimData">
                     <span>Data</span>
-                    <input type="date" class="control" id="escalaFimData" inputmode="numeric">
+                    <input type="date" class="control" id="escalaFimData" inputmode="numeric" aria-describedby="fimErro fimResumo">
                   </label>
                   <label class="mobile-datetime-part" for="escalaFimHora">
                     <span>Hora</span>
-                    <input type="time" class="control" id="escalaFimHora" inputmode="numeric" step="60">
+                    <input type="time" class="control" id="escalaFimHora" inputmode="numeric" step="60" aria-describedby="fimErro fimResumo">
                   </label>
                 </div>
-                <p class="field-error" role="alert">O término deve ser depois do início.</p>
+                <p class="field-error" id="fimErro" role="alert">O término deve ser depois do início.</p>
                 <!-- Espelho legível do término: alguns navegadores mobile não
                      repintam o datetime-local quando o valor é definido por JS -->
                 <p class="fim-auto" id="fimResumo"></p>
@@ -293,7 +294,7 @@
                   <span id="btnSubmitLabel">Adicionar escala</span>
                   <span class="submit-result hidden" id="btnSubmitResult"></span>
                 </button>
-                <button type="button" class="btn btn-ghost btn-block hidden" id="btnCancelEdit" style="margin-top:8px">Cancelar edição</button>
+                <button type="button" class="btn btn-ghost btn-block btn-cancel-edit hidden" id="btnCancelEdit">Cancelar edição</button>
               </div>
 
             </div>
@@ -350,7 +351,7 @@
         &copy; <span class="footer-year"></span> Weliton Pinheiro &mdash; Todos os direitos reservados.
       </p>
       <p class="site-footer-meta">
-        Calculadora AC4 &middot; PMGO &middot; v57 &middot;
+        Calculadora AC4 &middot; PMGO &middot; v58 &middot;
         <a href="#" id="footerPrivacidade" class="footer-link">Privacidade</a> &middot;
         <a href="#" id="footerFeedback" class="footer-link">Feedback</a> &middot;
         <a href="https://github.com/calculadora-ac4-pmgo" target="_blank" rel="noopener noreferrer" class="footer-link">GitHub</a>
@@ -390,7 +391,7 @@
       <div class="privacidade-texto">
         <p>A Calculadora AC4 <strong>não solicita nem armazena dados pessoais</strong> (nome, RG, CPF, matrícula ou similares), em conformidade com a LGPD.</p>
         <p>As escalas lançadas ficam gravadas <strong>somente neste navegador</strong> (localStorage) e nunca são enviadas a servidor. Relatórios, planilhas e eventos de agenda são gerados no próprio aparelho, por ação sua.</p>
-        <p>O site usa Cloudflare Web Analytics, uma métrica agregada <strong>sem cookies e sem rastreamento individual</strong> — sem acesso a nada que você digita.</p>
+        <p>O site <strong>não carrega scripts de analytics ou rastreamento de terceiros</strong>.</p>
         <p>Os dados locais são apagados ao limpar os dados do navegador.</p>
       </div>
       <div class="dialog-actions">
@@ -462,7 +463,7 @@
           </span>
           <span>WhatsApp</span>
         </button>
-        <button class="share-opt" id="shareNative" style="display:none">
+        <button class="share-opt hidden" id="shareNative">
           <span class="share-icon share-icon-native">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="28" height="28">
               <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
@@ -504,6 +505,22 @@
           </span>
           <span>PDF</span>
         </button>
+        <button class="share-opt" id="shareBackupOpt">
+          <span class="share-icon share-icon-copy">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="28" height="28">
+              <path d="M12 3v12m0 0-4-4m4 4 4-4"/><path d="M5 21h14a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2"/>
+            </svg>
+          </span>
+          <span>Backup</span>
+        </button>
+        <button class="share-opt" id="shareRestoreOpt">
+          <span class="share-icon share-icon-copy">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="28" height="28">
+              <path d="M12 21V9m0 0-4 4m4-4 4 4"/><path d="M5 3h14a2 2 0 0 1 2 2v3M3 8V5a2 2 0 0 1 2-2"/>
+            </svg>
+          </span>
+          <span>Restaurar</span>
+        </button>
         <button class="share-opt hidden" id="shareInstallOpt">
           <span class="share-icon share-icon-install">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="28" height="28">
@@ -514,6 +531,7 @@
           <span>Instalar</span>
         </button>
       </div>
+      <input type="file" id="restoreInput" class="hidden" accept="application/json,.json" aria-label="Selecionar backup JSON">
     </div>
   </dialog>
 
@@ -529,7 +547,7 @@
     </div>
   </dialog>
 
-  <script type="module" src="js/app.js?v=57"></script>
+  <script type="module" src="js/app.js?v=58"></script>
 
   <!-- Relatório profissional de impressão — populado pelo JS antes de window.print() -->
   <section id="printReport">
@@ -562,8 +580,5 @@
     </footer>
   </section>
 
-  <!-- Cloudflare Web Analytics -->
-  <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "3b1137c9d2024604bff681a3d09a202e"}'></script>
-  <!-- End Cloudflare Web Analytics -->
 </body>
 </html>

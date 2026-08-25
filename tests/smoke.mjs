@@ -208,6 +208,15 @@ const ROTEIRO = `(async () => {
      JSON.stringify(erros[0] || {}));
   window.__ac4LimparErros();
 
+  // 4f. hardening v58: backup/restauração disponíveis e nenhum analytics externo
+  document.getElementById('btnShare').click();
+  await espera(100);
+  const dlgShare = document.getElementById('dialogShare');
+  ok('Backup e restauração disponíveis', dlgShare.open && !!document.getElementById('shareBackupOpt') && !!document.getElementById('shareRestoreOpt'));
+  ok('Privacidade: nenhum script de analytics externo',
+     ![...document.scripts].some((s) => /^https?:/.test(s.src) && new URL(s.src).origin !== location.origin));
+  dlgShare.close();
+
   // 5. remoção limpa o estado
   document.querySelector('#listaEscalas [data-acao="remover"]').click();
   await espera(300);

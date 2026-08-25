@@ -1,0 +1,22 @@
+{
+  "name": "calculadora-ac4-pmgo",
+  "version": "58.0.0",
+  "private": true,
+  "description": "Calculadora AC4 — aplicação web estática/PWA para simulação e conferência preliminar.",
+  "engines": {
+    "node": ">=22 <25"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "test:unit": "node tests/run-tests.mjs",
+    "test:smoke": "node tests/smoke.mjs",
+    "test:mobile": "node tests/mobile-check.mjs",
+    "test:mobile-v55": "node tests/mobile-v55-check.mjs",
+    "test:vitals": "node tests/web-vitals-check.mjs",
+    "test": "npm run test:unit && npm run test:smoke && npm run test:mobile && npm run test:mobile-v55 && npm run test:vitals",
+    "verify": "npm run lint && npm test"
+  },
+  "devDependencies": {
+    "eslint": "10.9.1"
+  }
+}

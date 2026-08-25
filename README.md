@@ -59,7 +59,7 @@ Os dados das escalas são armazenados somente no navegador do usuário.
 - As escalas lançadas, as configurações e a preferência de tema ficam em `localStorage` e **persistem** após fechar a aba ou o aplicativo.
 - A aplicação **não solicita nem armazena dados pessoais** (nome, RG, CPF, matrícula ou similares), em conformidade com a LGPD.
 - Nenhuma escala, valor ou configuração é enviada para servidor.
-- O site utiliza **Cloudflare Web Analytics**, uma ferramenta de métricas **sem cookies e sem rastreamento individual**: são coletadas apenas estatísticas agregadas de acesso (como número de visitas e tipo de navegador), sem identificar o usuário e sem acesso a qualquer dado lançado na calculadora.
+- O site **não carrega scripts de analytics ou rastreamento de terceiros**.
 - Os dados locais podem ser perdidos ao limpar os dados do navegador ou ao usar modo anônimo/privado.
 
 ## Estrutura do projeto
@@ -69,7 +69,7 @@ index.html            página única da aplicação
 404.html              página de erro para URLs inexistentes
 css/styles.css        estilos, temas, componentes e regras de impressão
 js/app.js             estado, interface, PWA e exportações
-js/modules/           regras puras: calculo.mjs (tarifas), formato.mjs (datas), agenda.mjs (.ics/links)
+js/modules/           regras puras: cálculo, datas, agenda e persistência defensiva
 js/theme.js           aplicação do tema antes do primeiro paint
 sw.js                 service worker para funcionamento offline
 manifest.webmanifest  manifesto PWA
@@ -102,6 +102,7 @@ A aplicação oferece recursos de exportação para apoiar conferência e organi
 - `.ics`: arquivo de calendário compatível com aplicações como Google Calendar, Outlook e similares.
 - `.csv`: planilha simples para abertura em Excel, Google Sheets ou ferramentas equivalentes.
 - PDF: relatório gerado pela função de impressão ou salvamento em PDF do navegador, com layout otimizado para A4.
+- JSON: backup versionado para restauração das escalas no próprio navegador.
 
 As exportações refletem os dados informados e calculados no navegador, mantendo o caráter de simulação e conferência preliminar.
 
@@ -110,11 +111,13 @@ As exportações refletem os dados informados e calculados no navegador, mantend
 Os testes de regressão e o lint são executados **automaticamente no CI** em cada push na `main` e em cada pull request — o deploy só ocorre se todos passarem. Para rodar localmente:
 
 ```sh
-npx --yes eslint@9 .      # lint (no-undef e afins; sem dependências no repo)
+npm ci                    # instala exatamente as versões do package-lock.json
+npm run lint              # lint
 node tests/run-tests.mjs  # regras de cálculo + CSV/invariantes + geração .ics
 node tests/smoke.mjs      # fluxo E2E em Chrome headless (18 passos, inclui PDF real)
 node tests/mobile-check.mjs
 node tests/mobile-v55-check.mjs
+node tests/web-vitals-check.mjs
 ```
 
 As suítes puras também estão disponíveis no console do navegador:

@@ -8,8 +8,6 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 # Por ref: PRs não disputam a fila de deploy; pushes na main seguem serializados.
 concurrency:
@@ -19,17 +17,25 @@ concurrency:
 jobs:
   test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: 22
+          node-version: 22.22.0
+          cache: npm
 
-      - name: Lint (ESLint — no-undef e afins; sem dependências no repo)
-        run: npx --yes eslint@9 .
+      - name: Instalar dependências reproduzíveis
+        run: npm ci --ignore-scripts
+
+      - name: Lint
+        run: npm run lint
 
       - name: Testes de regressão (cálculo AC4 e .ics)
         run: node tests/run-tests.mjs
@@ -51,15 +57,21 @@ jobs:
     # PRs só testam — deploy acontece apenas em push na main / dispatch manual.
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
       - name: Setup Pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
 
       - name: Montar artefato público (só os arquivos do app — sem docs, tests e tools)
         run: |
@@ -67,13 +79,14 @@ jobs:
           rsync -a --exclude '.git*' --exclude '_site' \
             --exclude 'docs' --exclude 'tests' --exclude 'tools' \
             --exclude 'eslint.config.mjs' --exclude 'node_modules' \
+            --exclude 'package*.json' --exclude '*.md' \
             ./ _site/
 
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3
         with:
           path: _site
 
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4

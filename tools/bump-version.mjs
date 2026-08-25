@@ -17,6 +17,7 @@ const alvos = [
   { arquivo: 'sw.js',          regras: [[/ac4-v\d+/g, `ac4-v${nova}`], [/\?v=\d+/g, `?v=${nova}`]] },
   { arquivo: 'js/app.js',      regras: [[/Calculadora AC4 — v\d+/g, `Calculadora AC4 — v${nova}`], [/const APP_VERSION = '\d+'/g, `const APP_VERSION = '${nova}'`]] },
   { arquivo: 'css/styles.css', regras: [[/Calculadora AC4 — v\d+/g, `Calculadora AC4 — v${nova}`]] },
+  { arquivo: 'package.json',   regras: [[/"version": "\d+\.0\.0"/g, `"version": "${nova}.0.0"`]] },
 ];
 
 alvos.forEach(({ arquivo, regras }) => {

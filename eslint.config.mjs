@@ -15,6 +15,7 @@ const BROWSER = {
   setTimeout: 'readonly', clearTimeout: 'readonly', setInterval: 'readonly', clearInterval: 'readonly',
   console: 'readonly', matchMedia: 'readonly', Image: 'readonly',
   TextEncoder: 'readonly', TextDecoder: 'readonly', btoa: 'readonly', atob: 'readonly',
+  crypto: 'readonly',
   Event: 'readonly', ErrorEvent: 'readonly', CustomEvent: 'readonly',
   requestAnimationFrame: 'readonly', cancelAnimationFrame: 'readonly',
   getComputedStyle: 'readonly', alert: 'readonly', confirm: 'readonly', prompt: 'readonly',
@@ -32,6 +33,7 @@ const NODE = {
   setTimeout: 'readonly', clearTimeout: 'readonly',
   TextEncoder: 'readonly', TextDecoder: 'readonly', WebSocket: 'readonly',
   fetch: 'readonly', btoa: 'readonly', atob: 'readonly', Event: 'readonly', ErrorEvent: 'readonly',
+  crypto: 'readonly',
 };
 
 const REGRAS = {
