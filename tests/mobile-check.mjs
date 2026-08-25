@@ -133,6 +133,17 @@ const ROTEIRO_MOBILE = `(async () => {
   const tema = rect('#btnTheme');
   ok('Botão de tema ≥ 44px', tema && tema.width >= 44 && tema.height >= 44, tema && Math.round(tema.width) + '×' + Math.round(tema.height));
 
+  // 3b. novidades em bottom sheet, sem prejudicar a navegação mobile
+  document.getElementById('footerNovidades').click();
+  await espera(350);
+  const novidades = rect('#dialogNovidades');
+  const acaoNovidades = rect('#novidadesExplorar');
+  ok('Novidades usa bottom sheet ajustado ao celular',
+     novidades && Math.abs(novidades.width - window.innerWidth) <= 1 && Math.abs(novidades.bottom - window.innerHeight) <= 1,
+     novidades && Math.round(novidades.width) + '×' + Math.round(novidades.height) + ' · base ' + Math.round(novidades.bottom) + '/' + window.innerHeight);
+  ok('Ação principal das novidades possui alvo ≥ 44px', acaoNovidades && acaoNovidades.height >= 44);
+  document.getElementById('novidadesEntendi').click();
+
   // 4. card da escala: leitura confortável e ações tocáveis
   const cardEscala = rect('#listaEscalas .escala-card');
   ok('Card da escala visível e confortável', cardEscala && cardEscala.height >= 124, cardEscala && Math.round(cardEscala.height) + 'px');

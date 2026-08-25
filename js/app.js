@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Calculadora AC4 — v62
+   Calculadora AC4 — v63
    Módulo principal: estado, UI, persistência e exportações.
    Regras de negócio, formatação e agenda vivem em js/modules/.
    ========================================================================== */
@@ -33,7 +33,7 @@ import {
   /* Versão da aplicação (sincronizada pelo tools/bump-version.mjs). Serve para
      carimbar o log de erros e detectar clientes presos em cache antigo:
      se __ac4Version no console divergir do rodapé/CHANGELOG, o SW não atualizou. */
-  const APP_VERSION = '62';
+  const APP_VERSION = '63';
 
   const STORAGE = {
     escalas:   'pmgoEscalas',
@@ -45,6 +45,7 @@ import {
     metas:     'pmgoMetasMensais',
     erros:     'pmgoErros',
     versao:    'pmgoVersion',
+    novidades: 'pmgoNovidadesVistas',
     schema:    'pmgoSchemaVersion',
   };
 
@@ -58,6 +59,7 @@ import {
   let filtroStatus = '';
   let modelos = [];
   let metasMensais = {};
+  let versaoAnterior = null;
   let deferredInstallPrompt = null;
   let mostrarInstalacaoAposConversao = () => {};
   let submetendo = false;
@@ -453,12 +455,46 @@ import {
        comparação com a versão anterior detecta se o SW acabou de atualizar. */
     window.__ac4Version = APP_VERSION;
     try {
-      const anterior = localStorage.getItem(STORAGE.versao);
-      if (anterior !== APP_VERSION) {
+      versaoAnterior = localStorage.getItem(STORAGE.versao);
+      if (versaoAnterior !== APP_VERSION) {
         localStorage.setItem(STORAGE.versao, APP_VERSION);
-        if (anterior) console.info(`Calculadora AC4 atualizada: v${anterior} → v${APP_VERSION}`);
+        if (versaoAnterior) console.info(`Calculadora AC4 atualizada: v${versaoAnterior} → v${APP_VERSION}`);
       }
     } catch {}
+  }
+
+  /* ---------------------------------------- novidades da versão */
+  function marcarNovidadesVistas() {
+    try { localStorage.setItem(STORAGE.novidades, APP_VERSION); } catch { /* preferência não persistirá */ }
+  }
+
+  function abrirNovidades() {
+    const dlg = $('dialogNovidades');
+    if (dlg && !dlg.open) dlg.showModal();
+  }
+
+  function initNovidades() {
+    const dlg = $('dialogNovidades');
+    if (!dlg) return;
+
+    const fechar = () => {
+      marcarNovidadesVistas();
+      if (dlg.open) dlg.close();
+    };
+    on('footerNovidades', 'click', (ev) => { ev.preventDefault(); abrirNovidades(); });
+    on('novidadesFechar', 'click', fechar);
+    on('novidadesEntendi', 'click', fechar);
+    on('novidadesExplorar', 'click', () => {
+      fechar();
+      aposProximoPaint(() => document.querySelector('.planning-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+    });
+    dlg.addEventListener('close', marcarNovidadesVistas);
+
+    /* Instalações novas começam direto no fluxo principal. O aviso automático
+       é reservado a quem realmente acabou de receber uma atualização. */
+    if (versaoAnterior && versaoAnterior !== APP_VERSION && lerLocal(STORAGE.novidades) !== APP_VERSION) {
+      aposProximoPaint(abrirNovidades);
+    }
   }
 
   /* ---------------------------------------- dialog de confirmação */
@@ -1915,6 +1951,7 @@ import {
     initTema();
     carregar();
     initPWA();
+    initNovidades();
     renderModelos();
     setDetalhesAvancados(false);
 
