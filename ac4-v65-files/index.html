@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="app-pending">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Calculadora AC4</title>
+  <meta name="description" content="Calculadora de escalas AC4 para simulação de horas diurnas, horas noturnas, valor estimado, exportação para agenda e relatório em PDF.">
+  <meta name="referrer" content="no-referrer">
+  <meta name="theme-color" content="#0b1f3a">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://cloudflareinsights.com https://static.cloudflareinsights.com; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="assets/icon-192.png">
+
+  <!-- Preload da fonte principal — reduz reflow/CLS do font-swap da Inter -->
+  <link rel="preload" href="assets/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+
+  <link rel="stylesheet" href="css/styles.css?v=65">
+  <script src="js/theme.js?v=65"></script>
+</head>
+<body>
+
+  <noscript>
+    <p class="noscript-warning">
+      A Calculadora AC4 precisa de JavaScript habilitado no navegador para funcionar.
+    </p>
+  </noscript>
+
+  <a class="skip-link" href="#conteudo">Pular para o conteúdo</a>
+
+  <!-- Banner PWA -->
+  <div class="pwa-banner hidden" id="pwaBanner" role="region" aria-label="Instalar aplicativo">
+    <div class="pwa-banner-content">
+      <img src="assets/icon.svg" alt="" width="32" height="32" class="pwa-banner-icon">
+      <div>
+        <strong>Instale o Calculadora AC4</strong>
+        <p>Acesse offline, direto da tela inicial</p>
+      </div>
+    </div>
+    <div class="pwa-banner-actions">
+      <button class="btn btn-primary btn-sm" id="pwaBannerInstall">Instalar</button>
+      <button class="btn-icon pwa-banner-close" id="pwaBannerClose" aria-label="Fechar banner">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M18 6 6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Atualização PWA: aparece quando a nova versão já está pronta. -->
+  <div class="update-banner hidden" id="updateBanner" role="status" aria-live="polite" aria-label="Atualização disponível">
+    <div class="update-banner-content">
+      <span class="update-banner-icon" aria-hidden="true">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><path d="M20 11a8.1 8.1 0 0 0-15.5-2M4 4v5h5"/><path d="M4 13a8.1 8.1 0 0 0 15.5 2M20 20v-5h-5"/></svg>
+      </span>
+      <div>
+        <strong>Atualização disponível</strong>
+        <p>Nova versão pronta para usar.</p>
+      </div>
+    </div>
+    <div class="update-banner-actions">
+      <button class="btn btn-primary btn-sm" id="updateNow" type="button">Atualizar agora</button>
+      <button class="btn-icon update-later" id="updateLater" type="button" aria-label="Atualizar depois">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Topbar -->
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <div class="brand-badge" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+            <path d="M12 2 4 6v6c0 5 3.6 9.4 8 11 4.4-1.6 8-6 8-11V6L12 2z"/>
+            <path d="m9 12 2 2 4-4"/>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1>Calculadora AC4</h1>
+          <p>Apoio de cálculo AC4 · PMGO</p>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <div class="topbar-secondary">
+          <button class="btn btn-outline btn-sm" id="btnExportCsv" aria-label="Exportar planilha CSV">
+            <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/>
+            </svg>
+            <span>CSV</span>
+          </button>
+          <button class="btn btn-outline btn-sm" id="btnPrint" aria-label="Salvar relatório em PDF">
+            <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+              <rect x="6" y="14" width="12" height="8"/>
+            </svg>
+            <span>PDF</span>
+          </button>
+          <button class="btn btn-outline btn-sm" id="btnShare" aria-label="Compartilhar relatório">
+            <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+              <path d="m8.59 13.51 6.83 3.98M15.41 6.51l-6.82 3.98"/>
+            </svg>
+            <span>Compartilhar</span>
+          </button>
+          <button class="btn-icon" id="btnTheme" title="Alternar tema" aria-label="Alternar tema claro/escuro">
+            <svg id="icon-moon" class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
+            </svg>
+            <svg id="icon-sun" class="icon hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="layout" id="conteudo">
+    <section class="metrics" role="status" aria-live="polite">
+      <div class="metric-card highlight">
+        <div class="metric-icon metric-money">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7H14a3.5 3.5 0 0 1 0 7H6"/>
+          </svg>
+        </div>
+        <div>
+          <div class="metric-label">Valor estimado</div>
+          <div class="metric-value" id="totValor">R$ 0,00</div>
+          <div class="metric-sub">Valor bruto simulado</div>
+          <div class="metric-resumo-mobile" id="metricResumoMobile"></div>
+        </div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-icon metric-clock">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <circle cx="12" cy="12" r="9"/><path d="M12 7v6l4 2"/>
+          </svg>
+        </div>
+        <div>
+          <div class="metric-label">Total de horas</div>
+          <div class="metric-value" id="totHoras">0h</div>
+          <div class="metric-sub" id="totQtd">0 escalas no período</div>
+        </div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-icon metric-day">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>
+          </svg>
+        </div>
+        <div>
+          <div class="metric-label">Horas diurnas</div>
+          <div class="metric-value" id="totDiurnas">0h</div>
+          <div class="metric-sub" id="pctDiurnas">0% do total</div>
+        </div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-icon metric-night">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/><path d="m18 3 .5 1 .9.5-.9.5-.5 1-.5-1-.9-.5.9-.5z"/>
+          </svg>
+        </div>
+        <div>
+          <div class="metric-label">Horas noturnas</div>
+          <div class="metric-value" id="totNoturnas">0h</div>
+          <div class="metric-sub" id="pctNoturnas">0% do total</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Backdrop do bottom sheet mobile (inerte no desktop) -->
+    <div class="mobile-launch-backdrop" id="mobileLaunchBackdrop" aria-hidden="true"></div>
+
+    <!-- CARD: Lançar Escala -->
+    <section class="panel launch-panel" id="launchPanel" aria-labelledby="formTitle">
+      <div class="panel-body">
+          <!-- Cabeçalho visível apenas no modo bottom sheet (mobile) -->
+          <div class="mobile-launch-header">
+            <span class="mobile-launch-handle" aria-hidden="true"></span>
+            <div class="mobile-launch-titlebar">
+              <h2 class="mobile-launch-title" id="mobileLaunchTitle">Nova escala AC4</h2>
+              <button type="button" class="mobile-launch-close" id="mobileLaunchClose" aria-label="Fechar lançamento de escala">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M18 6 6 18M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <h2 class="panel-title" id="formTitle">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/>
+            </svg>
+            Lançar escala
+          </h2>
+
+          <div class="quick-launch-tools" aria-label="Atalhos de lançamento">
+            <button type="button" class="quick-launch-btn hidden" id="btnRepeatLast">
+              <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+              Repetir última
+            </button>
+            <label class="template-select-wrap hidden" id="templateSelectWrap" for="templateSelect">
+              <span class="sr-only">Aplicar modelo salvo</span>
+              <select class="control template-select" id="templateSelect">
+                <option value="">Meus modelos</option>
+              </select>
+            </label>
+            <button type="button" class="quick-launch-btn quick-launch-delete hidden" id="btnDeleteTemplate" aria-label="Excluir modelo selecionado" title="Excluir modelo selecionado">
+              <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+            </button>
+            <button type="button" class="quick-launch-btn hidden" id="btnSaveTemplate">
+              <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
+              Salvar modelo
+            </button>
+          </div>
+
+          <form id="formEscala" novalidate>
+            <div class="launch-grid">
+
+              <div class="field" id="fieldInicio">
+                <label for="escalaInicio"><span class="field-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg></span>Início</label>
+                <input type="datetime-local" class="control" id="escalaInicio" required aria-required="true" aria-describedby="inicioErro">
+                <div class="mobile-datetime" aria-label="Início da escala">
+                  <label class="mobile-datetime-part" for="escalaInicioData">
+                    <span>Data</span>
+                    <input type="date" class="control" id="escalaInicioData" inputmode="numeric" aria-describedby="inicioErro">
+                  </label>
+                  <label class="mobile-datetime-part" for="escalaInicioHora">
+                    <span>Hora</span>
+                    <input type="time" class="control" id="escalaInicioHora" inputmode="numeric" step="60" aria-describedby="inicioErro">
+                  </label>
+                </div>
+                <p class="field-error" id="inicioErro" role="alert">Informe a data e hora de início.</p>
+              </div>
+
+              <div class="field" id="fieldDuracao">
+                <label for="escalaDuracao"><span class="field-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v6l4 2"/></svg></span>Duração<span class="dur-rapida-tag"> rápida</span></label>
+                <!-- Desktop: select. Mobile: chips rápidos ligados ao mesmo #escalaDuracao. -->
+                <select class="control" id="escalaDuracao">
+                  <option value="">Personalizada</option>
+                  <option value="12">12 horas</option>
+                  <option value="14">14 horas</option>
+                  <option value="24">24 horas</option>
+                </select>
+                <div class="dur-chips" id="durChips" role="group" aria-label="Duração rápida">
+                  <button type="button" class="dur-chip" data-horas="12" aria-pressed="false"><span>12h</span></button>
+                  <button type="button" class="dur-chip" data-horas="14" aria-pressed="false"><span>14h</span></button>
+                  <button type="button" class="dur-chip" data-horas="24" aria-pressed="false"><span>24h</span></button>
+                </div>
+              </div>
+
+              <div class="launch-full launch-advanced-toggle-wrap">
+                <button type="button" class="launch-advanced-toggle" id="toggleAdvanced" aria-expanded="false" aria-controls="fieldFim fieldDescricao fieldOrigem">
+                  <span>Mais detalhes</span>
+                  <small>Término personalizado, unidade e origem</small>
+                  <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                </button>
+              </div>
+
+              <div class="field advanced-field hidden" id="fieldFim">
+                <label for="escalaFim"><span class="field-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg></span>Término<span class="auto-tag"> (automático)</span></label>
+                <input type="datetime-local" class="control" id="escalaFim" required aria-required="true" aria-describedby="fimErro fimResumo">
+                <div class="mobile-datetime" aria-label="Término da escala">
+                  <label class="mobile-datetime-part" for="escalaFimData">
+                    <span>Data</span>
+                    <input type="date" class="control" id="escalaFimData" inputmode="numeric" aria-describedby="fimErro fimResumo">
+                  </label>
+                  <label class="mobile-datetime-part" for="escalaFimHora">
+                    <span>Hora</span>
+                    <input type="time" class="control" id="escalaFimHora" inputmode="numeric" step="60" aria-describedby="fimErro fimResumo">
+                  </label>
+                </div>
+                <p class="field-error" id="fimErro" role="alert">O término deve ser depois do início.</p>
+                <!-- Espelho legível do término: alguns navegadores mobile não
+                     repintam o datetime-local quando o valor é definido por JS -->
+                <p class="fim-auto" id="fimResumo"></p>
+                <p class="field-hint fim-hint">Calculado automaticamente.</p>
+              </div>
+
+              <div class="launch-result launch-full is-empty" id="launchResumo" aria-live="polite" aria-atomic="true">
+                <p class="launch-result-title" id="launchResultTitle">VALOR ESTIMADO</p>
+                <p class="launch-result-empty" id="launchResultEmpty">Informe o início e escolha a duração.</p>
+                <div class="launch-result-content" id="launchResultContent">
+                  <p class="launch-result-value" id="launchResultValue"></p>
+                  <p class="launch-result-helper" id="launchResultHelper"></p>
+                  <p class="launch-result-duration" id="launchResultDuration"></p>
+                  <p class="launch-result-hours" id="launchResultHours"></p>
+                  <div class="launch-result-end">
+                    <p class="launch-result-end-label">Término calculado automaticamente</p>
+                    <p class="launch-result-end-value" id="launchResultEnd"></p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="field" id="fieldQtdPm">
+                <label for="escalaQtdPm"><span class="field-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>Qtd. PM</label>
+                <div class="qtd-control">
+                  <button type="button" class="qtd-btn" id="qtdMinus" aria-label="Diminuir quantidade de PM" aria-controls="escalaQtdPm">&minus;</button>
+                  <input type="number" class="control" id="escalaQtdPm"
+                         min="1" max="999" value="1"
+                         placeholder="1"
+                         aria-describedby="hintQtdPm">
+                  <button type="button" class="qtd-btn" id="qtdPlus" aria-label="Aumentar quantidade de PM" aria-controls="escalaQtdPm">+</button>
+                </div>
+                <p class="field-hint" id="hintQtdPm">Valor multiplicado pelo nº de PMs</p>
+              </div>
+
+              <div class="field advanced-field hidden" id="fieldDescricao">
+                <label for="escalaDescricao"><span class="field-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M6 21V7l6-4 6 4v14M10 9h4M10 13h4M10 17h4"/></svg></span>Unidade <span class="field-optional">(opcional)</span></label>
+                <input type="text" class="control" id="escalaDescricao" maxlength="80"
+                       placeholder="Ex.: 1ª CIA, BPChq, RPMon..."
+                       aria-describedby="hintDescricao">
+                <p class="field-hint" id="hintDescricao">Somente a unidade — não insira dados pessoais.</p>
+              </div>
+
+              <div class="field advanced-field hidden" id="fieldOrigem">
+                <label for="escalaOrigem"><span class="field-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7"/></svg></span>Origem</label>
+                <select class="control" id="escalaOrigem">
+                  <option value="AC4">AC4</option>
+                  <option value="AGETOP">AGETOP</option>
+                  <option value="DETRAN">DETRAN</option>
+                  <option value="PREFEITURAS">Prefeituras</option>
+                  <option value="GOINFRA">GOINFRA</option>
+                  <option value="FREAP">FREAP</option>
+                  <option value="CONVENIO_ENEM">Conv. ENEM</option>
+                  <option value="CONVENIO_TRE">Conv. TRE</option>
+                  <option value="CONVENIO_UEG">Conv. UEG</option>
+                  <option value="CONVENIO_SEDUC">Conv. SEDUC</option>
+                  <option value="CONVENIO_SAMU">Conv. SAMU</option>
+                  <option value="CONVENIO_AGR">Conv. AGR</option>
+                  <option value="FAZENDARIO_SEC_ECON">Fazendário / Sec. Econ.</option>
+                  <option value="GEAI">GEAI</option>
+                </select>
+              </div>
+
+              <div class="launch-full">
+                <button type="submit" class="btn btn-primary btn-block" id="btnSubmit">
+                  <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M12 5v14M5 12h14"/>
+                  </svg>
+                  <span id="btnSubmitLabel">Adicionar</span>
+                  <span class="submit-result" id="btnSubmitResult" aria-hidden="true"></span>
+                </button>
+                <button type="button" class="btn btn-ghost btn-block btn-cancel-edit hidden" id="btnCancelEdit">Cancelar edição</button>
+              </div>
+
+            </div>
+          </form>
+      </div>
+    </section>
+
+    <!-- Referência de valores — faixa discreta -->
+    <div class="tariff-strip" role="note" aria-label="Valores de referência da tabela AC4">
+      <span class="tariff-strip-label">Portaria SSP nº 621/2026</span>
+      <div class="tariff-strip-items">
+        <span class="tariff-chip"><span class="tariff-dot tariff-blue"></span>Azul dia · R$&nbsp;30/h</span>
+        <span class="tariff-chip"><span class="tariff-dot tariff-blue-dark"></span>Azul noite · R$&nbsp;33/h</span>
+        <span class="tariff-chip"><span class="tariff-dot tariff-red"></span>Verm. dia · R$&nbsp;40/h</span>
+        <span class="tariff-chip"><span class="tariff-dot tariff-red-dark"></span>Verm. noite · R$&nbsp;45/h</span>
+      </div>
+      <input type="hidden" id="valAD" value="30">
+      <input type="hidden" id="valAN" value="33">
+      <input type="hidden" id="valVD" value="40">
+      <input type="hidden" id="valVN" value="45">
+    </div>
+
+    <!-- Planejamento mensal local — resumo compacto, otimizado para celular -->
+    <section class="planning-panel" aria-labelledby="planningTitle">
+      <div class="planning-header">
+        <div>
+          <p class="planning-eyebrow" id="planningMonth">Mês atual</p>
+          <h2 id="planningTitle">Planejamento AC4</h2>
+        </div>
+        <button class="btn btn-outline btn-sm planning-goal-btn" id="btnPlanningGoal" type="button">Definir meta</button>
+      </div>
+      <div class="planning-main">
+        <div class="planning-total">
+          <span>Estimativa do mês</span>
+          <strong id="planningValue">R$ 0,00</strong>
+          <small id="planningHours">0h · 0 escalas</small>
+        </div>
+        <div class="planning-comparison" id="planningComparison">Sem dados do mês anterior</div>
+      </div>
+      <button class="planning-toggle" id="planningToggle" type="button" aria-expanded="false" aria-controls="planningDetails">
+        <span>Ver detalhes do mês</span>
+        <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+      </button>
+      <div class="planning-details" id="planningDetails">
+        <div class="planning-progress hidden" id="planningProgress">
+          <div class="planning-progress-head">
+            <span id="planningProgressLabel">Meta mensal</span>
+            <strong id="planningProgressValue">0%</strong>
+          </div>
+          <div class="planning-progress-track" role="progressbar" id="planningProgressTrack" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <span id="planningProgressBar"></span>
+          </div>
+        </div>
+        <div class="planning-hours" aria-label="Distribuição de horas diurnas e noturnas">
+          <div class="planning-hours-bar" id="planningHoursBar"><span class="planning-day" id="planningDayBar"></span><span class="planning-night" id="planningNightBar"></span></div>
+          <div class="planning-hours-labels"><span id="planningDayLabel">Dia 0h</span><span id="planningNightLabel">Noite 0h</span></div>
+        </div>
+        <div class="planning-status-grid" id="planningStatusGrid" aria-label="Situação das escalas do mês"></div>
+        <button class="planning-alert hidden" id="planningAlert" type="button"></button>
+      </div>
+    </section>
+
+    <div class="feed">
+      <div class="feed-header">
+        <h2>Escalas lançadas</h2>
+        <div class="feed-tools">
+          <label class="feed-filter" for="filtroBusca">
+            <span class="sr-only">Buscar por unidade</span>
+            <input class="control" id="filtroBusca" type="search" placeholder="Buscar unidade" autocomplete="off">
+          </label>
+          <label class="feed-filter" for="filtroMes">
+            <span class="sr-only">Filtrar por mês</span>
+            <select class="control" id="filtroMes"><option value="">Todos os meses</option></select>
+          </label>
+          <label class="feed-filter" for="filtroOrigem">
+            <span class="sr-only">Filtrar por origem</span>
+            <select class="control" id="filtroOrigem">
+              <option value="">Todas as origens</option>
+              <option value="AC4">AC4</option>
+              <option value="AGETOP">AGETOP</option>
+              <option value="DETRAN">DETRAN</option>
+              <option value="PREFEITURAS">Prefeituras</option>
+              <option value="GOINFRA">GOINFRA</option>
+              <option value="FREAP">FREAP</option>
+              <option value="CONVENIO_ENEM">Conv. ENEM</option>
+              <option value="CONVENIO_TRE">Conv. TRE</option>
+              <option value="CONVENIO_UEG">Conv. UEG</option>
+              <option value="CONVENIO_SEDUC">Conv. SEDUC</option>
+              <option value="CONVENIO_SAMU">Conv. SAMU</option>
+              <option value="CONVENIO_AGR">Conv. AGR</option>
+              <option value="FAZENDARIO_SEC_ECON">Fazendário / Sec. Econ.</option>
+              <option value="GEAI">GEAI</option>
+            </select>
+          </label>
+          <label class="feed-filter" for="filtroStatus">
+            <span class="sr-only">Filtrar por situação</span>
+            <select class="control" id="filtroStatus">
+              <option value="">Todas as situações</option>
+              <option value="planejada">Planejadas</option>
+              <option value="realizada">Realizadas</option>
+              <option value="conferida">Conferidas</option>
+              <option value="recebida">Recebidas</option>
+            </select>
+          </label>
+          <button class="btn btn-danger-soft btn-sm hidden" id="btnClearAll">Limpar tudo</button>
+        </div>
+      </div>
+      <!-- Estado vazio estático, idêntico ao produzido pelo render() do JS:
+           o primeiro paint já nasce com o conteúdo final (CWV F-02 / CLS). -->
+      <div id="listaEscalas">
+        <div class="empty-state">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/>
+          </svg>
+          <h3>Nenhuma escala lançada</h3>
+          <p>Preencha o formulário acima para iniciar o cálculo.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="legal-alert">
+      Atenção: os valores apresentados são simulados e não possuem efeito financeiro.
+      Sujeitos à validação e conferência administrativa.
+    </div>
+
+  </main>
+
+  <!-- Rodapé de copyright -->
+  <footer class="site-footer" role="contentinfo">
+    <div class="site-footer-inner">
+      <p class="site-footer-copy">
+        &copy; <span class="footer-year"></span> Weliton Pinheiro &mdash; Todos os direitos reservados.
+      </p>
+      <p class="site-footer-meta">
+        Calculadora AC4 &middot; PMGO &middot; v65 &middot;
+        <a href="#" id="footerNovidades" class="footer-link">Novidades</a> &middot;
+        <a href="#" id="footerPrivacidade" class="footer-link">Privacidade</a> &middot;
+        <a href="#" id="footerFeedback" class="footer-link">Feedback</a> &middot;
+        <a href="https://github.com/calculadora-ac4-pmgo" target="_blank" rel="noopener noreferrer" class="footer-link">GitHub</a>
+      </p>
+    </div>
+  </footer>
+
+  <!-- Barra fixa no mobile -->
+  <div class="mobile-bar">
+    <div class="mobile-bar-total">
+      <div class="label">Valor estimado</div>
+      <div class="value" id="mobileTotal">R$ 0,00</div>
+    </div>
+    <div class="mobile-bar-actions">
+      <button class="btn-icon mobile-share-btn" id="mobileShare" title="Compartilhar" aria-label="Compartilhar relatório">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+          <path d="m8.59 13.51 6.83 3.98M15.41 6.51l-6.82 3.98"/>
+        </svg>
+      </button>
+      <button class="btn btn-primary" id="mobileAdd" aria-label="Nova escala" aria-controls="launchPanel" aria-expanded="false">
+        <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M12 5v14M5 12h14"/>
+        </svg>
+        <span class="mobile-add-label">Nova escala</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Toasts -->
+  <div class="toast-region" id="toastRegion" aria-live="polite" aria-atomic="false"></div>
+
+  <!-- Novidades: exibido uma única vez após cada atualização e sempre
+       disponível pelo rodapé. A confirmação fica somente neste aparelho. -->
+  <dialog class="confirm-dialog whats-new-dialog" id="dialogNovidades" aria-modal="true" aria-labelledby="novidadesTitle" aria-describedby="novidadesIntro">
+    <div class="whats-new-body">
+      <div class="whats-new-topbar">
+        <span class="whats-new-badge">Nova versão <strong>v65</strong></span>
+        <button class="btn-icon whats-new-close" id="novidadesFechar" type="button" aria-label="Fechar novidades">
+          <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="whats-new-heading">
+        <span class="whats-new-icon" aria-hidden="true">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3-1.7 4.3L6 9l4.3 1.7L12 15l1.7-4.3L18 9l-4.3-1.7L12 3Z"/><path d="m19 15-.8 2.2L16 18l2.2.8L19 21l.8-2.2L22 18l-2.2-.8L19 15Z"/></svg>
+        </span>
+        <div>
+          <h2 id="novidadesTitle">Visual novo, mais claro e rápido</h2>
+          <p id="novidadesIntro">A Calculadora AC4 ganhou um design renovado, pensado para ler e lançar escalas em segundos.</p>
+        </div>
+      </div>
+      <ul class="whats-new-list">
+        <li>
+          <span class="whats-new-item-icon" aria-hidden="true">
+            <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 12h.01M18 12h.01"/></svg>
+          </span>
+          <div><strong>Valor em destaque</strong><span>O valor estimado ganhou um cartão próprio, fácil de achar em qualquer tela.</span></div>
+        </li>
+        <li>
+          <span class="whats-new-item-icon" aria-hidden="true">
+            <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h13M8 12h13M8 18h13"/><path d="M3 6h.01M3 12h.01M3 18h.01"/></svg>
+          </span>
+          <div><strong>Escalas mais fáceis de ler</strong><span>Valor à direita, unidade visível e situação com cor própria em cada escala.</span></div>
+        </li>
+        <li>
+          <span class="whats-new-item-icon" aria-hidden="true">
+            <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M12 4v16"/></svg>
+          </span>
+          <div><strong>Painel no computador</strong><span>Lançamento e planejamento do mês lado a lado, com o valor calculado ao vivo.</span></div>
+        </li>
+      </ul>
+      <p class="whats-new-privacy">
+        <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+        A atualização não apaga escalas, metas, modelos ou configurações.
+      </p>
+      <div class="whats-new-actions">
+        <button class="btn btn-primary" id="novidadesContinuar" type="button">Continuar usando</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Aviso de privacidade -->
+  <dialog class="confirm-dialog" id="dialogPrivacidade" aria-modal="true" aria-label="Privacidade">
+    <div class="dialog-body">
+      <h3 class="agenda-title">Privacidade</h3>
+      <div class="privacidade-texto">
+        <p>A Calculadora AC4 <strong>não solicita nem armazena dados pessoais</strong> (nome, RG, CPF, matrícula ou similares), em conformidade com a LGPD.</p>
+        <p>As escalas lançadas ficam gravadas <strong>somente neste navegador</strong> (localStorage) e nunca são enviadas a servidor. Relatórios, planilhas e eventos de agenda são gerados no próprio aparelho, por ação sua.</p>
+        <p>O site utiliza <strong>Cloudflare Web Analytics</strong> para métricas agregadas de uso, sem cookies e sem acesso às escalas, valores ou configurações digitadas.</p>
+        <p>Os dados locais são apagados ao limpar os dados do navegador.</p>
+      </div>
+      <div class="dialog-actions">
+        <button class="btn btn-primary" id="privacidadeFechar">Entendi</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Canal de feedback — elogios e sugestões por e-mail, sem servidor e sem
+       coleta: a mensagem abre no aplicativo de e-mail do próprio usuário. -->
+  <dialog class="confirm-dialog feedback-dialog" id="dialogFeedback" aria-modal="true" aria-label="Enviar feedback">
+    <div class="dialog-body">
+      <h3 class="agenda-title">Sua opinião melhora a calculadora</h3>
+      <p class="agenda-sub">Escolha o tipo, escreva a mensagem e envie pelo seu aplicativo de e-mail.</p>
+      <div class="fb-tipos" id="fbTipos" role="group" aria-label="Tipo de mensagem">
+        <button type="button" class="fb-tipo is-active" data-tipo="Elogio" aria-pressed="true">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M7 10v12M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/></svg>
+          <span>Elogio</span>
+        </button>
+        <button type="button" class="fb-tipo" data-tipo="Sugestão" aria-pressed="false">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.4 1 2.3h6c0-.9.4-1.8 1-2.3A7 7 0 0 0 12 2Z"/></svg>
+          <span>Sugestão</span>
+        </button>
+        <button type="button" class="fb-tipo" data-tipo="Problema" aria-pressed="false">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m8 2 1.88 1.88M14.12 3.88 16 2M9 7.13v-1a3.003 3.003 0 1 1 6 0v1"/><path d="M12 20c-3.3 0-6-2.7-6-6v-3a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v3c0 3.3-2.7 6-6 6ZM12 20v-9M6.53 9C4.6 8.8 3 7.1 3 5M6 13H2M3 21c0-2.1 1.7-3.9 3.8-4M17.47 9c1.93-.2 3.53-1.9 3.53-4M22 13h-4M17.2 17c2.1.1 3.8 1.9 3.8 4"/></svg>
+          <span>Problema</span>
+        </button>
+      </div>
+      <label class="fb-label" for="fbMensagem">Mensagem</label>
+      <textarea class="control fb-textarea" id="fbMensagem" rows="5" maxlength="1000" placeholder="Conte o que funcionou bem ou o que pode melhorar…"></textarea>
+      <p class="fb-hint">A mensagem sai do seu próprio e-mail — o site não coleta nem armazena nada.</p>
+      <div class="dialog-actions fb-actions">
+        <button class="btn btn-ghost" id="fbFechar" type="button">Cancelar</button>
+        <button class="btn btn-primary" id="fbEnviar" type="button">Enviar por e-mail</button>
+      </div>
+      <button class="fb-copy" id="fbCopiarEmail" type="button">Sem app de e-mail? Copiar endereço</button>
+    </div>
+  </dialog>
+
+  <!-- Dialog de confirmação -->
+  <dialog class="confirm-dialog" id="dialogConfirm" aria-modal="true" aria-label="Confirmação">
+    <div class="dialog-body">
+      <p class="dialog-msg" id="dialogMsg"></p>
+      <div class="dialog-actions">
+        <button class="btn btn-ghost" id="dialogCancel">Cancelar</button>
+        <button class="btn btn-danger-soft" id="dialogOk">Confirmar</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Salvar configuração atual como modelo local -->
+  <dialog class="confirm-dialog template-dialog" id="dialogTemplate" aria-modal="true" aria-labelledby="templateDialogTitle">
+    <form class="dialog-body" id="templateForm" method="dialog">
+      <h3 class="agenda-title" id="templateDialogTitle">Salvar modelo</h3>
+      <p class="agenda-sub">Guarde duração, quantidade, unidade e origem para preencher novas escalas rapidamente.</p>
+      <label class="fb-label" for="templateName">Nome do modelo</label>
+      <input class="control" id="templateName" maxlength="40" required placeholder="Ex.: AC4 noturna 14h" autocomplete="off">
+      <div class="dialog-actions template-dialog-actions">
+        <button class="btn btn-ghost" id="templateCancel" type="button">Cancelar</button>
+        <button class="btn btn-primary" id="templateSave" type="submit">Salvar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Meta mensal: permanece somente no navegador -->
+  <dialog class="confirm-dialog planning-dialog" id="dialogPlanningGoal" aria-modal="true" aria-labelledby="planningGoalTitle">
+    <form class="dialog-body" id="planningGoalForm" method="dialog">
+      <h3 class="agenda-title" id="planningGoalTitle">Meta mensal</h3>
+      <p class="agenda-sub" id="planningGoalMonth"></p>
+      <label class="fb-label" for="planningGoalValue">Valor estimado (R$)</label>
+      <input class="control" id="planningGoalValue" type="number" min="0" max="99999999" step="0.01" inputmode="decimal" placeholder="Ex.: 3000,00">
+      <label class="fb-label planning-goal-hours-label" for="planningGoalHours">Horas no mês</label>
+      <input class="control" id="planningGoalHours" type="number" min="0" max="744" step="0.5" inputmode="decimal" placeholder="Ex.: 72">
+      <p class="fb-hint">Campos opcionais. As metas ficam somente neste aparelho e não têm efeito financeiro oficial.</p>
+      <div class="dialog-actions template-dialog-actions">
+        <button class="btn btn-ghost" id="planningGoalCancel" type="button">Cancelar</button>
+        <button class="btn btn-danger-soft hidden" id="planningGoalClear" type="button">Remover meta</button>
+        <button class="btn btn-primary" type="submit">Salvar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Bottom sheet de compartilhamento -->
+  <dialog class="share-dialog" id="dialogShare" aria-modal="true" aria-label="Opções de compartilhamento">
+    <div class="share-sheet">
+      <div class="share-handle" aria-hidden="true"></div>
+      <div class="share-header">
+        <h3 class="share-title">Compartilhar</h3>
+        <button class="btn-icon share-close" id="shareClose" aria-label="Fechar">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M18 6 6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      <div class="share-grid">
+        <button class="share-opt" id="shareWA">
+          <span class="share-icon share-icon-wa">
+            <svg viewBox="0 0 24 24" fill="currentColor" width="28" height="28">
+              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/>
+            </svg>
+          </span>
+          <span>WhatsApp</span>
+        </button>
+        <button class="share-opt hidden" id="shareNative">
+          <span class="share-icon share-icon-native">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="28" height="28">
+              <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+              <path d="m8.59 13.51 6.83 3.98M15.41 6.51l-6.82 3.98"/>
+            </svg>
+          </span>
+          <span>Compartilhar</span>
+        </button>
+        <button class="share-opt" id="shareCopy">
+          <span class="share-icon share-icon-copy">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="28" height="28">
+              <rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>
+            </svg>
+          </span>
+          <span>Copiar</span>
+        </button>
+        <button class="share-opt" id="shareIcsOpt">
+          <span class="share-icon share-icon-ics">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="28" height="28">
+              <rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4M12 12v6M9 15h6"/>
+            </svg>
+          </span>
+          <span>Agenda</span>
+        </button>
+        <button class="share-opt" id="shareCsvOpt">
+          <span class="share-icon share-icon-csv">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="28" height="28">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h4"/>
+            </svg>
+          </span>
+          <span>CSV</span>
+        </button>
+        <button class="share-opt" id="sharePdfOpt">
+          <span class="share-icon share-icon-pdf">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="28" height="28">
+              <path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+              <rect x="6" y="14" width="12" height="8"/>
+            </svg>
+          </span>
+          <span>PDF</span>
+        </button>
+        <button class="share-opt" id="shareBackupOpt">
+          <span class="share-icon share-icon-copy">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="28" height="28">
+              <path d="M12 3v12m0 0-4-4m4 4 4-4"/><path d="M5 21h14a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2"/>
+            </svg>
+          </span>
+          <span>Backup</span>
+        </button>
+        <button class="share-opt" id="shareRestoreOpt">
+          <span class="share-icon share-icon-copy">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="28" height="28">
+              <path d="M12 21V9m0 0-4 4m4-4 4 4"/><path d="M5 3h14a2 2 0 0 1 2 2v3M3 8V5a2 2 0 0 1 2-2"/>
+            </svg>
+          </span>
+          <span>Restaurar</span>
+        </button>
+        <button class="share-opt hidden" id="shareInstallOpt">
+          <span class="share-icon share-icon-install">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="28" height="28">
+              <path d="M12 15V3m0 12-4-4m4 4 4-4"/>
+              <path d="M2 17l.621 2.485A2 2 0 0 0 4.561 21h14.878a2 2 0 0 0 1.94-1.515L22 17"/>
+            </svg>
+          </span>
+          <span>Instalar</span>
+        </button>
+      </div>
+      <input type="file" id="restoreInput" class="hidden" accept="application/json,.json" aria-label="Selecionar backup JSON">
+    </div>
+  </dialog>
+
+  <!-- Escolha de agenda (celular e desktop): abre o evento pré-preenchido no provedor escolhido; .ics como alternativa -->
+  <dialog class="confirm-dialog agenda-dialog" id="dialogAgenda" aria-modal="true" aria-label="Adicionar à agenda">
+    <div class="dialog-body">
+      <h3 class="agenda-title">Adicionar à agenda</h3>
+      <p class="agenda-sub" id="agendaSub"></p>
+      <div class="agenda-body" id="agendaBody"></div>
+      <div class="dialog-actions">
+        <button class="btn btn-ghost" id="agendaCancelar">Cancelar</button>
+      </div>
+    </div>
+  </dialog>
+
+  <script type="module" src="js/app.js?v=65"></script>
+
+  <!-- Relatório profissional de impressão — populado pelo JS antes de window.print() -->
+  <section id="printReport">
+    <header class="pr-header">
+      <div class="pr-header-left">
+        <p class="pr-title">Relatório de Escalas AC4</p>
+        <p class="pr-subtitle">Simulação para conferência administrativa</p>
+      </div>
+      <div class="pr-header-right">
+        <p>Emitido em: <strong id="prDate"></strong></p>
+        <p>Base normativa: Portaria SSP n.º 621/2026</p>
+        <p>Finalidade: Simulação sem efeito financeiro oficial</p>
+      </div>
+    </header>
+
+    <div class="pr-section">
+      <h2 class="pr-section-title">Resumo Geral</h2>
+      <div id="prSummary" class="pr-summary-grid"></div>
+    </div>
+
+    <div class="pr-section">
+      <h2 class="pr-section-title">Escalas Lançadas</h2>
+      <div id="prTableWrap"></div>
+    </div>
+
+    <footer class="pr-footer">
+      <p>Atenção: os valores apresentados são simulados, não possuem efeito financeiro oficial
+      e estão sujeitos à validação administrativa, conferência do efetivo cumprimento da escala
+      e normas vigentes.</p>
+    </footer>
+  </section>
+
+  <!-- Cloudflare Web Analytics: métricas agregadas, sem cookies e sem acesso aos dados da calculadora. -->
+  <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token":"3b1137c9d2024604bff681a3d09a202e"}'></script>
+
+</body>
+</html>

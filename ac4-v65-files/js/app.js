@@ -1,0 +1,2325 @@
+/* ==========================================================================
+   Calculadora AC4 — v65
+   Módulo principal: estado, UI, persistência e exportações.
+   Regras de negócio, formatação e agenda vivem em js/modules/.
+   ========================================================================== */
+import {
+  fmtMoeda, fmtHoras, fmtDataHora, fmtData, fmtDiaSemana, fmtHora,
+  combinarDataHoraLocal, parseDateTimeLocal, formatarDataHoraInput, toInputLocal,
+  calcularTerminoPorDuracao, validarIntervaloEscala, toInputMonth, fmtMesRef, escapeHTML,
+  csvTextoSeguro,
+} from './modules/formato.mjs';
+import {
+  PORTARIA_ATUAL, VALORES_OFICIAIS, TABELA_OFICIAL, regraNormativaParaData, labelOrigem,
+  calcularEscala as calcularEscalaBase,
+} from './modules/calculo.mjs';
+import {
+  ICS_DOMAIN, dataICS, desdobrarLinhasICS,
+  montarICS as montarICSBase,
+  validarICS as validarICSBase,
+  gerarLinkGoogleAgenda as gerarLinkGoogleAgendaBase,
+  gerarLinkOutlookAgenda as gerarLinkOutlookAgendaBase,
+} from './modules/agenda.mjs';
+import {
+  STORAGE_SCHEMA_VERSION, STATUS_ESCALA, gerarIdEscala, desserializarEscalas, detectarConflitos,
+} from './modules/persistencia.mjs';
+
+(() => {
+  'use strict';
+
+  const $ = (id) => document.getElementById(id);
+  const on = (id, evt, fn) => { const el = $(id); if (el) el.addEventListener(evt, fn); };
+
+  /* Versão da aplicação (sincronizada pelo tools/bump-version.mjs). Serve para
+     carimbar o log de erros e detectar clientes presos em cache antigo:
+     se __ac4Version no console divergir do rodapé/CHANGELOG, o SW não atualizou. */
+  const APP_VERSION = '65';
+
+  const STORAGE = {
+    escalas:   'pmgoEscalas',
+    config:    'pmgoConfig',
+    theme:     'pmgoTheme',
+    pwaBanner: 'pmgoPwaBanner',
+    pwaVisitas: 'pmgoPwaVisitas',
+    modelos:   'pmgoModelos',
+    metas:     'pmgoMetasMensais',
+    erros:     'pmgoErros',
+    versao:    'pmgoVersion',
+    novidades: 'pmgoNovidadesVistas',
+    schema:    'pmgoSchemaVersion',
+  };
+
+  /* ------------------------------------------------------------ estado */
+  let escalas = [];
+  let editandoId = null;
+  let ultimaExcluida = null;
+  let filtroMes = '';
+  let filtroOrigem = '';
+  let filtroBusca = '';
+  let filtroStatus = '';
+  let modelos = [];
+  let metasMensais = {};
+  let versaoAnterior = null;
+  let deferredInstallPrompt = null;
+  let workerAtualizacao = null;
+  let atualizacaoPendente = false;
+  let recarregandoPorAtualizacao = false;
+  let mostrarInstalacaoAposConversao = () => {};
+  let submetendo = false;
+  let sheetAberto = false;
+  let fundoInerte = [];
+  const clonarEscalas = () => JSON.parse(JSON.stringify(escalas));
+  const lerLocal = (chave) => { try { return localStorage.getItem(chave); } catch { return null; } };
+  const aposProximoPaint = (fn) => requestAnimationFrame(() => requestAnimationFrame(fn));
+  const esperarProximoPaint = () => new Promise((resolve) => aposProximoPaint(resolve));
+  const STATUS_INFO = Object.freeze({
+    planejada: { label: 'Planejada', curto: 'Planejadas' },
+    realizada: { label: 'Realizada', curto: 'Realizadas' },
+    conferida: { label: 'Conferida', curto: 'Conferidas' },
+    recebida: { label: 'Recebida', curto: 'Recebidas' },
+  });
+  const statusEscala = (e) => STATUS_ESCALA.includes(e?.status) ? e.status : 'planejada';
+
+  function setDetalhesAvancados(aberto) {
+    document.querySelectorAll('.advanced-field').forEach((el) => el.classList.toggle('hidden', !aberto));
+    const btn = $('toggleAdvanced');
+    if (!btn) return;
+    btn.setAttribute('aria-expanded', aberto ? 'true' : 'false');
+    btn.classList.toggle('is-open', aberto);
+    const titulo = btn.querySelector('span');
+    if (titulo) titulo.textContent = aberto ? 'Ocultar detalhes' : 'Mais detalhes';
+  }
+
+  /* ---------------------------------------- bottom sheet mobile (lançamento) */
+  const isMobileViewport = () => window.matchMedia('(max-width: 760px)').matches;
+
+  function setFundoInerte(inerte) {
+    if (inerte) {
+      const alvos = document.querySelectorAll(
+        'body > header, body > footer, body > .mobile-bar, #conteudo > :not(#launchPanel):not(#mobileLaunchBackdrop)'
+      );
+      fundoInerte = [...alvos].map((el) => ({ el, anterior: el.inert }));
+      fundoInerte.forEach(({ el }) => { el.inert = true; });
+      return;
+    }
+    fundoInerte.forEach(({ el, anterior }) => { el.inert = anterior; });
+    fundoInerte = [];
+  }
+
+  function configurarSemanticaSheet(aberto) {
+    const painel = $('launchPanel');
+    if (!painel) return;
+    if (aberto) {
+      painel.setAttribute('role', 'dialog');
+      painel.setAttribute('aria-modal', 'true');
+      painel.setAttribute('aria-labelledby', 'mobileLaunchTitle');
+      painel.setAttribute('tabindex', '-1');
+      setFundoInerte(true);
+    } else {
+      painel.removeAttribute('role');
+      painel.removeAttribute('aria-modal');
+      painel.setAttribute('aria-labelledby', 'formTitle');
+      painel.removeAttribute('tabindex');
+      setFundoInerte(false);
+    }
+  }
+
+  function setMobileSheetOpen(aberto) {
+    sheetAberto = aberto;
+    document.querySelector('.launch-panel')?.classList.toggle('is-open', aberto);
+    $('mobileLaunchBackdrop')?.classList.toggle('is-open', aberto);
+    document.body.classList.toggle('mobile-sheet-open', aberto);
+    $('mobileAdd')?.setAttribute('aria-expanded', aberto ? 'true' : 'false');
+    configurarSemanticaSheet(aberto && isMobileViewport());
+  }
+
+  function abrirPainelLancamentoMobile({ foco = false } = {}) {
+    setMobileSheetOpen(true);
+    /* O foco automático em mobile pode abrir teclado/picker e deslocar o sheet.
+       Mantemos a opção para fluxos específicos, mas sem usar por padrão. */
+    window.setTimeout(() => {
+      if (foco) $('escalaInicioData')?.focus({ preventScroll: true });
+      else $('launchPanel')?.focus({ preventScroll: true });
+    }, 260);
+  }
+
+  function fecharPainelLancamentoMobile({ devolverFoco = true } = {}) {
+    if (!sheetAberto) return;
+    setMobileSheetOpen(false);
+    if (devolverFoco) $('mobileAdd')?.focus();
+  }
+
+  function baixarArquivoAgenda(lista, mensagem = 'Arquivo .ics gerado para importar na sua agenda.') {
+    const arquivo = montarICS(lista);
+    if (!arquivo.eventos) {
+      toast('Não há escalas válidas para gerar o arquivo .ics.', { erro: true });
+      return null;
+    }
+    baixar(arquivo.conteudo, 'escalas-ac4.ics', 'text/calendar;charset=utf-8');
+    const total = `${arquivo.eventos} evento${arquivo.eventos === 1 ? '' : 's'}`;
+    const ignoradas = arquivo.ignoradas
+      ? ` ${arquivo.ignoradas} escala${arquivo.ignoradas === 1 ? '' : 's'} inválida${arquivo.ignoradas === 1 ? '' : 's'} foram ignoradas.`
+      : '';
+    toast(`${mensagem} ${total}.${ignoradas}`);
+    return arquivo;
+  }
+
+  function exportarBackup() {
+    const backup = {
+      produto: 'Calculadora AC4',
+      appVersion: APP_VERSION,
+      schemaVersion: STORAGE_SCHEMA_VERSION,
+      exportadoEm: new Date().toISOString(),
+      escalas,
+      modelos,
+      metasMensais,
+    };
+    baixar(`${JSON.stringify(backup, null, 2)}\n`, `backup-calculadora-ac4-v${APP_VERSION}.json`, 'application/json;charset=utf-8');
+    toast(`Backup gerado com ${escalas.length} escala${escalas.length === 1 ? '' : 's'}.`);
+  }
+
+  async function restaurarBackup(file) {
+    if (!file) return;
+    if (file.size > 1024 * 1024) {
+      toast('O backup excede o limite de 1 MB.', { erro: true });
+      return;
+    }
+    try {
+      const documento = JSON.parse(await file.text());
+      const fonte = Array.isArray(documento) ? documento : documento?.escalas;
+      if (!Array.isArray(fonte)) throw new Error('formato');
+      const resultado = desserializarEscalas(JSON.stringify(fonte));
+      const modelosBackup = !Array.isArray(documento) && Array.isArray(documento?.modelos)
+        ? normalizarModelos(documento.modelos)
+        : null;
+      const metasBackup = !Array.isArray(documento) && documento?.metasMensais
+        ? normalizarMetas(documento.metasMensais)
+        : null;
+      if (!resultado.escalas.length && fonte.length) throw new Error('sem-registros-validos');
+      const detalhe = resultado.rejeitadas ? ` ${resultado.rejeitadas} registro(s) inválido(s) serão ignorados.` : '';
+      const detalheModelos = modelosBackup ? ` O backup contém ${modelosBackup.length} modelo(s).` : '';
+      const ok = await dialogConfirmar(
+        `Restaurar ${resultado.escalas.length} escala${resultado.escalas.length === 1 ? '' : 's'} e substituir os dados atuais?${detalhe}${detalheModelos}`,
+        { textoOk: 'Restaurar', perigoso: false }
+      );
+      if (!ok) return;
+      const anteriores = clonarEscalas();
+      escalas = resultado.escalas;
+      cancelarEdicao();
+      if (!salvar()) { escalas = anteriores; render(); return; }
+      if (modelosBackup) {
+        const modelosAnteriores = modelos;
+        modelos = modelosBackup;
+        if (!salvarModelos()) modelos = modelosAnteriores;
+        renderModelos();
+      }
+      if (metasBackup) {
+        const metasAnteriores = metasMensais;
+        metasMensais = metasBackup;
+        if (!salvarMetas()) metasMensais = metasAnteriores;
+      }
+      render();
+      toast('Backup restaurado com sucesso.');
+    } catch {
+      toast('Arquivo de backup inválido ou incompatível.', { erro: true });
+    }
+  }
+
+  /* -------------------------------------------- tabela de valores */
+  const parseMoedaCampo = (id) => {
+    const campo = $(id);
+    const raw = String((campo ? campo.value : VALORES_OFICIAIS[id]) || '').trim().replace(',', '.');
+    if (!raw) return NaN;
+    const v = Number(raw);
+    return Number.isFinite(v) && v >= 0 ? Math.round(v * 100) : NaN;
+  };
+  const tabelaVazia = () => ({ portaria: '', valores: { AD: 0, AN: 0, VD: 0, VN: 0 } });
+
+  function lerTabelaAtual() {
+    return {
+      id: TABELA_OFICIAL.id,
+      portaria: PORTARIA_ATUAL,
+      vigenciaInicio: TABELA_OFICIAL.vigenciaInicio,
+      valores: { AD: parseMoedaCampo('valAD'), AN: parseMoedaCampo('valAN'), VD: parseMoedaCampo('valVD'), VN: parseMoedaCampo('valVN') },
+    };
+  }
+
+  function validarTabelaAtual() {
+    const tabela = lerTabelaAtual();
+    let ok = true;
+    const marca = (id, invalido) => {
+      const item = $(id) && $(id).closest('.field, .tariff-item');
+      if (item) item.classList.toggle('invalid', invalido);
+      if (invalido) ok = false;
+    };
+    Object.entries({ valAD: 'AD', valAN: 'AN', valVD: 'VD', valVN: 'VN' })
+      .forEach(([id, key]) => marca(id, !Number.isFinite(tabela.valores[key])));
+    if (!ok) { toast('Confira os valores da tabela antes de calcular.', { erro: true }); return null; }
+    return tabela;
+  }
+
+  const tabelaParaCalculo = () => {
+    const atual = lerTabelaAtual();
+    return Object.values(atual.valores).every(Number.isFinite) ? atual : tabelaVazia();
+  };
+
+  /* Pontes para os módulos — injetam a tabela vigente lida do DOM,
+     mantendo as assinaturas originais nos pontos de uso. */
+  const calcularEscala = (e) => calcularEscalaBase(e, tabelaParaCalculo());
+  const montarICS = (lista) => montarICSBase(lista, tabelaParaCalculo());
+  const gerarLinkGoogleAgenda = (e) => gerarLinkGoogleAgendaBase(e, tabelaParaCalculo());
+  const gerarLinkOutlookAgenda = (e, corporativo) => gerarLinkOutlookAgendaBase(e, tabelaParaCalculo(), corporativo);
+
+  /* --------------------------------------------- persistência */
+  function salvar() {
+    try {
+      localStorage.setItem(STORAGE.escalas, JSON.stringify(escalas));
+      localStorage.setItem(STORAGE.schema, STORAGE_SCHEMA_VERSION);
+      sessionStorage.removeItem(STORAGE.escalas);
+      return true;
+    } catch {
+      toast('Não foi possível salvar neste navegador. Exporte os dados e confira o espaço disponível.', { erro: true });
+      return false;
+    }
+  }
+
+  /* Só grava a configuração — quem precisar refletir a mudança na tela chama
+     render() no ponto de uso. Evita a renderização dupla no init() (CWV F-01). */
+  function salvarConfig() {
+    const val = (id) => ($(id) ? $(id).value : VALORES_OFICIAIS[id]);
+    try {
+      localStorage.setItem(STORAGE.config, JSON.stringify({ ad: val('valAD'), an: val('valAN'), vd: val('valVD'), vn: val('valVN') }));
+    } catch { /* configuração oficial continua disponível no DOM */ }
+  }
+
+  const normalizarModelos = (fonte) => Array.isArray(fonte)
+    ? fonte.filter((m) => m && typeof m.id === 'string' && typeof m.nome === 'string'
+      && Number.isFinite(Number(m.duracao)) && Number(m.duracao) > 0 && Number(m.duracao) <= 24)
+      .slice(0, 20)
+    : [];
+
+  const normalizarMetas = (fonte) => {
+    if (!fonte || typeof fonte !== 'object' || Array.isArray(fonte)) return {};
+    return Object.fromEntries(Object.entries(fonte).filter(([mes, meta]) => /^\d{4}-\d{2}$/.test(mes)
+      && meta && typeof meta === 'object').map(([mes, meta]) => {
+      const valorCentavos = Math.max(0, Math.min(9_999_999_900, Math.round(Number(meta.valorCentavos) || 0)));
+      const horas = Math.max(0, Math.min(744, Number(meta.horas) || 0));
+      return [mes, { valorCentavos, horas }];
+    }).filter(([, meta]) => meta.valorCentavos > 0 || meta.horas > 0));
+  };
+
+  function carregar() {
+    Object.entries(VALORES_OFICIAIS).forEach(([id, v]) => { if ($(id)) $(id).value = v; });
+    salvarConfig();
+    try {
+      const legado = sessionStorage.getItem(STORAGE.escalas);
+      if (legado) { const p = JSON.parse(legado); if (Array.isArray(p) && p.length) localStorage.setItem(STORAGE.escalas, legado); sessionStorage.removeItem(STORAGE.escalas); }
+      const carregadas = desserializarEscalas(localStorage.getItem(STORAGE.escalas));
+      escalas = carregadas.escalas;
+      /* Regrava o formato normalizado e registra a versão do schema. Registros
+         inválidos são descartados antes de alcançar cálculo/renderização. */
+      salvar();
+      if (carregadas.rejeitadas) {
+        registrarErro({ msg: `${carregadas.rejeitadas} registro(s) local(is) inválido(s) ignorado(s)`, src: 'storage', ln: 0, col: 0 });
+      }
+    } catch { escalas = []; }
+    try {
+      const salvos = JSON.parse(lerLocal(STORAGE.modelos) || '[]');
+      modelos = normalizarModelos(salvos);
+    } catch { modelos = []; }
+    try { metasMensais = normalizarMetas(JSON.parse(lerLocal(STORAGE.metas) || '{}')); }
+    catch { metasMensais = {}; }
+  }
+
+  function salvarModelos() {
+    try {
+      localStorage.setItem(STORAGE.modelos, JSON.stringify(modelos));
+      return true;
+    } catch {
+      toast('Não foi possível salvar o modelo neste navegador.', { erro: true });
+      return false;
+    }
+  }
+
+  function salvarMetas() {
+    try {
+      localStorage.setItem(STORAGE.metas, JSON.stringify(metasMensais));
+      return true;
+    } catch {
+      toast('Não foi possível salvar a meta neste navegador.', { erro: true });
+      return false;
+    }
+  }
+
+  /* --------------------------------------------------------------- tema */
+  function aplicarTema(tema) {
+    document.documentElement.dataset.theme = tema;
+    try { localStorage.setItem(STORAGE.theme, tema); } catch { /* preferência não persistirá */ }
+    $('icon-sun')?.classList.toggle('hidden', tema !== 'dark');
+    $('icon-moon')?.classList.toggle('hidden', tema === 'dark');
+  }
+
+  function initTema() {
+    const salvo = lerLocal(STORAGE.theme);
+    aplicarTema(salvo || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+      if (!lerLocal(STORAGE.theme)) aplicarTema(e.matches ? 'dark' : 'light');
+    });
+  }
+
+  /* --------------------------------------------------------------- toast */
+  const filaToasts = [];
+  let toastAtivo = null;
+
+  function exibirProximoToast() {
+    if (toastAtivo || !filaToasts.length) return;
+    const { msg, erro, acao } = filaToasts.shift();
+    const region = $('toastRegion');
+    if (!region) return;
+    const el = document.createElement('div');
+    el.className = 'toast' + (erro ? ' error' : '');
+    el.setAttribute('role', 'status');
+    el.innerHTML = `<span>${escapeHTML(msg)}</span>`;
+    let encerrado = false;
+    let timer = null;
+    const encerrar = () => {
+      if (encerrado) return;
+      encerrado = true;
+      clearTimeout(timer);
+      el.classList.add('is-hiding');
+      setTimeout(() => {
+        el.remove();
+        toastAtivo = null;
+        exibirProximoToast();
+      }, 320);
+    };
+    if (acao) {
+      const btn = document.createElement('button');
+      btn.className = 'toast-action';
+      btn.textContent = acao.rotulo;
+      btn.addEventListener('click', () => { acao.fn(); encerrar(); });
+      el.appendChild(btn);
+    }
+    region.replaceChildren(el);
+    toastAtivo = el;
+    timer = setTimeout(encerrar, acao ? 6000 : 3500);
+  }
+
+  function toast(msg, { erro = false, acao = null } = {}) {
+    filaToasts.push({ msg, erro, acao });
+    exibirProximoToast();
+  }
+
+  /* ------------------------------------------------ observabilidade
+     Captura erros de JS não tratados e rejeições de Promise para (a) avisar o
+     usuário de forma discreta e (b) guardar um log anônimo local — máx. 20
+     entradas com horário, mensagem e origem do erro, SEM dados pessoais (não
+     registra conteúdo de campos). Ajuda a diagnosticar sem coletar nada em
+     servidor (LGPD por minimização). Inspecione com window.__ac4Erros() e
+     limpe com window.__ac4LimparErros(). */
+  const MAX_ERROS_LOG = 20;
+  let ultimoToastErroTs = 0;
+
+  function registrarErro(info) {
+    try {
+      const log = JSON.parse(localStorage.getItem(STORAGE.erros) || '[]');
+      /* v carimba a versão do app: um erro vindo de cache velho aparece com
+         versão antiga, distinguindo bug real de cliente desatualizado. */
+      log.push({ t: new Date().toISOString(), v: APP_VERSION, ...info });
+      while (log.length > MAX_ERROS_LOG) log.shift();
+      localStorage.setItem(STORAGE.erros, JSON.stringify(log));
+    } catch { /* localStorage cheio/indisponível — erro não pode gerar erro */ }
+    const agora = Date.now();
+    if (agora - ultimoToastErroTs > 10000) {
+      ultimoToastErroTs = agora;
+      try { toast('Ocorreu um erro inesperado. Se persistir, recarregue a página.', { erro: true }); } catch {}
+    }
+  }
+
+  function initObservabilidade() {
+    window.addEventListener('error', (ev) => {
+      registrarErro({
+        msg: String(ev.message || 'erro').slice(0, 200),
+        src: String(ev.filename || '').replace(location.origin, '').slice(0, 120),
+        ln: ev.lineno || 0, col: ev.colno || 0,
+      });
+    });
+    window.addEventListener('unhandledrejection', (ev) => {
+      const motivo = ev.reason;
+      registrarErro({
+        msg: String((motivo && (motivo.message || motivo)) || 'promise rejeitada').slice(0, 200),
+        src: 'unhandledrejection', ln: 0, col: 0,
+      });
+    });
+    window.__ac4Erros = () => { try { return JSON.parse(localStorage.getItem(STORAGE.erros) || '[]'); } catch { return []; } };
+    window.__ac4LimparErros = () => { localStorage.removeItem(STORAGE.erros); return 'log de erros limpo'; };
+    /* Métrica de versão anônima: expõe a versão em execução e registra a última
+       vista. Em suporte, `__ac4Version` no console revela cache preso; a
+       comparação com a versão anterior detecta se o SW acabou de atualizar. */
+    window.__ac4Version = APP_VERSION;
+    try {
+      versaoAnterior = localStorage.getItem(STORAGE.versao);
+      if (versaoAnterior !== APP_VERSION) {
+        localStorage.setItem(STORAGE.versao, APP_VERSION);
+        if (versaoAnterior) console.info(`Calculadora AC4 atualizada: v${versaoAnterior} → v${APP_VERSION}`);
+      }
+    } catch {}
+  }
+
+  /* ---------------------------------------- novidades da versão */
+  function marcarNovidadesVistas() {
+    try { localStorage.setItem(STORAGE.novidades, APP_VERSION); } catch { /* preferência não persistirá */ }
+  }
+
+  function abrirNovidades() {
+    const dlg = $('dialogNovidades');
+    if (dlg && !dlg.open) dlg.showModal();
+  }
+
+  function initNovidades() {
+    const dlg = $('dialogNovidades');
+    if (!dlg) return;
+
+    const fechar = () => {
+      marcarNovidadesVistas();
+      if (dlg.open) dlg.close();
+    };
+    on('footerNovidades', 'click', (ev) => { ev.preventDefault(); abrirNovidades(); });
+    on('novidadesFechar', 'click', fechar);
+    on('novidadesContinuar', 'click', fechar);
+    dlg.addEventListener('close', marcarNovidadesVistas);
+
+    /* Instalações novas começam direto no fluxo principal. O aviso automático
+       é reservado a quem realmente acabou de receber uma atualização. */
+    if (versaoAnterior && versaoAnterior !== APP_VERSION && lerLocal(STORAGE.novidades) !== APP_VERSION) {
+      aposProximoPaint(abrirNovidades);
+    }
+  }
+
+  /* ---------------------------------------- dialog de confirmação */
+  function dialogConfirmar(mensagem, { textoOk = 'Confirmar', perigoso = true } = {}) {
+    return new Promise((resolve) => {
+      const dlg = $('dialogConfirm');
+      if (!dlg) { resolve(window.confirm(mensagem)); return; }
+      $('dialogMsg').textContent = mensagem;
+      $('dialogOk').textContent = textoOk;
+      $('dialogOk').className = `btn ${perigoso ? 'btn-danger-soft' : 'btn-primary'}`;
+      dlg.showModal();
+
+      let resolvido = false;
+      function finalizar(valor) {
+        if (resolvido) return;
+        resolvido = true;
+        $('dialogOk').removeEventListener('click', onOk);
+        $('dialogCancel').removeEventListener('click', onCancel);
+        dlg.removeEventListener('click', onBackdrop);
+        dlg.removeEventListener('close', onClose);
+        if (dlg.open) dlg.close();
+        resolve(valor);
+      }
+      function onOk()     { finalizar(true); }
+      function onCancel() { finalizar(false); }
+      function onBackdrop(e) { if (e.target === dlg) finalizar(false); }
+      /* Esc fecha o <dialog> nativamente sem passar pelos botões —
+         sem este handler a Promise ficaria pendente e os listeners vazariam. */
+      function onClose()  { finalizar(false); }
+      $('dialogOk').addEventListener('click', onOk);
+      $('dialogCancel').addEventListener('click', onCancel);
+      dlg.addEventListener('click', onBackdrop);
+      dlg.addEventListener('close', onClose);
+    });
+  }
+
+  const haptic = (p = 10) => { try { navigator.vibrate?.(p); } catch {} };
+
+  function escalasOrdenadas() {
+    let lista = [...escalas].sort((a, b) => (parseDateTimeLocal(a.inicio) || new Date(a.inicio)) - (parseDateTimeLocal(b.inicio) || new Date(b.inicio)));
+    if (filtroMes) lista = lista.filter((e) => toInputMonth(parseDateTimeLocal(e.inicio) || new Date(e.inicio)) === filtroMes);
+    if (filtroOrigem) lista = lista.filter((e) => (e.origem || 'AC4') === filtroOrigem);
+    if (filtroStatus) lista = lista.filter((e) => statusEscala(e) === filtroStatus);
+    if (filtroBusca) {
+      const termo = filtroBusca.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR');
+      lista = lista.filter((e) => `${e.descricao || ''} ${labelOrigem(e.origem || 'AC4')}`
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR').includes(termo));
+    }
+    return lista;
+  }
+
+  /* -------------------------------------------------- testes de regressão */
+  window.__ac4Testes = function () {
+    const h = (n) => n * 60;
+    const casos = [
+      { caso: '1 sex 03/07 18h→sáb 8h (14h)',  inicio: '2026-07-03T18:00', fim: '2026-07-04T08:00', AD: 0,         AN: 0,    VD: h(7),  VN: h(7),  centavos: 59500 },
+      { caso: '2 sáb 04/07 8h→dom 8h (24h)',   inicio: '2026-07-04T08:00', fim: '2026-07-05T08:00', AD: 0,         AN: 0,    VD: h(17), VN: h(7),  centavos: 99500 },
+      { caso: 'Azul dia: seg 06/07 8h→18h',     inicio: '2026-07-06T08:00', fim: '2026-07-06T18:00', AD: h(10),     AN: 0,    VD: 0,     VN: 0,     centavos: 30000 },
+      { caso: 'Azul noite: seg 06/07 22h→ter 5h',inicio:'2026-07-06T22:00', fim: '2026-07-07T05:00', AD: 0,         AN: h(7), VD: 0,     VN: 0,     centavos: 23100 },
+      { caso: 'Início qui, vira sex 02/07 20h→sex 6h', inicio: '2026-07-02T20:00', fim: '2026-07-03T06:00', AD: h(2), AN: h(7), VD: h(1), VN: 0, centavos: 33100 },
+      /* Fronteiras (§10 da auditoria) — dom→seg cruzando 05h, 1 min, término 00:00, bissexto */
+      { caso: 'Fronteira dom→seg: dom 05/07 20h→seg 08h', inicio: '2026-07-05T20:00', fim: '2026-07-06T08:00', AD: h(3), AN: 0,    VD: h(2), VN: h(7), centavos: 48500 },
+      { caso: 'Escala de 1 minuto (seg 06/07 10:00)',      inicio: '2026-07-06T10:00', fim: '2026-07-06T10:01', AD: 1,    AN: 0,    VD: 0,    VN: 0,    centavos: 50 },
+      { caso: 'Término 00:00 (seg 06/07 22h→ter 00:00)',   inicio: '2026-07-06T22:00', fim: '2026-07-07T00:00', AD: 0,    AN: h(2), VD: 0,    VN: 0,    centavos: 6600 },
+      { caso: 'Bissexto: ter 29/02/2028 08h→18h',          inicio: '2028-02-29T08:00', fim: '2028-02-29T18:00', AD: h(10),AN: 0,    VD: 0,    VN: 0,    centavos: 30000 },
+      { caso: 'Vermelha madrugada: sex 03/07 22h→sáb 06h', inicio: '2026-07-03T22:00', fim: '2026-07-04T06:00', AD: 0,    AN: 0,    VD: h(1), VN: h(7), centavos: 35500 },
+    ];
+    const resultados = casos.map((c) => {
+      const r = calcularEscala({ inicio: c.inicio, fim: c.fim });
+      const ok = ['AD','AN','VD','VN'].every((k) => r.cont[k] === c[k]) && r.valorCentavos === c.centavos;
+      return { caso: c.caso, ok, esperado: fmtMoeda(c.centavos), obtido: fmtMoeda(r.valorCentavos) };
+    });
+    if (console.table) console.table(resultados);
+    return resultados.every((r) => r.ok) ? 'TODOS OS CASOS OK' : resultados;
+  };
+
+  /* Suíte de segurança + invariantes (§10 da auditoria, itens 5 e 6).
+     Puros — rodam em Node no CI e no console do site. */
+  window.__ac4TestesExtras = function () {
+    const resultados = [];
+    const add = (caso, ok, detalhes = '') => resultados.push({ caso, ok: Boolean(ok), detalhes: String(detalhes) });
+
+    /* CSV injection: campo iniciado por = + - @ (ou tab/CR) sai com apóstrofo
+       protetor; texto comum passa intacto. Cobre o exportarCSV. */
+    const casosCSV = [
+      ['=2+2', "'=2+2"], ['+1', "'+1"], ['-1', "'-1"], ['@x', "'@x"],
+      ['\tTAB', "'\tTAB"], ['1ª CIA', '1ª CIA'], ['', ''], ['a=b', 'a=b'],
+    ];
+    casosCSV.forEach(([entrada, esperado]) => {
+      const got = csvTextoSeguro(entrada);
+      add(`csvTextoSeguro(${JSON.stringify(entrada)})`, got === esperado, got);
+    });
+
+    /* Invariantes de calcularEscala sobre 50 escalas aleatórias válidas:
+       cont soma = mins; diurno+noturno = mins; vermelha ≤ mins; valor é inteiro
+       ≥ 0 e reproduz round(Σ minutos×tarifa/60); total = Σ dos valores por escala. */
+    const tabela = { portaria: PORTARIA_ATUAL, valores: { AD: 3000, AN: 3300, VD: 4000, VN: 4500 } };
+    const base = new Date('2026-01-01T00:00').getTime();
+    let invariantesOk = true, somaManual = 0, somaReduce = 0;
+    const lista = [];
+    for (let i = 0; i < 50; i++) {
+      const ini = new Date(base + Math.floor(Math.random() * 365 * 24 * 60) * 60000);
+      const dur = 1 + Math.floor(Math.random() * (192 * 60 - 1)); // 1 min .. 192h
+      const fim = new Date(ini.getTime() + dur * 60000);
+      const e = { inicio: formatarDataHoraInput(ini), fim: formatarDataHoraInput(fim) };
+      const r = calcularEscalaBase(e, tabela);
+      const somaCont = r.cont.AD + r.cont.AN + r.cont.VD + r.cont.VN;
+      const esperadoCent = Math.round((r.cont.AD * 3000 + r.cont.AN * 3300 + r.cont.VD * 4000 + r.cont.VN * 4500) / 60);
+      const ok = somaCont === r.mins
+        && r.minDiurno + r.minNoturno === r.mins
+        && r.minVermelha <= r.mins
+        && Number.isInteger(r.valorCentavos) && r.valorCentavos >= 0
+        && r.valorCentavos === esperadoCent;
+      if (!ok) invariantesOk = false;
+      somaManual += r.valorCentavos;
+      lista.push(r.valorCentavos);
+    }
+    somaReduce = lista.reduce((s, v) => s + v, 0);
+    add('Invariantes de cálculo em 50 escalas aleatórias', invariantesOk);
+    add('Total geral = Σ dos valores por escala', somaManual === somaReduce, `${somaManual} = ${somaReduce}`);
+
+    if (console.table) console.table(resultados);
+    return resultados.every((r) => r.ok) ? 'TODOS OS TESTES EXTRAS OK' : resultados;
+  };
+
+  window.__ac4TestesLancamento = function () {
+    const resultados = [];
+    const add = (caso, ok, detalhes = '') => resultados.push({ caso, ok: Boolean(ok), detalhes });
+    const idsCampos = ['escalaInicio', 'escalaFim', 'escalaDuracao', 'escalaQtdPm', 'escalaDescricao', 'escalaOrigem'];
+    const snapshot = {
+      escalas: JSON.parse(JSON.stringify(escalas)),
+      filtroMes,
+      local: localStorage.getItem(STORAGE.escalas),
+      session: sessionStorage.getItem(STORAGE.escalas),
+      campos: Object.fromEntries(idsCampos.map((id) => [id, $(id)?.value ?? ''])),
+    };
+
+    try {
+      const inicio12 = formatarDataHoraInput(combinarDataHoraLocal('2026-07-05', '08:00'));
+      const fim12 = calcularTerminoPorDuracao(inicio12, 12);
+      const inicio14 = formatarDataHoraInput(combinarDataHoraLocal('2026-07-10', '18:00'));
+      const fim14 = calcularTerminoPorDuracao(inicio14, 14);
+      const inicio24 = formatarDataHoraInput(combinarDataHoraLocal('2026-07-05', '08:00'));
+      const fim24 = calcularTerminoPorDuracao(inicio24, 24);
+
+      add('Combinar data + hora inicial', inicio12 === '2026-07-05T08:00', inicio12);
+      add('Calcular término de 12h', fim12 === '2026-07-05T20:00', fim12);
+      add('Calcular término de 14h com virada de dia', fim14 === '2026-07-11T08:00', fim14);
+      add('Calcular término de 24h com virada de dia', fim24 === '2026-07-06T08:00', fim24);
+      add('Aceitar término maior que início', validarIntervaloEscala(inicio24, fim24).ok);
+      add('Rejeitar término igual ao início', !validarIntervaloEscala(inicio24, inicio24).ok);
+      add('Rejeitar término anterior ao início', !validarIntervaloEscala(fim24, inicio24).ok);
+      add('Aceitar duração no limite de 192h', validarIntervaloEscala('2026-07-05T08:00', '2026-07-13T08:00').ok);
+      const acimaLimite = validarIntervaloEscala('2026-07-05T08:00', '2036-07-05T08:00');
+      add('Rejeitar duração acima de 192h (typo de ano)', !acimaLimite.ok && acimaLimite.campo === 'fim', acimaLimite.mensagem);
+
+      const escalaTeste = {
+        id: 'teste-lancamento-ac4',
+        inicio: inicio24,
+        fim: fim24,
+        descricao: 'Escala AC4',
+        origem: 'AC4',
+        qtdPm: 1,
+        tabela: lerTabelaAtual(),
+      };
+      add('Simular criação de objeto de escala', escalaTeste.inicio === '2026-07-05T08:00' && escalaTeste.fim === '2026-07-06T08:00' && escalaTeste.origem === 'AC4');
+
+      escalas = [];
+      filtroMes = '';
+      escalas.push(escalaTeste);
+      salvar();
+      const gravadas = JSON.parse(localStorage.getItem(STORAGE.escalas) || '[]');
+      add('Adicionar escala válida ao estado', escalas.length === 1 && escalas[0].id === escalaTeste.id);
+      add('Storage grava e recupera escalas', gravadas.length === 1 && gravadas[0].fim === '2026-07-06T08:00');
+
+      render();
+      const linhas = document.querySelectorAll('#listaEscalas tbody tr').length;
+      add('Renderizar lista/tabela após adicionar escala', linhas === 1, `${linhas} linha(s)`);
+      add('Totais recalculados após adicionar escala', $('totHoras')?.textContent === '24h' && $('totValor')?.textContent !== 'R$ 0,00', `${$('totHoras')?.textContent} / ${$('totValor')?.textContent}`);
+    } finally {
+      escalas = snapshot.escalas;
+      filtroMes = snapshot.filtroMes;
+      if (snapshot.local === null) localStorage.removeItem(STORAGE.escalas);
+      else localStorage.setItem(STORAGE.escalas, snapshot.local);
+      if (snapshot.session === null) sessionStorage.removeItem(STORAGE.escalas);
+      else sessionStorage.setItem(STORAGE.escalas, snapshot.session);
+      Object.entries(snapshot.campos).forEach(([id, valor]) => { if ($(id)) $(id).value = valor; });
+      render();
+    }
+
+    if (console.table) console.table(resultados);
+    return resultados.every((r) => r.ok) ? 'TODOS OS TESTES DE LANCAMENTO OK' : resultados;
+  };
+
+  /* --------------------------------------------------------------- ações */
+  function lerQtdPm() {
+    const val = parseInt($('escalaQtdPm')?.value || '1', 10);
+    /* Mesmo teto do stepper (999) também para valor digitado à mão. */
+    return Number.isFinite(val) && val >= 1 ? Math.min(999, val) : 1;
+  }
+
+  function validarFormulario() {
+    const inicio = $('escalaInicio').value;
+    const fim    = $('escalaFim').value;
+    const intervalo = validarIntervaloEscala(inicio, fim);
+    const semNormaConhecida = intervalo.ok && !regraNormativaParaData(inicio);
+    let ok = true;
+
+    const marca = (fieldId, invalido) => {
+      $(fieldId).classList.toggle('invalid', invalido);
+      const ctrl = $(fieldId).querySelector('.control');
+      if (ctrl) ctrl.setAttribute('aria-invalid', invalido ? 'true' : 'false');
+      if (invalido) ok = false;
+    };
+    $('inicioErro').textContent = semNormaConhecida
+      ? `A base normativa atual só é aplicável a partir de ${TABELA_OFICIAL.vigenciaInicio.split('-').reverse().join('/')}.`
+      : 'Informe a data e hora de início.';
+    marca('fieldInicio', (!intervalo.ok && intervalo.campo === 'inicio') || semNormaConhecida);
+    marca('fieldFim', !intervalo.ok && intervalo.campo === 'fim');
+
+    if (!ok) {
+      toast(semNormaConhecida ? $('inicioErro').textContent : (intervalo.mensagem || 'Confira os campos obrigatórios da escala.'), { erro: true });
+      return null;
+    }
+
+    const campoDesc = $('escalaDescricao');
+    const descricao = (campoDesc && campoDesc.value.trim()) || 'Escala AC4';
+    const origem = $('escalaOrigem')?.value || 'AC4';
+    const qtdPm = lerQtdPm();
+    return { inicio, fim, descricao, origem, qtdPm };
+  }
+
+  async function submeterFormulario() {
+    /* Reentrância: duplo toque/Ctrl+Enter repetido não deve processar duas vezes.
+       O botão é desabilitado no clique e reabilitado no finally. */
+    if (submetendo) return;
+    submetendo = true;
+    const btn = $('btnSubmit');
+    if (btn) btn.disabled = true;
+    try {
+      /* Entrega primeiro o feedback visual do toque. A validação, persistência
+         e renderização começam após o navegador apresentar esse frame. */
+      await esperarProximoPaint();
+      const dados = validarFormulario();
+      if (!dados) return;
+
+      const duracaoHoras = (parseDateTimeLocal(dados.fim) - parseDateTimeLocal(dados.inicio)) / 3600000;
+      if (duracaoHoras > 24) {
+        const ok = await dialogConfirmar(
+          `A escala tem ${duracaoHoras.toFixed(1)} horas de duração. Confirma?`,
+          { textoOk: 'Confirmar', perigoso: false }
+        );
+        if (!ok) return;
+      }
+
+      const conflitos = detectarConflitos(escalas, dados, editandoId);
+      if (conflitos.duplicadas.length || conflitos.sobrepostas.length) {
+        const mensagem = conflitos.duplicadas.length
+          ? 'Já existe uma escala com o mesmo início e término. Deseja adicionar mesmo assim?'
+          : `Esta escala se sobrepõe a ${conflitos.sobrepostas.length} lançamento${conflitos.sobrepostas.length === 1 ? '' : 's'}. Deseja continuar?`;
+        const ok = await dialogConfirmar(mensagem, { textoOk: 'Continuar', perigoso: false });
+        if (!ok) return;
+      }
+
+      const tabelaAtual = validarTabelaAtual();
+      if (!tabelaAtual) return;
+
+      haptic(10);
+      const escalasAntes = clonarEscalas();
+
+      const novoRegistro = editandoId === null;
+      if (!novoRegistro) {
+        const idx = escalas.findIndex((e) => e.id === editandoId);
+        if (idx >= 0) escalas[idx] = { ...escalas[idx], ...dados, tabela: escalas[idx].tabela || tabelaAtual };
+        cancelarEdicao();
+        toast('Escala atualizada.');
+      } else {
+        escalas.push({ id: gerarIdEscala(), ...dados, status: 'planejada', tabela: tabelaAtual });
+        if ($('escalaDescricao')) $('escalaDescricao').value = '';
+        if ($('escalaQtdPm'))    $('escalaQtdPm').value = '1';
+        if ($('escalaOrigem'))   $('escalaOrigem').value = 'AC4';
+        toast('Escala adicionada.');
+      }
+      if (!salvar()) { escalas = escalasAntes; render(); return; }
+      render();
+      if (novoRegistro) mostrarInstalacaoAposConversao();
+      /* No mobile, salvar com sucesso fecha o bottom sheet. */
+      if (isMobileViewport()) fecharPainelLancamentoMobile();
+    } finally {
+      submetendo = false;
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  function editarEscala(id) {
+    const e = escalas.find((x) => x.id === id);
+    if (!e) return;
+    editandoId = id;
+    $('escalaInicio').value = e.inicio;
+    $('escalaFim').value   = e.fim;
+    if ($('escalaDuracao')) $('escalaDuracao').value = '';
+    if ($('escalaQtdPm'))    $('escalaQtdPm').value = e.qtdPm || 1;
+    if ($('escalaDescricao')) $('escalaDescricao').value = e.descricao === 'Escala AC4' ? '' : (e.descricao || '');
+    if ($('escalaOrigem'))   $('escalaOrigem').value = e.origem || 'AC4';
+    setDetalhesAvancados(true);
+    sincronizarTodosControlesDataHora();
+    $('btnCancelEdit').classList.remove('hidden');
+    $('formTitle').lastChild.textContent = ' Editar escala';
+    setTituloSheet('Editar escala');
+    atualizarResumoFim();
+    atualizarChipsDuracao();
+    atualizarResumoLancamento();
+    if (isMobileViewport()) {
+      /* já vem preenchido — não sobrescrever com data/hora atual */
+      abrirPainelLancamentoMobile();
+    } else {
+      document.querySelector('.launch-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      $('escalaInicio').focus();
+    }
+  }
+
+  /* Espelho legível do término. O datetime-local não repinta em alguns
+     navegadores mobile quando o valor é setado por JS (cálculo da duração);
+     este texto garante que o usuário veja o término calculado. */
+  function atualizarResumoFim() {
+    const el = $('fimResumo');
+    if (!el) return;
+    const v = $('escalaFim')?.value || '';
+    el.textContent = parseDateTimeLocal(v) ? `${fmtDiaSemana(v)}, ${fmtDataHora(v)}` : '';
+  }
+
+  const rotuloQuantidadePm = (qtd) => `${qtd} ${qtd === 1 ? 'PM' : 'PMs'}`;
+
+  function formatarTerminoMobile(valor) {
+    const data = parseDateTimeLocal(valor);
+    if (!data) return '';
+    const diaSemana = data.toLocaleDateString('pt-BR', { weekday: 'short' })
+      .replace('.', '')
+      .replace(/^./, (letra) => letra.toLocaleUpperCase('pt-BR'));
+    const diaMes = data.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+    return `${diaSemana}, ${diaMes} · ${fmtHora(valor)}`;
+  }
+
+  function atualizarBotaoSubmitMobile(resultado = null, qtd = 1) {
+    const label = $('btnSubmitLabel');
+    const valor = $('btnSubmitResult');
+    if (!label || !valor) return;
+    label.textContent = editandoId === null ? 'Adicionar' : 'Salvar';
+    if (!resultado) {
+      valor.textContent = '';
+      valor.setAttribute('aria-hidden', 'true');
+      return;
+    }
+    valor.textContent = qtd > 1
+      ? `TOTAL ${fmtMoeda(resultado.valorCentavos * qtd)}`
+      : fmtMoeda(resultado.valorCentavos);
+    valor.setAttribute('aria-hidden', 'false');
+  }
+
+  /* Apresentação mobile do resultado. Toda a inteligência financeira continua
+     centralizada em calcularEscala(); esta função só formata seu retorno. */
+  function atualizarResumoLancamento() {
+    const el = $('launchResumo');
+    if (!el) return;
+    const inicio = $('escalaInicio')?.value || '';
+    const fim = $('escalaFim')?.value || '';
+    const intervalo = validarIntervaloEscala(inicio, fim);
+    $('btnSaveTemplate')?.classList.toggle('hidden', !intervalo.ok);
+    if (!intervalo.ok) {
+      el.classList.add('is-empty');
+      atualizarBotaoSubmitMobile();
+      return;
+    }
+    const r = calcularEscala({ inicio, fim });
+    const qtd = lerQtdPm();
+    $('qtdMinus')?.toggleAttribute('disabled', qtd <= 1);
+    $('qtdPlus')?.toggleAttribute('disabled', qtd >= 999);
+    const total = r.valorCentavos * qtd;
+    $('launchResultTitle').textContent = qtd === 1 ? 'VALOR ESTIMADO' : 'CUSTO TOTAL ESTIMADO';
+    $('launchResultValue').textContent = fmtMoeda(total);
+    $('launchResultHelper').textContent = qtd === 1
+      ? 'Valor individual'
+      : `${rotuloQuantidadePm(qtd)} · ${fmtMoeda(r.valorCentavos)} por PM`;
+    $('launchResultDuration').textContent = r.mins % 60 === 0
+      ? `${r.mins / 60} ${r.mins === 60 ? 'hora' : 'horas'}`
+      : fmtHoras(r.mins);
+    $('launchResultHours').textContent = `${fmtHoras(r.minDiurno)} diurnas · ${fmtHoras(r.minNoturno)} noturnas`;
+    $('launchResultEnd').textContent = formatarTerminoMobile(fim);
+    el.classList.remove('is-empty');
+    atualizarBotaoSubmitMobile(r, qtd);
+  }
+
+  function sincronizarControlesDataHora(id) {
+    const valor = $(id)?.value || '';
+    const normalizado = parseDateTimeLocal(valor) ? formatarDataHoraInput(parseDateTimeLocal(valor)) : '';
+    const data = $(`${id}Data`);
+    const hora = $(`${id}Hora`);
+    if (data) data.value = normalizado ? normalizado.slice(0, 10) : '';
+    if (hora) hora.value = normalizado ? normalizado.slice(11, 16) : '';
+  }
+
+  function sincronizarTodosControlesDataHora() {
+    sincronizarControlesDataHora('escalaInicio');
+    sincronizarControlesDataHora('escalaFim');
+  }
+
+  function aplicarPartesDataHora(id, tipoEvento = 'input') {
+    const data = $(`${id}Data`)?.value || '';
+    const hora = $(`${id}Hora`)?.value || '';
+    const combinado = combinarDataHoraLocal(data, hora);
+    const campo = $(id);
+    if (!campo || !combinado) return false;
+    campo.value = formatarDataHoraInput(combinado);
+    campo.dispatchEvent(new Event(tipoEvento, { bubbles: true }));
+    return true;
+  }
+
+  /* Chips de duração rápida (mobile): refletem #escalaDuracao — mesma fonte de
+     verdade do <select> do desktop, sem lógica de cálculo paralela. */
+  function atualizarChipsDuracao() {
+    const val = $('escalaDuracao')?.value || '';
+    document.querySelectorAll('#durChips .dur-chip').forEach((c) => {
+      const ativo = c.dataset.horas === val;
+      c.classList.toggle('is-active', ativo);
+      c.setAttribute('aria-pressed', ativo ? 'true' : 'false');
+    });
+  }
+
+  const setTituloSheet = (txt) => { const el = $('mobileLaunchTitle'); if (el) el.textContent = txt; };
+
+  function cancelarEdicao() {
+    editandoId = null;
+    setTituloSheet('Nova escala AC4');
+    if ($('escalaDescricao')) $('escalaDescricao').value = '';
+    if ($('escalaQtdPm'))    $('escalaQtdPm').value = '1';
+    if ($('escalaOrigem'))   $('escalaOrigem').value = 'AC4';
+    $('btnCancelEdit').classList.add('hidden');
+    $('formTitle').lastChild.textContent = ' Lançar escala';
+    setDetalhesAvancados(false);
+    ['fieldInicio', 'fieldFim'].forEach((f) => {
+      $(f).classList.remove('invalid');
+      $(f).querySelector('.control')?.removeAttribute('aria-invalid');
+    });
+    atualizarResumoLancamento();
+  }
+
+  function renderModelos() {
+    const select = $('templateSelect');
+    const wrap = $('templateSelectWrap');
+    if (!select || !wrap) return;
+    const selecionado = select.value;
+    select.innerHTML = '<option value="">Meus modelos</option>';
+    modelos.forEach((modelo) => {
+      const opt = document.createElement('option');
+      opt.value = modelo.id;
+      opt.textContent = modelo.nome;
+      select.appendChild(opt);
+    });
+    wrap.classList.toggle('hidden', modelos.length === 0);
+    if (modelos.some((m) => m.id === selecionado)) select.value = selecionado;
+    $('btnDeleteTemplate')?.classList.toggle('hidden', !select.value);
+  }
+
+  function preencherConfiguracaoRapida({ duracao, qtdPm = 1, descricao = '', origem = 'AC4' }, inicio = null) {
+    if (inicio) $('escalaInicio').value = inicio;
+    const horas = Number(duracao);
+    if ($('escalaDuracao')) $('escalaDuracao').value = [12, 14, 24].includes(horas) ? String(horas) : '';
+    const fim = calcularTerminoPorDuracao($('escalaInicio')?.value || '', horas);
+    if (fim) $('escalaFim').value = fim;
+    if ($('escalaQtdPm')) $('escalaQtdPm').value = String(Math.min(999, Math.max(1, Number(qtdPm) || 1)));
+    if ($('escalaDescricao')) $('escalaDescricao').value = descricao === 'Escala AC4' ? '' : (descricao || '');
+    if ($('escalaOrigem')) $('escalaOrigem').value = origem || 'AC4';
+    sincronizarTodosControlesDataHora();
+    atualizarResumoFim();
+    atualizarChipsDuracao();
+    atualizarResumoLancamento();
+    const temDetalhes = ![12, 14, 24].includes(horas) || !!descricao || (origem && origem !== 'AC4');
+    setDetalhesAvancados(temDetalhes);
+  }
+
+  function repetirUltimaEscala() {
+    const ultima = [...escalas].sort((a, b) => (parseDateTimeLocal(b.inicio) || new Date(b.inicio)) - (parseDateTimeLocal(a.inicio) || new Date(a.inicio)))[0];
+    if (!ultima) return;
+    const inicio = parseDateTimeLocal(ultima.inicio) || new Date(ultima.inicio);
+    const fim = parseDateTimeLocal(ultima.fim) || new Date(ultima.fim);
+    const duracao = (fim - inicio) / 3600000;
+    const proximoInicio = toInputLocal(new Date(inicio.getTime() + 24 * 3600000));
+    preencherConfiguracaoRapida({ ...ultima, duracao }, proximoInicio);
+    toast('Última escala preenchida para o dia seguinte. Confira e adicione.');
+  }
+
+  function abrirSalvarModelo() {
+    const inicio = parseDateTimeLocal($('escalaInicio')?.value || '');
+    const fim = parseDateTimeLocal($('escalaFim')?.value || '');
+    const duracao = inicio && fim ? (fim - inicio) / 3600000 : 0;
+    if (!(duracao > 0 && duracao <= 24)) {
+      toast('Informe o início e a duração antes de salvar um modelo.', { erro: true });
+      return;
+    }
+    $('templateName').value = '';
+    $('dialogTemplate')?.showModal();
+    aposProximoPaint(() => $('templateName')?.focus());
+  }
+
+  function salvarModeloAtual() {
+    const nome = ($('templateName')?.value || '').trim();
+    const inicio = parseDateTimeLocal($('escalaInicio')?.value || '');
+    const fim = parseDateTimeLocal($('escalaFim')?.value || '');
+    const duracao = inicio && fim ? (fim - inicio) / 3600000 : 0;
+    if (nome.length < 2 || !(duracao > 0 && duracao <= 24)) {
+      toast('Informe um nome e uma duração válida para o modelo.', { erro: true });
+      return false;
+    }
+    const existente = modelos.find((m) => m.nome.toLocaleLowerCase('pt-BR') === nome.toLocaleLowerCase('pt-BR'));
+    const modelo = {
+      id: existente?.id || gerarIdEscala(),
+      nome: nome.slice(0, 40),
+      duracao,
+      qtdPm: lerQtdPm(),
+      descricao: ($('escalaDescricao')?.value || '').trim(),
+      origem: $('escalaOrigem')?.value || 'AC4',
+    };
+    modelos = existente ? modelos.map((m) => m.id === existente.id ? modelo : m) : [...modelos, modelo].slice(-20);
+    if (!salvarModelos()) return false;
+    renderModelos();
+    $('templateSelect').value = modelo.id;
+    $('btnDeleteTemplate')?.classList.remove('hidden');
+    $('dialogTemplate')?.close();
+    toast(existente ? 'Modelo atualizado.' : 'Modelo salvo neste aparelho.');
+    return true;
+  }
+
+  async function excluirModeloSelecionado() {
+    const id = $('templateSelect')?.value || '';
+    const modelo = modelos.find((m) => m.id === id);
+    if (!modelo) return;
+    const ok = await dialogConfirmar(`Excluir o modelo “${modelo.nome}”?`);
+    if (!ok) return;
+    modelos = modelos.filter((m) => m.id !== id);
+    if (salvarModelos()) {
+      renderModelos();
+      toast('Modelo excluído.');
+    }
+  }
+
+  function duplicarEscala(id) {
+    const e = escalas.find((x) => x.id === id);
+    if (!e) return;
+    const umDia = 24 * 3600000;
+    const escalasAntes = clonarEscalas();
+    escalas.push({
+      ...e,
+      id: gerarIdEscala(),
+      inicio: toInputLocal(new Date((parseDateTimeLocal(e.inicio) || new Date(e.inicio)).getTime() + umDia)),
+      fim:    toInputLocal(new Date((parseDateTimeLocal(e.fim) || new Date(e.fim)).getTime() + umDia)),
+    });
+    if (!salvar()) { escalas = escalasAntes; render(); return; }
+    haptic([10, 30, 10]);
+    render();
+    toast('Escala duplicada para o dia seguinte.');
+  }
+
+  function removerEscala(id) {
+    const e = escalas.find((x) => x.id === id);
+    if (!e) return;
+    const escalasAntes = clonarEscalas();
+    ultimaExcluida = e;
+    escalas = escalas.filter((x) => x.id !== id);
+    if (editandoId === id) cancelarEdicao();
+    if (!salvar()) { escalas = escalasAntes; ultimaExcluida = null; render(); return; }
+    haptic([10, 20]);
+    render();
+    toast('Escala removida.', {
+      acao: { rotulo: 'Desfazer', fn: () => {
+        if (!ultimaExcluida) return;
+        const antes = clonarEscalas(), restaurada = ultimaExcluida;
+        escalas.push(restaurada);
+        if (!salvar()) { escalas = antes; render(); return; }
+        ultimaExcluida = null;
+        render();
+      } },
+    });
+  }
+
+  async function limparTudo() {
+    if (!escalas.length) return;
+    const ok = await dialogConfirmar(`Remover todas as ${escalas.length} escala${escalas.length === 1 ? '' : 's'}? Esta ação não pode ser desfeita.`);
+    if (!ok) return;
+    const escalasAntes = clonarEscalas();
+    escalas = []; cancelarEdicao();
+    if (!salvar()) { escalas = escalasAntes; render(); return; }
+    render();
+    toast('Todas as escalas foram removidas.');
+  }
+
+  /* -------------------------------------------------------- filtro por mês */
+  function atualizarSelectMes() {
+    const sel = $('filtroMes');
+    if (!sel) return;
+    const meses = new Set(escalas.map((e) => toInputMonth(parseDateTimeLocal(e.inicio) || new Date(e.inicio))));
+    const antigo = sel.value;
+    sel.innerHTML = '<option value="">Todos os meses</option>';
+    [...meses].sort().forEach((m) => {
+      const opt = document.createElement('option');
+      opt.value = m; opt.textContent = fmtMesRef(m);
+      if (m === antigo) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    filtroMes = meses.has(antigo) ? antigo : '';
+    if (sel.value !== filtroMes) sel.value = filtroMes;
+  }
+
+  const mesPainelAtual = () => {
+    if (filtroMes) return filtroMes;
+    const atual = toInputMonth(new Date());
+    if (escalas.some((e) => toInputMonth(parseDateTimeLocal(e.inicio) || new Date(e.inicio)) === atual)) return atual;
+    const meses = escalas.map((e) => toInputMonth(parseDateTimeLocal(e.inicio) || new Date(e.inicio))).sort();
+    return meses.at(-1) || atual;
+  };
+  const mesAnterior = (mes) => {
+    const [ano, numero] = mes.split('-').map(Number);
+    return toInputMonth(new Date(ano, numero - 2, 1, 12));
+  };
+
+  function resumoPlanejamento(lista) {
+    const resultados = lista.map((e) => calcularEscala(e));
+    return {
+      qtd: lista.length,
+      mins: resultados.reduce((s, r) => s + r.mins, 0),
+      diurno: resultados.reduce((s, r) => s + r.minDiurno, 0),
+      noturno: resultados.reduce((s, r) => s + r.minNoturno, 0),
+      valor: resultados.reduce((s, r, i) => s + r.valorCentavos * (lista[i].qtdPm || 1), 0),
+    };
+  }
+
+  function renderPlanejamento() {
+    const mes = mesPainelAtual();
+    const listaMes = escalas.filter((e) => toInputMonth(parseDateTimeLocal(e.inicio) || new Date(e.inicio)) === mes);
+    const listaAnterior = escalas.filter((e) => toInputMonth(parseDateTimeLocal(e.inicio) || new Date(e.inicio)) === mesAnterior(mes));
+    const atual = resumoPlanejamento(listaMes);
+    const anterior = resumoPlanejamento(listaAnterior);
+    $('planningMonth').textContent = fmtMesRef(mes);
+    $('planningValue').textContent = fmtMoeda(atual.valor);
+    $('planningHours').textContent = `${fmtHoras(atual.mins)} · ${atual.qtd} escala${atual.qtd === 1 ? '' : 's'}`;
+
+    const comparacao = $('planningComparison');
+    comparacao.className = 'planning-comparison';
+    if (!anterior.qtd) {
+      comparacao.textContent = 'Sem dados do mês anterior';
+    } else {
+      const variacao = anterior.valor ? ((atual.valor - anterior.valor) / anterior.valor) * 100 : 0;
+      const sinal = variacao > 0 ? '↑' : variacao < 0 ? '↓' : '→';
+      comparacao.textContent = `${sinal} ${Math.abs(variacao).toFixed(0)}% em relação a ${fmtMesRef(mesAnterior(mes))}`;
+      comparacao.classList.add(variacao > 0 ? 'is-up' : variacao < 0 ? 'is-down' : 'is-flat');
+    }
+
+    const totalHoras = atual.diurno + atual.noturno;
+    const pctDia = totalHoras ? (atual.diurno / totalHoras) * 100 : 50;
+    $('planningDayBar').style.width = `${pctDia}%`;
+    $('planningNightBar').style.width = `${100 - pctDia}%`;
+    $('planningDayLabel').textContent = `Dia ${fmtHoras(atual.diurno)}`;
+    $('planningNightLabel').textContent = `Noite ${fmtHoras(atual.noturno)}`;
+
+    const contagens = Object.fromEntries(STATUS_ESCALA.map((status) => [status, 0]));
+    listaMes.forEach((e) => { contagens[statusEscala(e)] += 1; });
+    $('planningStatusGrid').innerHTML = STATUS_ESCALA.map((status) => `
+      <button class="planning-status planning-status--${status}" type="button" data-status-filter="${status}" aria-label="Filtrar escalas ${STATUS_INFO[status].curto.toLocaleLowerCase('pt-BR')}">
+        <strong>${contagens[status]}</strong><span>${STATUS_INFO[status].curto}</span>
+      </button>`).join('');
+
+    const meta = metasMensais[mes];
+    const progresso = $('planningProgress');
+    progresso.classList.toggle('hidden', !meta);
+    $('btnPlanningGoal').textContent = meta ? 'Editar meta' : 'Definir meta';
+    if (meta) {
+      const metasAtivas = [];
+      const percentuais = [];
+      if (meta.valorCentavos > 0) {
+        metasAtivas.push(fmtMoeda(meta.valorCentavos));
+        percentuais.push((atual.valor / meta.valorCentavos) * 100);
+      }
+      if (meta.horas > 0) {
+        metasAtivas.push(`${String(meta.horas).replace('.', ',')}h`);
+        percentuais.push(((atual.mins / 60) / meta.horas) * 100);
+      }
+      const percentual = Math.max(0, Math.min(100, Math.min(...percentuais)));
+      $('planningProgressLabel').textContent = `Meta: ${metasAtivas.join(' · ')}`;
+      $('planningProgressValue').textContent = `${Math.round(percentual)}%`;
+      $('planningProgressBar').style.width = `${percentual}%`;
+      $('planningProgressTrack').setAttribute('aria-valuenow', String(Math.round(percentual)));
+    }
+
+    const agora = new Date();
+    const atrasadas = listaMes.filter((e) => statusEscala(e) === 'planejada' && (parseDateTimeLocal(e.fim) || new Date(e.fim)) < agora).length;
+    const alerta = $('planningAlert');
+    alerta.classList.toggle('hidden', atrasadas === 0);
+    alerta.textContent = atrasadas
+      ? `${atrasadas} escala${atrasadas === 1 ? '' : 's'} passada${atrasadas === 1 ? '' : 's'} ainda marcada${atrasadas === 1 ? '' : 's'} como planejada${atrasadas === 1 ? '' : 's'}. Revisar`
+      : '';
+  }
+
+  function abrirMetaMensal() {
+    const mes = mesPainelAtual();
+    const meta = metasMensais[mes] || {};
+    $('planningGoalMonth').textContent = fmtMesRef(mes);
+    $('planningGoalValue').value = meta.valorCentavos ? (meta.valorCentavos / 100).toFixed(2) : '';
+    $('planningGoalHours').value = meta.horas || '';
+    $('planningGoalClear').classList.toggle('hidden', !metasMensais[mes]);
+    $('dialogPlanningGoal')?.showModal();
+  }
+
+  function salvarMetaMensal() {
+    const mes = mesPainelAtual();
+    const valorCentavos = Math.max(0, Math.round(Number($('planningGoalValue')?.value || 0) * 100));
+    const horas = Math.max(0, Math.min(744, Number($('planningGoalHours')?.value || 0)));
+    if (!valorCentavos && !horas) delete metasMensais[mes];
+    else metasMensais[mes] = { valorCentavos, horas };
+    if (!salvarMetas()) return false;
+    $('dialogPlanningGoal')?.close();
+    renderPlanejamento();
+    toast(valorCentavos || horas ? 'Meta mensal salva neste aparelho.' : 'Meta mensal removida.');
+    return true;
+  }
+
+  function removerMetaMensal() {
+    delete metasMensais[mesPainelAtual()];
+    if (!salvarMetas()) return;
+    $('dialogPlanningGoal')?.close();
+    renderPlanejamento();
+    toast('Meta mensal removida.');
+  }
+
+  function atualizarStatusEscala(id, status) {
+    if (!STATUS_ESCALA.includes(status)) return;
+    const escala = escalas.find((e) => String(e.id) === String(id));
+    if (!escala || statusEscala(escala) === status) return;
+    const anterior = statusEscala(escala);
+    escala.status = status;
+    if (!salvar()) { escala.status = anterior; render(); return; }
+    render();
+    toast(`Escala marcada como ${STATUS_INFO[status].label.toLocaleLowerCase('pt-BR')}.`);
+  }
+
+  /* ------------------------------------------------------- compartilhar */
+  function gerarTextoResumo() {
+    const lista = escalasOrdenadas();
+    if (!lista.length) return '';
+    const resultados = lista.map((e) => ({ e, r: calcularEscala(e) }));
+    const totMins  = resultados.reduce((s, x) => s + x.r.mins, 0);
+    const totValor = resultados.reduce((s, x) => s + x.r.valorCentavos * (x.e.qtdPm || 1), 0);
+
+    const DIAS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+    const SEP = '─────────────────────';
+
+    const dataCompleta = (iso) => {
+      const d = new Date(iso);
+      return `${DIAS[d.getDay()]}, ${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+    };
+
+    let texto = `📋 *SIMULAÇÃO DE ESCALAS — AC4 / PMGO*\n${SEP}\n\n`;
+
+    resultados.forEach(({ e, r }, i) => {
+      const qtd       = e.qtdPm || 1;
+      const isVerm    = r.minVermelha > 0;
+      const tipoEmoji = isVerm ? '🔴' : '🔵';
+      const tipoNome  = isVerm ? 'Vermelha' : 'Azul';
+      const mesmodia  = fmtData(e.inicio) === fmtData(e.fim);
+      const fimStr    = mesmodia
+        ? fmtHora(e.fim)
+        : `${fmtHora(e.fim)} (${DIAS[new Date(e.fim).getDay()]}, ${String(new Date(e.fim).getDate()).padStart(2, '0')}/${String(new Date(e.fim).getMonth() + 1).padStart(2, '0')})`;
+
+      if (lista.length > 1) {
+        texto += `*${i + 1}. Escala ${tipoNome} ${tipoEmoji}*\n`;
+      } else {
+        texto += `*Escala ${tipoNome} ${tipoEmoji}*\n`;
+      }
+
+      texto += `📅 ${dataCompleta(e.inicio)}\n`;
+      texto += `🕐 ${fmtHora(e.inicio)} → ${fimStr}\n`;
+
+      if (r.minNoturno > 0 && r.minDiurno > 0) {
+        texto += `⏱ ${fmtHoras(r.mins)}  |  Diurno: ${fmtHoras(r.minDiurno)}  /  Noturno: ${fmtHoras(r.minNoturno)}\n`;
+      } else {
+        texto += `⏱ ${fmtHoras(r.mins)} (${r.minNoturno > 0 ? 'Noturno' : 'Diurno'})\n`;
+      }
+
+      const unidStr = e.descricao && e.descricao !== 'Escala AC4' ? e.descricao : '—';
+      const oriStr  = (e.origem || 'AC4').replace('CONVENIO_', 'Conv. ').replace('FAZENDARIO_SEC_ECON', 'Fazendário/Sec.Econ.');
+      texto += `📍 Unidade: ${unidStr}  |  Origem: ${oriStr}\n`;
+      texto += `📌 Situação: ${STATUS_INFO[statusEscala(e)].label}\n`;
+
+      if (qtd > 1) {
+        texto += `👮 ${qtd} PMs  ·  ${fmtMoeda(r.valorCentavos)}/PM\n`;
+        texto += `💰 *${fmtMoeda(r.valorCentavos * qtd)}* (total ${qtd} PMs)\n`;
+      } else {
+        texto += `💰 *${fmtMoeda(r.valorCentavos)}*\n`;
+      }
+
+      if (i < resultados.length - 1) texto += `\n${SEP}\n\n`;
+    });
+
+    if (lista.length > 1) {
+      texto += `\n${SEP}\n`;
+      texto += `📊 *TOTAL — ${lista.length} escalas*\n`;
+      texto += `⏱ ${fmtHoras(totMins)}  |  💰 *${fmtMoeda(totValor)}*\n`;
+      texto += `${SEP}\n`;
+    }
+
+    texto += `\n⚠️ _Portaria SSP n.º 621/2026 · Valor simulado_\n`;
+    texto += `_Sujeito à conferência administrativa — AC4 PMGO_`;
+    return texto;
+  }
+
+  let resumoCompartilhamentoCache = '';
+  let urlWhatsAppCache = '';
+
+  function prepararCompartilhamento() {
+    resumoCompartilhamentoCache = gerarTextoResumo();
+    urlWhatsAppCache = `https://wa.me/?text=${encodeURIComponent(resumoCompartilhamentoCache)}`;
+  }
+
+  const obterResumoCompartilhamento = () => resumoCompartilhamentoCache || gerarTextoResumo();
+
+  async function compartilharWhatsApp() {
+    const lista = escalasOrdenadas();
+    if (!lista.length) { toast('Adicione escalas antes de compartilhar.', { erro: true }); return; }
+    const url = urlWhatsAppCache || `https://wa.me/?text=${encodeURIComponent(obterResumoCompartilhamento())}`;
+    window.open(url, '_blank', 'noopener');
+  }
+
+  async function compartilharNativo() {
+    const lista = escalasOrdenadas();
+    if (!lista.length) { toast('Adicione escalas antes de compartilhar.', { erro: true }); return; }
+    try { await navigator.share({ title: 'Relatório AC4', text: obterResumoCompartilhamento() }); }
+    catch (e) { if (e.name !== 'AbortError') compartilharWhatsApp(); }
+  }
+
+  async function copiarResumo() {
+    const lista = escalasOrdenadas();
+    if (!lista.length) { toast('Adicione escalas antes de copiar.', { erro: true }); return; }
+    try {
+      await navigator.clipboard.writeText(obterResumoCompartilhamento());
+      haptic([10, 10]);
+      toast('Resumo copiado para a área de transferência!');
+    } catch { toast('Não foi possível copiar automaticamente.', { erro: true }); }
+  }
+
+  function abrirShareSheet() {
+    const lista = escalasOrdenadas();
+    if (!lista.length) { toast('Adicione escalas antes de compartilhar.', { erro: true }); return; }
+    const dlg = $('dialogShare');
+    if (!dlg) { compartilharWhatsApp(); return; }
+    resumoCompartilhamentoCache = '';
+    urlWhatsAppCache = '';
+    const nativeBtn = $('shareNative');
+    if (nativeBtn) nativeBtn.classList.toggle('hidden', !navigator.share);
+    dlg.showModal();
+    aposProximoPaint(prepararCompartilhamento);
+  }
+
+  /* ------------------------------------------------ canal de feedback
+     Elogios/sugestões/problemas vão direto ao mantenedor por e-mail, SEM
+     backend e SEM coleta: o mailto abre no aplicativo do próprio usuário,
+     que decide enviar. Coerente com a política de privacidade do app. */
+  const FEEDBACK_EMAIL = 'welitonsp@gmail.com';
+  let feedbackTipo = 'Elogio';
+
+  const montarMailtoFeedback = (tipo, mensagem) => {
+    const assunto = `[Calculadora AC4] ${tipo}`;
+    const corpo = `${mensagem}\n\n—\nTipo: ${tipo}\nCalculadora AC4 v${APP_VERSION} · enviado pelo canal de feedback do app`;
+    return `mailto:${FEEDBACK_EMAIL}?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`;
+  };
+  /* Exposto para o smoke test validar o link sem navegar para fora da página. */
+  window.__ac4MailtoFeedback = montarMailtoFeedback;
+
+  function selecionarTipoFeedback(botao) {
+    feedbackTipo = botao.dataset.tipo || 'Elogio';
+    document.querySelectorAll('#fbTipos .fb-tipo').forEach((b) => {
+      const ativo = b === botao;
+      b.classList.toggle('is-active', ativo);
+      b.setAttribute('aria-pressed', ativo ? 'true' : 'false');
+    });
+  }
+
+  function enviarFeedback() {
+    const mensagem = ($('fbMensagem')?.value || '').trim();
+    if (mensagem.length < 5) {
+      toast('Escreva sua mensagem antes de enviar.', { erro: true });
+      $('fbMensagem')?.focus();
+      return;
+    }
+    haptic(10);
+    window.location.href = montarMailtoFeedback(feedbackTipo, mensagem);
+    $('dialogFeedback')?.close();
+    toast('Abrindo seu aplicativo de e-mail…');
+  }
+
+  async function copiarEmailFeedback() {
+    try {
+      await navigator.clipboard.writeText(FEEDBACK_EMAIL);
+      toast(`E-mail copiado: ${FEEDBACK_EMAIL}`);
+    } catch { toast(`Envie para: ${FEEDBACK_EMAIL}`, { erro: false }); }
+  }
+
+  function initFeedback() {
+    on('footerFeedback', 'click', (ev) => { ev.preventDefault(); $('dialogFeedback')?.showModal(); });
+    on('fbFechar', 'click', () => $('dialogFeedback')?.close());
+    on('fbEnviar', 'click', enviarFeedback);
+    on('fbCopiarEmail', 'click', copiarEmailFeedback);
+    document.querySelectorAll('#fbTipos .fb-tipo').forEach((b) => {
+      b.addEventListener('click', () => selecionarTipoFeedback(b));
+    });
+  }
+
+  /* Botões de ação de uma escala — reusados na tabela (desktop) e nos
+     cards enxutos (mobile). A delegação em #listaEscalas trata ambos. */
+  const botoesAcaoHTML = (id) => `
+    <div class="escala-actions">
+      <button class="btn-icon gcal" data-acao="agenda" data-id="${id}" title="Adicionar esta escala à agenda" aria-label="Adicionar esta escala à agenda">
+        <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4M12 13v4M10 15h4"/></svg>
+      </button>
+      <button class="btn-icon" data-acao="duplicar" data-id="${id}" title="Duplicar para o dia seguinte" aria-label="Duplicar">
+        <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+      </button>
+      <button class="btn-icon" data-acao="editar" data-id="${id}" title="Editar" aria-label="Editar">
+        <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+      </button>
+      <button class="btn-icon delete" data-acao="remover" data-id="${id}" title="Excluir" aria-label="Excluir">
+        <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+      </button>
+    </div>`;
+
+  const fmtDiaSemanaLinha = (iso) =>
+    fmtDiaSemana(iso)
+      .split('-')
+      .map((parte) => parte ? parte[0].toLocaleUpperCase('pt-BR') + parte.slice(1) : parte)
+      .join('-');
+  const fmtMoedaLinha = (centavos) => fmtMoeda(centavos).replace(/\u00a0/g, ' ');
+
+  const seletorStatusHTML = (e, classe = '') => {
+    const atual = statusEscala(e);
+    return `<label class="status-control ${classe}">
+      <span class="sr-only">Situação da escala</span>
+      <select class="status-select status-select--${atual}" data-status-id="${escapeHTML(String(e.id))}" aria-label="Situação da escala">
+        ${STATUS_ESCALA.map((status) => `<option value="${status}"${status === atual ? ' selected' : ''}>${STATUS_INFO[status].label}</option>`).join('')}
+      </select>
+    </label>`;
+  };
+
+  const botoesCardMobileHTML = (id, statusHTML = '') => `
+    <div class="ec-card-actions" aria-label="Ações da escala">
+      ${statusHTML}
+      <button class="ec-action-btn" data-acao="editar" data-id="${id}" type="button">
+        <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+        <span>Editar</span>
+      </button>
+      <details class="ec-more">
+        <summary class="ec-action-btn" aria-label="Mais ações desta escala">
+          <svg class="icon icon-sm" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>
+          <span>Mais</span>
+        </summary>
+        <div class="ec-more-menu">
+          <button data-acao="agenda" data-id="${id}" type="button">Adicionar à agenda</button>
+          <button data-acao="duplicar" data-id="${id}" type="button">Duplicar para amanhã</button>
+          <button class="delete" data-acao="remover" data-id="${id}" type="button">Excluir escala</button>
+        </div>
+      </details>
+    </div>`;
+
+  /* Card de escala (mobile): leitura confortável + ações grandes.
+     Estrutura própria — o desktop segue usando a tabela, sem alteração. */
+  const cardEscalaHTML = (e, r) => {
+    const qtd = e.qtdPm || 1;
+    const valorTotal = r.valorCentavos * qtd;
+    const inicio = parseDateTimeLocal(e.inicio) || new Date(e.inicio);
+    const dataLinha = `${inicio.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '').toUpperCase()} · ${String(inicio.getDate()).padStart(2, '0')} ${inicio.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase()}`;
+    const mudouDia = fmtData(e.inicio) !== fmtData(e.fim);
+    const fimDia = mudouDia
+      ? `${(parseDateTimeLocal(e.fim) || new Date(e.fim)).toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '').toUpperCase()} `
+      : '';
+    const horarioLinha = `${fmtHora(e.inicio)} → ${fimDia}${fmtHora(e.fim)}`;
+    const resumo = `${fmtData(e.inicio)} - ${fmtDiaSemanaLinha(e.inicio)} - ${fmtHoras(r.mins)} - ${fmtMoedaLinha(valorTotal)}`;
+    const duracaoLinha = r.mins % 60 === 0 ? `${r.mins / 60} ${r.mins === 60 ? 'hora' : 'horas'}` : fmtHoras(r.mins);
+    const unidade = e.descricao && e.descricao !== 'Escala AC4' ? e.descricao : '';
+    /* Layout v65: identificação à esquerda, valor alinhado à direita (leitura
+       em "F", como extratos bancários) e situação + ações numa única linha. */
+    return `
+      <div class="escala-card escala-card--${statusEscala(e)}" role="listitem" aria-label="${escapeHTML(resumo)}">
+        <div class="ec-card-main">
+          <div class="ec-card-head">
+            <div class="ec-date-line">${escapeHTML(dataLinha)}</div>
+            <div class="ec-card-info">
+              <div class="ec-time">${escapeHTML(horarioLinha)}</div>
+              <div class="ec-duration">${escapeHTML(duracaoLinha)}${unidade ? ` <span class="ec-unit">· ${escapeHTML(unidade)}</span>` : ''}</div>
+            </div>
+          </div>
+          <div class="ec-card-amount">
+            ${qtd === 1
+              ? `<div class="ec-money">${fmtMoedaLinha(r.valorCentavos)}</div>`
+              : `<div class="ec-total">${fmtMoedaLinha(valorTotal)}</div>
+                 <div class="ec-qtd">${rotuloQuantidadePm(qtd)}</div>
+                 <div class="ec-per-pm">${fmtMoedaLinha(r.valorCentavos)} por PM</div>`}
+          </div>
+        </div>
+        ${botoesCardMobileHTML(e.id, seletorStatusHTML(e, 'ec-status'))}
+      </div>`;
+  };
+
+  /* ----------------------------------------------------------- render */
+  function render() {
+    atualizarSelectMes();
+    const lista = escalasOrdenadas();
+    const resultados = lista.map((e) => ({ e, r: calcularEscala(e) }));
+
+    const totMins    = resultados.reduce((s, x) => s + x.r.mins, 0);
+    const totDiurno  = resultados.reduce((s, x) => s + x.r.minDiurno, 0);
+    const totNoturno = resultados.reduce((s, x) => s + x.r.minNoturno, 0);
+    const totValor   = resultados.reduce((s, x) => s + x.r.valorCentavos * (x.e.qtdPm || 1), 0);
+
+    $('totHoras').textContent    = fmtHoras(totMins);
+    $('totDiurnas').textContent  = fmtHoras(totDiurno);
+    $('totNoturnas').textContent = fmtHoras(totNoturno);
+    $('totValor').textContent    = fmtMoeda(totValor);
+    $('mobileTotal').textContent = fmtMoeda(totValor);
+    $('pctDiurnas').textContent  = totMins ? `${((totDiurno  / totMins) * 100).toFixed(1).replace('.', ',')}% do total` : '0% do total';
+    $('pctNoturnas').textContent = totMins ? `${((totNoturno / totMins) * 100).toFixed(1).replace('.', ',')}% do total` : '0% do total';
+
+    const filtrosAtivos = !!(filtroMes || filtroOrigem || filtroBusca || filtroStatus);
+    const sufixo = filtroMes ? ` em ${fmtMesRef(filtroMes)}` : ' no período';
+    $('totQtd').textContent = `${lista.length} escala${lista.length === 1 ? '' : 's'}${sufixo}`;
+    /* Resumo compacto do card de Valor (mobile): "96h · 8 escalas" */
+    if ($('metricResumoMobile')) {
+      $('metricResumoMobile').textContent = `${fmtHoras(totMins)} · ${lista.length} escala${lista.length === 1 ? '' : 's'}`;
+    }
+    $('btnClearAll').classList.toggle('hidden', escalas.length === 0);
+    $('btnRepeatLast')?.classList.toggle('hidden', escalas.length === 0);
+    renderPlanejamento();
+
+    const container = $('listaEscalas');
+    if (!lista.length) {
+      const msg = filtrosAtivos ? 'Nenhuma escala corresponde aos filtros. Ajuste a busca ou o período.' : 'Preencha o formulário acima para iniciar o cálculo.';
+      container.innerHTML = `
+        <div class="empty-state">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/>
+          </svg>
+          <h3>Nenhuma escala lançada</h3>
+          <p>${escapeHTML(msg)}</p>
+        </div>`;
+      return;
+    }
+
+    let html = `
+      <div class="table-wrap">
+        <table class="escala-table">
+          <thead><tr>
+            <th>Dia</th><th>Data</th><th>Início</th><th>Término</th>
+            <th>Tipo</th><th>Situação</th><th>Horas</th><th>Valor</th><th>Ações</th>
+          </tr></thead>
+          <tbody>`;
+
+    resultados.forEach(({ e, r }) => {
+      const qtd = e.qtdPm || 1;
+      const valorTotal = r.valorCentavos * qtd;
+      const tipoChips = [];
+      if (r.minVermelha > 0) tipoChips.push('<span class="chip chip-red">Vermelha</span>');
+      if (r.minVermelha < r.mins) tipoChips.push('<span class="chip chip-blue">Azul</span>');
+      tipoChips.push(r.minNoturno > 0
+        ? `<span class="chip chip-night">${fmtHoras(r.minNoturno)} noturno</span>`
+        : '<span class="chip chip-day">Diurno</span>');
+      if (qtd > 1) tipoChips.push(`<span class="chip chip-neutral">${qtd} PMs</span>`);
+      const origemLabel = (e.origem || 'AC4').replace('CONVENIO_', 'Conv. ').replace('FAZENDARIO_SEC_ECON', 'Fazendário');
+      tipoChips.push(`<span class="chip chip-origem">${escapeHTML(origemLabel)}</span>`);
+
+      const fimStr = fmtData(e.inicio) === fmtData(e.fim) ? fmtHora(e.fim) : `${fmtData(e.fim)} ${fmtHora(e.fim)}`;
+      const unidadeTexto = e.descricao && e.descricao !== 'Escala AC4' ? e.descricao : '-';
+      const unidadeNota = `<span class="table-note">Unidade: ${escapeHTML(unidadeTexto)}</span>`;
+
+      html += `
+        <tr>
+          <td data-label="Dia">${fmtDiaSemana(e.inicio)}</td>
+          <td data-label="Data">${fmtData(e.inicio)}${unidadeNota}</td>
+          <td data-label="Início">${fmtHora(e.inicio)}</td>
+          <td data-label="Término">${fimStr}</td>
+          <td data-label="Tipo"><div class="chips">${tipoChips.join('')}</div></td>
+          <td data-label="Situação">${seletorStatusHTML(e, 'table-status')}</td>
+          <td data-label="Horas">${fmtHoras(r.mins)}</td>
+          <td data-label="Valor" class="value-cell">${fmtMoeda(valorTotal)}${qtd > 1 ? `<span class="table-note">${fmtMoeda(r.valorCentavos)}/PM</span>` : ''}</td>
+          <td data-label="Ações">${botoesAcaoHTML(e.id)}</td>
+        </tr>`;
+    });
+    html += '</tbody>';
+    if (lista.length > 1) {
+      html += `
+        <tfoot>
+          <tr class="table-total-row">
+            <td colspan="6">Total geral (${lista.length} escalas)</td>
+            <td>${fmtHoras(totMins)}</td>
+            <td class="value-cell">${fmtMoeda(totValor)}</td>
+            <td></td>
+          </tr>
+        </tfoot>`;
+    }
+    html += '</table></div>';
+
+    /* Cards enxutos (mobile) — vêm antes da tabela no DOM; CSS mostra um ou
+       outro conforme a largura. Mesma fonte de dados, sem tocar no desktop. */
+    const cardsMobile = `<div class="escala-cards" role="list" aria-label="Escalas lançadas">${resultados.map(({ e, r }) => cardEscalaHTML(e, r)).join('')}</div>`;
+    container.innerHTML = cardsMobile + html;
+  }
+
+  /* ------------------------------------------------------- exportações */
+
+  /* Popula #printReport e chama window.print() */
+  function imprimirRelatorio() {
+    const lista = escalasOrdenadas();
+    if (!lista.length) { toast('Adicione escalas antes de imprimir.', { erro: true }); return; }
+
+    const resultados = lista.map((e) => ({ e, r: calcularEscala(e) }));
+    const totMins    = resultados.reduce((s, x) => s + x.r.mins, 0);
+    const totDiurno  = resultados.reduce((s, x) => s + x.r.minDiurno, 0);
+    const totNoturno = resultados.reduce((s, x) => s + x.r.minNoturno, 0);
+    const totValor   = resultados.reduce((s, x) => s + x.r.valorCentavos * (x.e.qtdPm || 1), 0);
+
+    const DIAS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+
+    $('prDate').textContent = new Date().toLocaleString('pt-BR', {
+      day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+    });
+
+    $('prSummary').innerHTML = [
+      `<div><span class="pr-label">Escalas:</span> <strong>${lista.length}</strong></div>`,
+      `<div><span class="pr-label">Horas totais:</span> <strong>${fmtHoras(totMins)}</strong></div>`,
+      `<div><span class="pr-label">H. diurnas:</span> <strong>${fmtHoras(totDiurno)}</strong></div>`,
+      `<div><span class="pr-label">H. noturnas:</span> <strong>${fmtHoras(totNoturno)}</strong></div>`,
+      `<div><span class="pr-label">Valor estimado:</span> <strong>${fmtMoeda(totValor)}</strong></div>`,
+    ].join('');
+
+    let rows = '';
+    resultados.forEach(({ e, r }, i) => {
+      const qtd      = e.qtdPm || 1;
+      const valor    = r.valorCentavos * qtd;
+      const mesmodia = fmtData(e.inicio) === fmtData(e.fim);
+      const fimStr   = mesmodia ? fmtHora(e.fim) : `${fmtData(e.fim)} ${fmtHora(e.fim)}`;
+      const unidade  = e.descricao && e.descricao !== 'Escala AC4' ? escapeHTML(e.descricao) : '—';
+      const origem   = escapeHTML(labelOrigem(e.origem));
+      const situacao = STATUS_INFO[statusEscala(e)].label;
+      const valorCell = qtd > 1
+        ? `${fmtMoeda(valor)}<small>${fmtMoeda(r.valorCentavos)}/PM</small>`
+        : fmtMoeda(valor);
+      rows += `
+        <tr>
+          <td class="pr-num">${i + 1}</td>
+          <td class="pr-center">${DIAS[new Date(e.inicio).getDay()]}</td>
+          <td>${fmtData(e.inicio)}</td>
+          <td class="pr-center">${fmtHora(e.inicio)}</td>
+          <td>${fimStr}</td>
+          <td class="pr-center">${fmtHoras(r.mins)}</td>
+          <td>${unidade}</td>
+          <td>${origem}</td>
+          <td>${situacao}</td>
+          <td class="pr-center">${fmtHoras(r.minDiurno)}</td>
+          <td class="pr-center">${fmtHoras(r.minNoturno)}</td>
+          <td class="pr-valor">${valorCell}</td>
+        </tr>`;
+    });
+
+    const totalRow = lista.length > 1 ? `
+      <tfoot>
+        <tr class="pr-total-row">
+          <td colspan="9">TOTAL GERAL</td>
+          <td class="pr-center">${fmtHoras(totDiurno)}</td>
+          <td class="pr-center">${fmtHoras(totNoturno)}</td>
+          <td class="pr-valor">${fmtMoeda(totValor)}</td>
+        </tr>
+      </tfoot>` : '';
+
+    $('prTableWrap').innerHTML = `
+      <table class="pr-table">
+        <thead>
+          <tr>
+            <th>N.º</th><th>Dia</th><th>Data</th><th>Início</th>
+            <th>Término</th><th>Duração</th><th>Unidade</th>
+            <th>Origem Remunerado</th><th>Situação</th><th>H. Diurnas</th>
+            <th>H. Noturnas</th><th>Valor Estimado</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+        ${totalRow}
+      </table>`;
+
+    window.print();
+  }
+
+  /* ------------------------------------------------ agendamento
+     Celular e desktop usam o MESMO dialog de provedores: tocar em "Google
+     Agenda"/"Outlook" abre o evento já pré-preenchido (um toque em Salvar).
+     "Baixar .ics" fica como alternativa para outras agendas (Apple, Samsung). */
+  const PROVEDORES_AGENDA = [
+    {
+      id: 'google', nome: 'Google Agenda', hint: 'Abre com o evento pronto',
+      classeIco: 'google',
+      icone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/><path d="m9.5 14.5 2-2v5"/></svg>',
+      link: (e) => gerarLinkGoogleAgenda(e),
+    },
+    {
+      id: 'outlook', nome: 'Outlook pessoal', hint: 'Conta Outlook.com',
+      classeIco: 'outlook',
+      icone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/><circle cx="12" cy="15" r="2.6"/></svg>',
+      link: (e) => gerarLinkOutlookAgenda(e, false),
+    },
+    {
+      id: 'outlook365', nome: 'Outlook corporativo', hint: 'Conta Microsoft 365 (trabalho)',
+      classeIco: 'outlook',
+      icone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/><path d="M9.5 17v-4.5h2.2a1.4 1.4 0 0 1 0 2.8H9.5"/></svg>',
+      link: (e) => gerarLinkOutlookAgenda(e, true),
+    },
+  ];
+
+  const ICONE_ICS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>';
+
+  function agendarEscalas(lista) {
+    if (!lista.length) { toast('Adicione escalas antes de salvar na agenda.', { erro: true }); return; }
+    abrirDialogAgenda(lista);
+  }
+
+  function abrirDialogAgenda(lista) {
+    const dlg = $('dialogAgenda');
+    if (!dlg) return;
+    $('agendaSub').textContent = lista.length === 1
+      ? `${lista[0].descricao} — ${fmtDataHora(lista[0].inicio)}`
+      : `${lista.length} escalas selecionadas`;
+    montarOpcoesProvedor(lista);
+    dlg.showModal();
+  }
+
+  /* Alternativa universal: baixa o .ics (Apple Calendar, Samsung, etc.).
+     No celular a mensagem orienta a abrir o arquivo; no desktop, a importar. */
+  function baixarIcsDaAgenda(lista) {
+    $('dialogAgenda')?.close();
+    baixarArquivoAgenda(lista, isMobileViewport()
+      ? 'Arquivo .ics gerado — toque nele (em Downloads) para abrir na agenda.'
+      : 'Arquivo .ics gerado para importar na sua agenda.');
+  }
+
+  function montarOpcoesProvedor(lista) {
+    const body = $('agendaBody');
+    const provedores = PROVEDORES_AGENDA.map((p) => `
+      <button class="agenda-prov" data-prov="${p.id}" type="button">
+        <span class="agenda-prov-ico ${p.classeIco}" aria-hidden="true">${p.icone}</span>
+        <span class="agenda-prov-txt">${p.nome}<small>${p.hint}</small></span>
+      </button>`).join('');
+    body.innerHTML = `${provedores}
+      <button class="agenda-prov agenda-prov--ics" data-prov="ics" type="button">
+        <span class="agenda-prov-ico ics" aria-hidden="true">${ICONE_ICS}</span>
+        <span class="agenda-prov-txt">Baixar arquivo (.ics)<small>Apple, Samsung ou outra agenda</small></span>
+      </button>`;
+    body.querySelectorAll('.agenda-prov').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        haptic(10);
+        if (btn.dataset.prov === 'ics') { baixarIcsDaAgenda(lista); return; }
+        const prov = PROVEDORES_AGENDA.find((p) => p.id === btn.dataset.prov);
+        if (!prov) return;
+        if (lista.length === 1) {
+          window.open(prov.link(lista[0]), '_blank', 'noopener');
+          $('dialogAgenda')?.close();
+          return;
+        }
+        montarListaEscalasProvedor(lista, prov);
+      });
+    });
+  }
+
+  /* Agendas web só aceitam um evento por link: com várias escalas, cada uma
+     vira um link clicável — evita bloqueio de pop-up e dá controle ao PM. */
+  function montarListaEscalasProvedor(lista, prov) {
+    const body = $('agendaBody');
+    body.innerHTML = `
+      <p class="agenda-hint">O ${prov.nome} abre uma escala por vez. Clique em cada uma para adicionar:</p>
+      <div class="agenda-lista">
+        ${lista.map((e) => `
+          <a class="agenda-item" href="${escapeHTML(prov.link(e))}" target="_blank" rel="noopener">
+            <span>${escapeHTML(e.descricao || 'Escala AC4')} — ${fmtDataHora(e.inicio)}</span>
+          </a>`).join('')}
+      </div>
+      <button class="btn btn-ghost btn-sm" id="agendaVoltar" type="button">‹ Escolher outra agenda</button>`;
+    body.querySelectorAll('.agenda-item').forEach((a) => {
+      a.addEventListener('click', () => a.classList.add('aberta'));
+    });
+    $('agendaVoltar')?.addEventListener('click', () => montarOpcoesProvedor(lista));
+  }
+
+  function agendarEscalaItem(id) {
+    const e = escalas.find((x) => x.id === id);
+    if (e) agendarEscalas([e]);
+  }
+
+  function exportarCSV() {
+    const lista = escalasOrdenadas();
+    if (!lista.length) { toast('Adicione escalas antes de exportar CSV.', { erro: true }); return; }
+    const sep = ';';
+    const num = (cent) => (cent / 100).toFixed(2).replace('.', ',');
+    /* Campos de texto livre passam por csvTextoSeguro antes das aspas —
+       impede que "=..." digitado na Unidade vire fórmula no Excel. */
+    const celTexto = (s) => `"${csvTextoSeguro(s).replace(/"/g, '""')}"`;
+    const linhas = [['Unidade', 'Origem', 'Situação', 'Início', 'Término', 'Qtd. PM', 'Horas', 'H. diurnas', 'H. noturnas', 'Portaria', 'Valor/PM (R$)', 'Valor total (R$)'].join(sep)];
+    let total = 0;
+    lista.forEach((e) => {
+      const r = calcularEscala(e);
+      const qtd = e.qtdPm || 1;
+      const valorTotal = r.valorCentavos * qtd;
+      total += valorTotal;
+      linhas.push([
+        celTexto(e.descricao || 'Escala AC4'),
+        celTexto(e.origem || 'AC4'),
+        celTexto(STATUS_INFO[statusEscala(e)].label),
+        fmtDataHora(e.inicio), fmtDataHora(e.fim),
+        qtd,
+        (r.mins / 60).toFixed(2).replace('.', ','),
+        (r.minDiurno  / 60).toFixed(2).replace('.', ','),
+        (r.minNoturno / 60).toFixed(2).replace('.', ','),
+        celTexto(r.tabela.portaria || ''),
+        num(r.valorCentavos),
+        num(valorTotal),
+      ].join(sep));
+    });
+    linhas.push(['TOTAL', '', '', '', '', '', '', '', '', '', '', num(total)].join(sep));
+    baixar('﻿' + linhas.join('\r\n'), 'escalas-ac4.csv', 'text/csv;charset=utf-8');
+    toast('Planilha CSV gerada.');
+  }
+
+  function baixar(conteudo, nome, tipo) {
+    const blob = new Blob([conteudo], { type: tipo });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = nome; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  }
+
+  /* -------------------------------------------- validar ICS (debug) */
+  window.__ac4ValidarICS = function (entrada) {
+    const fonte = Array.isArray(entrada) ? entrada : escalasOrdenadas();
+    const resultado = validarICSBase(fonte, tabelaParaCalculo());
+    if (resultado.falhas.length && console.table) console.table(resultado.falhas);
+    return resultado;
+  };
+
+  window.__ac4TestesAgendamento = function () {
+    const casos = [
+      { id: 'agenda-2027-08-03', inicio: '2027-08-03T18:00', fim: '2027-08-04T08:00', descricao: 'Escala 03/08/2027', origem: 'AC4', qtdPm: 1 },
+      { id: 'agenda-2026-08-05', inicio: '2026-08-05T08:00', fim: '2026-08-06T08:00', descricao: 'Escala 05/08/2026', origem: 'AC4', qtdPm: 1 },
+    ];
+    const arquivo = montarICS(casos);
+    const linhas = desdobrarLinhasICS(arquivo.conteudo);
+    const eventos = linhas.filter((l) => l === 'BEGIN:VEVENT').length;
+    const uids = linhas.filter((l) => l.startsWith('UID:')).map((l) => l.slice(4));
+    const esperado = [
+      `DTSTART:${dataICS(casos[0].inicio)}`,
+      `DTEND:${dataICS(casos[0].fim)}`,
+      `DTSTART:${dataICS(casos[1].inicio)}`,
+      `DTEND:${dataICS(casos[1].fim)}`,
+    ];
+    const resultados = [
+      { caso: 'Gera dois eventos no mesmo arquivo .ics', ok: arquivo.eventos === 2 && eventos === 2 },
+      { caso: 'Inclui as datas da escala de 03/08/2027', ok: linhas.includes(esperado[0]) && linhas.includes(esperado[1]) },
+      { caso: 'Inclui as datas da escala de 05/08/2026', ok: linhas.includes(esperado[2]) && linhas.includes(esperado[3]) },
+      { caso: 'Gera UIDs estáveis e únicos', ok: uids.length === 2 && new Set(uids).size === 2 && uids.every((uid) => uid.endsWith(`@${ICS_DOMAIN}`)) },
+      { caso: 'Validação iCalendar aprova múltiplas escalas', ok: window.__ac4ValidarICS(casos).ok },
+      {
+        caso: 'Link do Outlook pessoal com datas UTC e evento',
+        ok: (() => {
+          const url = new URL(gerarLinkOutlookAgenda(casos[0], false));
+          return url.origin === 'https://outlook.live.com'
+            && url.searchParams.get('rru') === 'addevent'
+            && url.searchParams.get('startdt') === new Date(casos[0].inicio).toISOString()
+            && url.searchParams.get('enddt') === new Date(casos[0].fim).toISOString()
+            && url.searchParams.get('subject') === casos[0].descricao;
+        })(),
+      },
+      {
+        caso: 'Link do Outlook corporativo usa outlook.office.com',
+        ok: new URL(gerarLinkOutlookAgenda(casos[0], true)).origin === 'https://outlook.office.com',
+      },
+    ];
+    if (console.table) console.table(resultados);
+    return resultados.every((r) => r.ok) ? 'TODOS OS TESTES DE AGENDAMENTO OK' : resultados;
+  };
+
+  /* -------------------------------------------- atualização segura da PWA */
+  function exibirBannerAtualizacao(worker) {
+    if (!worker) return;
+    workerAtualizacao = worker;
+    atualizacaoPendente = true;
+    $('pwaBanner')?.classList.add('hidden');
+    $('updateBanner')?.classList.remove('hidden', 'is-updating');
+    const btn = $('updateNow');
+    if (btn) { btn.disabled = false; btn.textContent = 'Atualizar agora'; }
+  }
+
+  function ocultarBannerAtualizacao() {
+    $('updateBanner')?.classList.add('hidden');
+  }
+
+  function aplicarAtualizacaoPWA() {
+    if (!workerAtualizacao || recarregandoPorAtualizacao) return;
+    recarregandoPorAtualizacao = true;
+    $('updateBanner')?.classList.add('is-updating');
+    const btn = $('updateNow');
+    if (btn) { btn.disabled = true; btn.textContent = 'Atualizando…'; }
+    workerAtualizacao.postMessage({ type: 'SKIP_WAITING' });
+
+    /* Rede ou navegador podem atrasar a troca do worker. O usuário recupera o
+       controle sem entrar em ciclo de recarregamento. */
+    setTimeout(() => {
+      if (!recarregandoPorAtualizacao) return;
+      recarregandoPorAtualizacao = false;
+      $('updateBanner')?.classList.remove('is-updating');
+      if (btn) { btn.disabled = false; btn.textContent = 'Tentar novamente'; }
+      toast('Não foi possível aplicar agora. Tente novamente.', { erro: true });
+    }, 8000);
+  }
+
+  function consultarVersaoWorker(worker) {
+    return new Promise((resolve) => {
+      if (typeof globalThis.MessageChannel !== 'function') { resolve(null); return; }
+      const canal = new globalThis.MessageChannel();
+      const limite = setTimeout(() => resolve(null), 1200);
+      canal.port1.onmessage = (event) => {
+        clearTimeout(limite);
+        resolve(String(event.data?.version || '') || null);
+      };
+      try { worker.postMessage({ type: 'GET_VERSION' }, [canal.port2]); }
+      catch { clearTimeout(limite); resolve(null); }
+    });
+  }
+
+  async function avaliarWorkerAtualizacao(worker) {
+    if (!worker) return;
+    const versaoWorker = await consultarVersaoWorker(worker);
+    if (versaoWorker === APP_VERSION) {
+      /* A página atual já pertence à mesma versão. Ativa apenas o cache novo,
+         sem aviso ou reload redundante. */
+      worker.postMessage({ type: 'SKIP_WAITING' });
+      return;
+    }
+    exibirBannerAtualizacao(worker);
+  }
+
+  async function initAtualizacoesPWA() {
+    on('updateNow', 'click', aplicarAtualizacaoPWA);
+    on('updateLater', 'click', ocultarBannerAtualizacao);
+
+    /* Gancho restrito ao ambiente local para validar a interface sem instalar
+       um Service Worker real durante os testes HTTP. */
+    if (['localhost', '127.0.0.1'].includes(location.hostname)) {
+      window.__ac4SimularAtualizacao = () => exibirBannerAtualizacao({
+        postMessage: (mensagem) => { window.__ac4UltimaMensagemSW = mensagem; },
+      });
+    }
+
+    if (!('serviceWorker' in navigator) || location.protocol !== 'https:') return;
+
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!recarregandoPorAtualizacao) return;
+      recarregandoPorAtualizacao = false;
+      window.location.reload();
+    });
+
+    try {
+      const registro = await navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' });
+      const acompanharInstalacao = (worker) => {
+        if (!worker) return;
+        if (worker.state === 'installed') { avaliarWorkerAtualizacao(worker); return; }
+        worker.addEventListener('statechange', () => {
+          if (worker.state === 'installed' && navigator.serviceWorker.controller) avaliarWorkerAtualizacao(worker);
+        });
+      };
+
+      if (registro.waiting && navigator.serviceWorker.controller) avaliarWorkerAtualizacao(registro.waiting);
+      registro.addEventListener('updatefound', () => acompanharInstalacao(registro.installing));
+      acompanharInstalacao(registro.installing);
+
+      const verificar = () => registro.update().catch(() => {});
+      verificar();
+      window.addEventListener('online', verificar);
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) verificar(); });
+    } catch {
+      /* Offline ou navegador sem suporte completo: o app segue pelo cache. */
+    }
+  }
+
+  /* -------------------------------------------- PWA install prompt */
+  function initPWA() {
+    const jaInstalado = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+    if (jaInstalado) return;
+
+    const dismissed = lerLocal(STORAGE.pwaBanner);
+    const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
+    let visitas = Number(lerLocal(STORAGE.pwaVisitas) || 0) + 1;
+    if (!Number.isFinite(visitas)) visitas = 1;
+    try { localStorage.setItem(STORAGE.pwaVisitas, String(Math.min(visitas, 99))); } catch {}
+    let usuarioEngajado = visitas >= 2 || escalas.length > 0;
+
+    const mostrarBotaoInstalar = () => $('shareInstallOpt')?.classList.remove('hidden');
+    const ocultarBotaoInstalar = () => $('shareInstallOpt')?.classList.add('hidden');
+
+    /* Entrada de instalação sempre disponível via Compartilhar → Instalar,
+       em qualquer navegador/sistema que ainda não esteja rodando instalado. */
+    mostrarBotaoInstalar();
+
+    const instrucaoManual = () => dialogConfirmar(
+      isIOS
+        ? 'No Safari: toque em ⬆︎ Compartilhar e depois em “Adicionar à Tela de Início” para instalar o app.'
+        : 'Para instalar: abra o menu do navegador (⋮) e toque em “Instalar app” ou “Adicionar à tela inicial”.',
+      { textoOk: 'Entendi', perigoso: false }
+    );
+
+    async function instalar() {
+      /* Android/Chrome: usa o prompt nativo quando disponível. */
+      if (deferredInstallPrompt) {
+        deferredInstallPrompt.prompt();
+        const { outcome } = await deferredInstallPrompt.userChoice;
+        deferredInstallPrompt = null;
+        if (outcome === 'accepted') {
+          ocultarBotaoInstalar();
+          $('pwaBanner')?.classList.add('hidden');
+          toast('App instalado! Acesse pela tela inicial.');
+        }
+        return;
+      }
+      /* iOS e demais casos sem prompt nativo: instrução passo a passo. */
+      await instrucaoManual();
+    }
+
+    /* A promoção não interrompe a primeira jornada. Ela aparece na segunda
+       visita, para quem já tem escalas ou após o primeiro lançamento. */
+    const mostrarBannerSeRelevante = () => {
+      if (dismissed || !usuarioEngajado || atualizacaoPendente) return;
+      if (isIOS || deferredInstallPrompt) $('pwaBanner')?.classList.remove('hidden');
+    };
+    mostrarInstalacaoAposConversao = () => {
+      usuarioEngajado = true;
+      mostrarBannerSeRelevante();
+    };
+    mostrarBannerSeRelevante();
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredInstallPrompt = e;
+      mostrarBannerSeRelevante();
+      mostrarBotaoInstalar();
+    });
+
+    on('shareInstallOpt', 'click', () => { $('dialogShare')?.close(); haptic(10); instalar(); });
+    on('pwaBannerInstall', 'click', instalar);
+    on('pwaBannerClose', 'click', () => {
+      $('pwaBanner')?.classList.add('hidden');
+      try { localStorage.setItem(STORAGE.pwaBanner, '1'); } catch { /* banner apenas não persistirá */ }
+    });
+  }
+
+  /* -------------------------------------------------------------- init */
+  function init() {
+    initObservabilidade();
+    initTema();
+    carregar();
+    initPWA();
+    initAtualizacoesPWA();
+    initNovidades();
+    renderModelos();
+    setDetalhesAvancados(false);
+
+    $('escalaInicio').value = toInputLocal(new Date());
+    sincronizarTodosControlesDataHora();
+
+    on('formEscala', 'submit', (ev) => { ev.preventDefault(); submeterFormulario(); });
+    on('btnCancelEdit', 'click', () => {
+      cancelarEdicao();
+      if (isMobileViewport()) fecharPainelLancamentoMobile();
+    });
+    on('toggleAdvanced', 'click', () => setDetalhesAvancados($('toggleAdvanced')?.getAttribute('aria-expanded') !== 'true'));
+    on('btnRepeatLast', 'click', () => {
+      repetirUltimaEscala();
+      if (isMobileViewport()) abrirPainelLancamentoMobile();
+    });
+    on('btnSaveTemplate', 'click', abrirSalvarModelo);
+    on('templateCancel', 'click', () => $('dialogTemplate')?.close());
+    on('templateForm', 'submit', (ev) => { ev.preventDefault(); salvarModeloAtual(); });
+    on('templateSelect', 'change', () => {
+      const id = $('templateSelect')?.value || '';
+      const modelo = modelos.find((m) => m.id === id);
+      $('btnDeleteTemplate')?.classList.toggle('hidden', !modelo);
+      if (!modelo) return;
+      preencherConfiguracaoRapida(modelo);
+      toast(`Modelo “${modelo.nome}” aplicado.`);
+    });
+    on('btnDeleteTemplate', 'click', excluirModeloSelecionado);
+    on('btnPlanningGoal', 'click', abrirMetaMensal);
+    on('planningToggle', 'click', () => {
+      const painel = document.querySelector('.planning-panel');
+      const aberto = !painel?.classList.contains('is-expanded');
+      painel?.classList.toggle('is-expanded', aberto);
+      $('planningToggle')?.setAttribute('aria-expanded', aberto ? 'true' : 'false');
+      const texto = $('planningToggle')?.querySelector('span');
+      if (texto) texto.textContent = aberto ? 'Ocultar detalhes do mês' : 'Ver detalhes do mês';
+    });
+    on('planningGoalCancel', 'click', () => $('dialogPlanningGoal')?.close());
+    on('planningGoalClear', 'click', removerMetaMensal);
+    on('planningGoalForm', 'submit', (ev) => { ev.preventDefault(); salvarMetaMensal(); });
+    on('planningStatusGrid', 'click', (ev) => {
+      const btn = ev.target.closest('[data-status-filter]');
+      if (!btn) return;
+      filtroStatus = btn.dataset.statusFilter || '';
+      if ($('filtroStatus')) $('filtroStatus').value = filtroStatus;
+      render();
+      document.querySelector('.feed')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    on('planningAlert', 'click', () => {
+      filtroMes = mesPainelAtual();
+      filtroStatus = 'planejada';
+      if ($('filtroMes')) $('filtroMes').value = filtroMes;
+      if ($('filtroStatus')) $('filtroStatus').value = filtroStatus;
+      render();
+      document.querySelector('.feed')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+
+    on('btnTheme', 'click', () =>
+      aplicarTema(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'));
+    on('btnPrint',     'click', imprimirRelatorio);
+    on('btnExportCsv', 'click', exportarCSV);
+    on('btnShare',     'click', abrirShareSheet);
+
+    on('mobileAdd', 'click', () => {
+      if (isMobileViewport()) {
+        /* Abre primeiro para que o toque seja apresentado imediatamente; o
+           preenchimento e o cálculo seguem depois do primeiro paint. */
+        abrirPainelLancamentoMobile();
+        aposProximoPaint(() => {
+          if (!sheetAberto) return;
+          if (editandoId === null) {
+            setTituloSheet('Nova escala AC4');
+            setDetalhesAvancados(false);
+            $('escalaInicio').value = toInputLocal(new Date());
+            aplicarDuracao();
+            sincronizarTodosControlesDataHora();
+          }
+          atualizarResumoLancamento();
+        });
+        return;
+      }
+      document.querySelector('.launch-panel')?.scrollIntoView({ behavior: 'smooth' });
+      $('escalaInicio').focus();
+    });
+    on('mobileLaunchClose', 'click', () => fecharPainelLancamentoMobile());
+    on('mobileLaunchBackdrop', 'click', () => fecharPainelLancamentoMobile());
+    /* Sair da faixa mobile com o sheet aberto: destrava a rolagem do fundo */
+    window.matchMedia('(max-width: 760px)').addEventListener('change', (e) => {
+      if (!e.matches && sheetAberto) setMobileSheetOpen(false);
+    });
+    on('mobileShare', 'click', abrirShareSheet);
+
+    on('shareWA',     'click', () => { $('dialogShare')?.close(); compartilharWhatsApp(); });
+    on('shareNative', 'click', () => { $('dialogShare')?.close(); compartilharNativo(); });
+    on('shareCopy',   'click', () => { $('dialogShare')?.close(); copiarResumo(); });
+    on('shareIcsOpt', 'click', () => { $('dialogShare')?.close(); agendarEscalas(escalasOrdenadas()); });
+    on('agendaCancelar', 'click', () => $('dialogAgenda')?.close());
+    on('footerPrivacidade', 'click', (ev) => { ev.preventDefault(); $('dialogPrivacidade')?.showModal(); });
+    on('privacidadeFechar', 'click', () => $('dialogPrivacidade')?.close());
+    initFeedback();
+    on('shareCsvOpt', 'click', () => { $('dialogShare')?.close(); exportarCSV(); });
+    on('sharePdfOpt', 'click', () => { $('dialogShare')?.close(); imprimirRelatorio(); });
+    on('shareBackupOpt', 'click', () => { $('dialogShare')?.close(); exportarBackup(); });
+    on('shareRestoreOpt', 'click', () => { $('dialogShare')?.close(); $('restoreInput')?.click(); });
+    on('restoreInput', 'change', async (ev) => {
+      await restaurarBackup(ev.target.files?.[0]);
+      ev.target.value = '';
+    });
+    on('shareClose',  'click', () => $('dialogShare')?.close());
+
+    on('btnClearAll', 'click', limparTudo);
+    on('filtroMes', 'change', () => { filtroMes = $('filtroMes')?.value || ''; render(); });
+    on('filtroOrigem', 'change', () => { filtroOrigem = $('filtroOrigem')?.value || ''; render(); });
+    on('filtroStatus', 'change', () => { filtroStatus = $('filtroStatus')?.value || ''; render(); });
+    on('filtroBusca', 'input', () => { filtroBusca = ($('filtroBusca')?.value || '').trim(); render(); });
+
+    const aplicarDuracao = () => {
+      const horas = Number($('escalaDuracao')?.value || 0);
+      if (!horas) return false;
+      const fim = calcularTerminoPorDuracao($('escalaInicio')?.value || '', horas);
+      if (!fim) return false;
+      $('escalaFim').value = fim;
+      sincronizarControlesDataHora('escalaFim');
+      $('fieldFim').classList.remove('invalid');
+      $('fieldFim').querySelector('.control')?.removeAttribute('aria-invalid');
+      atualizarResumoFim();
+      atualizarChipsDuracao();
+      atualizarResumoLancamento();
+      return true;
+    };
+    on('escalaDuracao', 'input', aplicarDuracao);
+    on('escalaDuracao', 'change', aplicarDuracao);
+    on('escalaInicio',  'input', aplicarDuracao);
+    on('escalaInicio',  'change', aplicarDuracao);
+    on('escalaInicio',  'input', () => sincronizarControlesDataHora('escalaInicio'));
+    on('escalaInicio',  'change', () => sincronizarControlesDataHora('escalaInicio'));
+    const marcarDuracaoPersonalizada = () => {
+      if ($('escalaDuracao')) $('escalaDuracao').value = '';
+      setDetalhesAvancados(true);
+      sincronizarControlesDataHora('escalaFim');
+      atualizarResumoFim();
+      atualizarChipsDuracao();
+      atualizarResumoLancamento();
+    };
+    on('escalaFim', 'input', marcarDuracaoPersonalizada);
+    on('escalaFim', 'change', marcarDuracaoPersonalizada);
+    ['escalaInicio', 'escalaFim'].forEach((id) => {
+      ['Data', 'Hora'].forEach((sufixo) => {
+        on(`${id}${sufixo}`, 'input', () => aplicarPartesDataHora(id, 'input'));
+        on(`${id}${sufixo}`, 'change', () => aplicarPartesDataHora(id, 'change'));
+      });
+    });
+    /* Resumo do lançamento também depende de Qtd. PM e Origem */
+    on('escalaQtdPm', 'input', atualizarResumoLancamento);
+    on('escalaQtdPm', 'change', atualizarResumoLancamento);
+    on('escalaOrigem', 'input', atualizarResumoLancamento);
+    on('escalaOrigem', 'change', atualizarResumoLancamento);
+
+    /* Chips de duração rápida (mobile) — escrevem no mesmo #escalaDuracao. */
+    document.querySelectorAll('#durChips .dur-chip').forEach((chip) => {
+      chip.addEventListener('click', () => {
+        if ($('escalaDuracao')) $('escalaDuracao').value = chip.dataset.horas;
+        atualizarChipsDuracao();
+        aposProximoPaint(() => {
+          if ($('escalaDuracao')?.value === chip.dataset.horas) aplicarDuracao();
+        });
+      });
+    });
+
+    /* Stepper de Qtd. PM (mobile) — ajusta o mesmo #escalaQtdPm, faixa 1–999. */
+    const atualizarEstadoStepper = () => {
+      const qtd = lerQtdPm();
+      $('qtdMinus')?.toggleAttribute('disabled', qtd <= 1);
+      $('qtdPlus')?.toggleAttribute('disabled', qtd >= 999);
+    };
+    const ajustarQtd = (delta) => {
+      const inp = $('escalaQtdPm');
+      if (!inp) return;
+      const atual = parseInt(inp.value || '1', 10);
+      inp.value = Math.min(999, Math.max(1, (Number.isFinite(atual) ? atual : 1) + delta));
+      atualizarResumoLancamento();
+      atualizarEstadoStepper();
+    };
+    on('qtdMinus', 'click', () => ajustarQtd(-1));
+    on('qtdPlus', 'click', () => ajustarQtd(1));
+    on('escalaQtdPm', 'change', () => {
+      const inp = $('escalaQtdPm');
+      if (inp) inp.value = String(lerQtdPm());
+      atualizarResumoLancamento();
+      atualizarEstadoStepper();
+    });
+    atualizarEstadoStepper();
+
+    on('listaEscalas', 'click', (ev) => {
+      const btn = ev.target.closest('[data-acao]');
+      if (!btn) return;
+      const id = btn.dataset.id;
+      if (btn.dataset.acao === 'remover')        removerEscala(id);
+      else if (btn.dataset.acao === 'editar')    editarEscala(id);
+      else if (btn.dataset.acao === 'duplicar')  duplicarEscala(id);
+      else if (btn.dataset.acao === 'agenda')    agendarEscalaItem(id);
+      btn.closest('details')?.removeAttribute('open');
+    });
+    on('listaEscalas', 'change', (ev) => {
+      const select = ev.target.closest('[data-status-id]');
+      if (select) atualizarStatusEscala(select.dataset.statusId, select.value);
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (sheetAberto && e.key === 'Tab') {
+        const painel = $('launchPanel');
+        const focaveis = [...painel.querySelectorAll(
+          'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href]'
+        )].filter((el) => el.offsetParent !== null);
+        if (focaveis.length) {
+          const primeiro = focaveis[0], ultimo = focaveis[focaveis.length - 1];
+          if (e.shiftKey && document.activeElement === primeiro) { e.preventDefault(); ultimo.focus(); }
+          else if (!e.shiftKey && document.activeElement === ultimo) { e.preventDefault(); primeiro.focus(); }
+          else if (!painel.contains(document.activeElement)) { e.preventDefault(); primeiro.focus(); }
+        }
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); submeterFormulario(); }
+      if (e.key === 'Escape') {
+        if (editandoId !== null) cancelarEdicao();
+        if (sheetAberto) fecharPainelLancamentoMobile();
+      }
+    });
+
+    render();
+
+    window.addEventListener('storage', (ev) => {
+      if (ev.key !== STORAGE.escalas) return;
+      escalas = desserializarEscalas(ev.newValue).escalas;
+      cancelarEdicao();
+      render();
+      toast('Dados atualizados por outra aba.');
+    });
+  }
+
+  /* Derruba a barreira de primeiro paint (CWV F-02): o <html> nasce com
+     .app-pending (conteúdo em visibility:hidden, mas ocupando espaço) e só
+     revela após o init() montar o estado real — sem repaint intermediário. */
+  function revelarAplicacao() {
+    document.documentElement.classList.remove('app-pending');
+    document.documentElement.classList.add('app-ready');
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    try {
+      init();
+    } finally {
+      /* Mesmo se init() falhar, a tela nunca fica permanentemente invisível. */
+      revelarAplicacao();
+    }
+    const ano = new Date().getFullYear();
+    document.querySelectorAll('.footer-year').forEach((el) => { el.textContent = ano; });
+    const printYear = $('printYear');
+    if (printYear) printYear.textContent = ano;
+  });
+})();
