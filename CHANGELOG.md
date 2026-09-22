@@ -1,11 +1,35 @@
 # Changelog
 
+## v67 — Design premium (restaurado)
+
+O redesign planejado para a v65 foi descartado por engano no PR #58 (a pasta
+`ac4-v65-files/` foi apagada em vez de movida para a raiz) e nunca chegou à
+produção. Esta versão o aplica sobre a v66:
+
+- Novo sistema visual documentado em `docs/DESIGN.md`: tokens de cor, sombras em camadas, raios e curvas de movimento únicos para todo o app.
+- Topbar compacta em Inter; no celular, CSV, PDF e Compartilhar ganham rótulo e a barra rola com a página.
+- Cartão "hero" azul institucional com detalhe dourado para o valor estimado.
+- Desktop em painel de duas colunas: lançamento à esquerda, planejamento do mês e tabela de valores à direita.
+- Cards de escala mais baixos e legíveis: valor à direita, unidade visível, faixa com a cor da situação e situação + ações numa linha.
+- Superfícies sólidas no lugar do efeito de vidro (`backdrop-filter`) nas áreas grandes: mais contraste e menos custo de GPU.
+- Bottom sheet com alça centralizada e botão fechar com alvo de 44px; ícones de Novidades centralizados; contraste da tabela de valores no modo escuro.
+- Histórico de 6 meses e lembrete de backup da v66 mantidos sobre o visual novo.
+
 ## v66 — Histórico, backup e PDF mais ágil
 
 - Histórico dos últimos 6 meses no painel mensal, com média e destaque do mês selecionado — HTML/CSS puro, sem biblioteca e com altura reservada (sem CLS).
 - Lembrete de backup para quem tem escalas e nunca salvou cópia (ou salvou há mais de 30 dias), no máximo uma vez por semana, com ação “Fazer backup”.
 - Botão PDF abre o diálogo de impressão após o próximo paint: o tempo gasto no diálogo deixa de contar como INP (11,3 s no Cloudflare RUM).
 - `tools/bump-version.mjs` passa a atualizar também `js/force-update.js`.
+
+## v65 — Correção de deploy e atualização
+
+Publicada sem o redesign anunciado (ver v67).
+
+- `js/force-update.js`: limpeza única por versão — desregistra Service Workers antigos, apaga caches `ac4-*` anteriores e recarrega uma vez.
+- Testes deixam de fixar o número da versão, que bloqueava o deploy a cada bump.
+- Rótulos de versão do rodapé e de Novidades sincronizados.
+- CI: actions atualizadas para Node 24 e runner fixado em `ubuntu-26.04`.
 
 ## v64 — Atualização segura da PWA
 

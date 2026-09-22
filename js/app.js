@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Calculadora AC4 — v66
+   Calculadora AC4 — v67
    Módulo principal: estado, UI, persistência e exportações.
    Regras de negócio, formatação e agenda vivem em js/modules/.
    ========================================================================== */
@@ -33,7 +33,7 @@ import {
   /* Versão da aplicação (sincronizada pelo tools/bump-version.mjs). Serve para
      carimbar o log de erros e detectar clientes presos em cache antigo:
      se __ac4Version no console divergir do rodapé/CHANGELOG, o SW não atualizou. */
-  const APP_VERSION = '66';
+  const APP_VERSION = '67';
 
   const STORAGE = {
     escalas:   'pmgoEscalas',
@@ -1506,8 +1506,9 @@ import {
     </label>`;
   };
 
-  const botoesCardMobileHTML = (id) => `
+  const botoesCardMobileHTML = (id, statusHTML = '') => `
     <div class="ec-card-actions" aria-label="Ações da escala">
+      ${statusHTML}
       <button class="ec-action-btn" data-acao="editar" data-id="${id}" type="button">
         <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
         <span>Editar</span>
@@ -1538,22 +1539,29 @@ import {
       : '';
     const horarioLinha = `${fmtHora(e.inicio)} → ${fimDia}${fmtHora(e.fim)}`;
     const resumo = `${fmtData(e.inicio)} - ${fmtDiaSemanaLinha(e.inicio)} - ${fmtHoras(r.mins)} - ${fmtMoedaLinha(valorTotal)}`;
+    const duracaoLinha = r.mins % 60 === 0 ? `${r.mins / 60} ${r.mins === 60 ? 'hora' : 'horas'}` : fmtHoras(r.mins);
+    const unidade = e.descricao && e.descricao !== 'Escala AC4' ? e.descricao : '';
+    /* Layout v65: identificação à esquerda, valor alinhado à direita (leitura
+       em "F", como extratos bancários) e situação + ações numa única linha. */
     return `
-      <div class="escala-card" role="listitem" aria-label="${escapeHTML(resumo)}">
+      <div class="escala-card escala-card--${statusEscala(e)}" role="listitem" aria-label="${escapeHTML(resumo)}">
         <div class="ec-card-main">
-          <div class="ec-date-line">${escapeHTML(dataLinha)}</div>
-          <div class="ec-card-info">
-            <div class="ec-time">${escapeHTML(horarioLinha)}</div>
-            <div class="ec-duration">${r.mins % 60 === 0 ? `${r.mins / 60} ${r.mins === 60 ? 'hora' : 'horas'}` : fmtHoras(r.mins)}</div>
+          <div class="ec-card-head">
+            <div class="ec-date-line">${escapeHTML(dataLinha)}</div>
+            <div class="ec-card-info">
+              <div class="ec-time">${escapeHTML(horarioLinha)}</div>
+              <div class="ec-duration">${escapeHTML(duracaoLinha)}${unidade ? ` <span class="ec-unit">· ${escapeHTML(unidade)}</span>` : ''}</div>
+            </div>
           </div>
-          ${qtd === 1
-            ? `<div class="ec-money">${fmtMoedaLinha(r.valorCentavos)}</div>`
-            : `<div class="ec-qtd">${rotuloQuantidadePm(qtd)}</div>
-               <div class="ec-per-pm">${fmtMoedaLinha(r.valorCentavos)} por PM</div>
-               <div class="ec-total">TOTAL ${fmtMoedaLinha(valorTotal)}</div>`}
-          ${seletorStatusHTML(e, 'ec-status')}
+          <div class="ec-card-amount">
+            ${qtd === 1
+              ? `<div class="ec-money">${fmtMoedaLinha(r.valorCentavos)}</div>`
+              : `<div class="ec-total">${fmtMoedaLinha(valorTotal)}</div>
+                 <div class="ec-qtd">${rotuloQuantidadePm(qtd)}</div>
+                 <div class="ec-per-pm">${fmtMoedaLinha(r.valorCentavos)} por PM</div>`}
+          </div>
         </div>
-        ${botoesCardMobileHTML(e.id)}
+        ${botoesCardMobileHTML(e.id, seletorStatusHTML(e, 'ec-status'))}
       </div>`;
   };
 

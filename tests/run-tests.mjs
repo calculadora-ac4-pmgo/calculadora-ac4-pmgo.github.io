@@ -3,7 +3,7 @@
    O app.js só toca o DOM dentro de funções; no carregamento bastam stubs. */
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join } from 'node:path';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { regraNormativaParaData, TABELA_OFICIAL } from '../js/modules/calculo.mjs';
 import { desserializarEscalas, detectarConflitos, normalizarEscala, STORAGE_SCHEMA_VERSION } from '../js/modules/persistencia.mjs';
 
@@ -98,5 +98,21 @@ const validarAtualizacaoPWA = () => {
   return falhas.length ? falhas : 'ATUALIZAÇÃO PWA SEGURA OK';
 };
 rodar('Atualização PWA (espera + ativação explícita)', validarAtualizacaoPWA);
+
+/* Guarda de release: o PR #58 passou no CI com o redesign da v65 numa pasta
+   descartada (ac4-v65-files/), fora do app servido. Toda versão precisa estar
+   registrada no CHANGELOG da raiz, e nenhuma pasta de rascunho pode ficar lá. */
+const validarRelease = () => {
+  const versaoApp = readFileSync(join(raiz, 'js/app.js'), 'utf8').match(/const APP_VERSION = '(\d+)'/)?.[1];
+  const topoChangelog = readFileSync(join(raiz, 'CHANGELOG.md'), 'utf8').match(/^## v(\d+)/m)?.[1];
+  const rascunhos = readdirSync(raiz).filter((nome) => /^ac4-v\d+-files$/.test(nome));
+  const checks = [
+    [versaoApp && topoChangelog === versaoApp, `CHANGELOG começa na versão do app (v${topoChangelog} ≠ v${versaoApp})`],
+    [!rascunhos.length, `pasta de rascunho na raiz: ${rascunhos.join(', ')}`],
+  ];
+  const falhas = checks.filter(([ok]) => !ok).map(([, nome]) => nome);
+  return falhas.length ? falhas : 'RELEASE CONSISTENTE OK';
+};
+rodar('Release (CHANGELOG × versão, sem rascunhos na raiz)', validarRelease);
 
 process.exit(falhou ? 1 : 0);

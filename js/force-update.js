@@ -3,8 +3,8 @@
    Roda só em HTTPS (igual ao registro do SW em app.js) e só uma vez por
    versão, marcada em localStorage — sem ciclo de recarregamento. */
 (() => {
-  const VERSAO = '66';
-  const CACHE_ATUAL = 'ac4-v66';
+  const VERSAO = '67';
+  const CACHE_ATUAL = 'ac4-v67';
   const CHAVE = 'pmgoForceUpdate';
   if (!('serviceWorker' in navigator) || location.protocol !== 'https:') return;
   try { if (localStorage.getItem(CHAVE) === VERSAO) return; } catch { return; }
