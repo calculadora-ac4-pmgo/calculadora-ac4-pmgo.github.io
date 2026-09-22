@@ -170,9 +170,13 @@ const ROTEIRO = `(async () => {
      typeof lanc === 'string' ? lanc : JSON.stringify(lanc).slice(0, 200));
 
   // 4c. relatório de impressão: popula o #printReport sem abrir o diálogo de print
-  window.print = () => {};
+  let chamadasPrint = 0;
+  window.print = () => { chamadasPrint += 1; };
   document.getElementById('btnPrint').click();
+  const printSincrono = chamadasPrint;
   await espera(200);
+  ok('PDF: diálogo abre só após o próximo paint (INP)', printSincrono === 0 && chamadasPrint === 1,
+     printSincrono + ' → ' + chamadasPrint);
   ok('Relatório de impressão populado com a escala e o total',
      document.querySelectorAll('#printReport .pr-table tbody tr').length === 1
        && document.getElementById('prTableWrap').innerHTML.includes('420,00'));
@@ -234,9 +238,47 @@ const ROTEIRO = `(async () => {
   document.getElementById('updateLater').click();
   ok('Atualização PWA: usuário pode adiar sem perder o fluxo', updateBanner.classList.contains('hidden'));
 
+  // 4e. histórico mensal (datas na vigência da portaria, ≥ 07/2026): com 2+ meses lançados, mostra 6 colunas e destaca o mês do painel
+  const lancar = async (inicio) => {
+    ini.value = inicio;
+    ini.dispatchEvent(new Event('change', { bubbles: true }));
+    dur.value = '12';
+    dur.dispatchEvent(new Event('change', { bubbles: true }));
+    document.getElementById('btnSubmit').click();
+    await espera(400);
+  };
+  const historico = document.getElementById('planningHistory');
+  ok('Histórico: oculto com um único mês', historico.classList.contains('hidden'));
+  await lancar('2026-08-10T08:00');
+  const colunas = historico.querySelectorAll('.planning-history-col');
+  const barraAtual = historico.querySelector('.planning-history-col.is-current .planning-history-bar');
+  ok('Histórico: 6 meses com o mês do painel em destaque',
+     !historico.classList.contains('hidden') && colunas.length === 6 && colunas[5].classList.contains('is-current')
+       && barraAtual.getBoundingClientRect().height > 0,
+     colunas.length + ' colunas, ' + JSON.parse(localStorage.getItem('pmgoEscalas') || '[]').length + ' escalas');
+  ok('Histórico: leitor de tela recebe mês e valor',
+     colunas[4]?.querySelector('.sr-only')?.textContent.toLowerCase().includes('julho'),
+     colunas[4]?.querySelector('.sr-only')?.textContent);
+
+  // 4f. lembrete de backup: 3+ escalas sem backup → um aviso com ação, no máximo 1x por semana
+  await lancar('2026-09-10T08:00');
+  localStorage.removeItem('pmgoUltimoBackup');
+  localStorage.removeItem('pmgoLembreteBackup');
+  ok('Backup: lembrete dispara com 3+ escalas e nenhum backup', window.__ac4LembrarBackup() === true);
+  ok('Backup: lembrete não se repete na mesma semana', window.__ac4LembrarBackup() === false);
+  localStorage.setItem('pmgoUltimoBackup', String(Date.now()));
+  localStorage.removeItem('pmgoLembreteBackup');
+  ok('Backup: backup recente dispensa o lembrete', window.__ac4LembrarBackup() === false);
+  localStorage.removeItem('pmgoUltimoBackup');
+  localStorage.removeItem('pmgoLembreteBackup');
+  // guarda as 3 escalas para a fase com recarga (disparo automático real)
+  localStorage.setItem('__smokeTresEscalas', localStorage.getItem('pmgoEscalas'));
+
   // 5. remoção limpa o estado
-  document.querySelector('#listaEscalas [data-acao="remover"]').click();
-  await espera(300);
+  for (let i = 0; i < 5 && document.querySelector('#listaEscalas [data-acao="remover"]'); i++) {
+    document.querySelector('#listaEscalas [data-acao="remover"]').click();
+    await espera(300);
+  }
   ok('Remoção limpa a lista', JSON.parse(localStorage.getItem('pmgoEscalas') || '[]').length === 0);
 
   // 6. canal de feedback: dialog abre pelo rodapé, tipos alternam e o mailto
@@ -323,6 +365,24 @@ try {
   }, sessionId);
   passos.push({ nome: 'Atualização exibe novidades automaticamente uma única vez',
     ok: avisoAtualizacao.result.value === true, detalhe: String(avisoAtualizacao.result.value) });
+
+  // Lembrete de backup real: com 3 escalas e sem backup, o aviso aparece sozinho após a abertura.
+  await cdp.enviar('Runtime.evaluate', {
+    expression: `localStorage.setItem('pmgoEscalas', localStorage.getItem('__smokeTresEscalas')); localStorage.removeItem('__smokeTresEscalas');
+      localStorage.removeItem('pmgoUltimoBackup'); localStorage.removeItem('pmgoLembreteBackup');`,
+  }, sessionId);
+  const abriuBackup = cdp.aguardarEvento('Page.loadEventFired');
+  await cdp.enviar('Page.navigate', { url: `http://127.0.0.1:${porta}/` }, sessionId);
+  await abriuBackup;
+  const lembrete = await cdp.enviar('Runtime.evaluate', {
+    expression: `(async()=>{const sl=ms=>new Promise(r=>setTimeout(r,ms));let t=null;
+      for(let i=0;i<80&&!t;i++){t=[...document.querySelectorAll('#toastRegion .toast')].find((x)=>x.querySelector('.toast-action')?.textContent==='Fazer backup');if(!t)await sl(100);}
+      localStorage.removeItem('pmgoEscalas');localStorage.removeItem('pmgoLembreteBackup');
+      return t?t.textContent:'';})()`,
+    awaitPromise: true, returnByValue: true,
+  }, sessionId);
+  passos.push({ nome: 'Backup: lembrete aparece sozinho com ação "Fazer backup"',
+    ok: lembrete.result.value.includes('Salve uma cópia'), detalhe: lembrete.result.value });
 
   // 6. localStorage corrompido: grava lixo, recarrega e confirma que o app sobe vazio sem quebrar.
   await cdp.enviar('Runtime.evaluate', {

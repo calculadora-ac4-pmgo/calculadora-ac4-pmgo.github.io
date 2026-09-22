@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Calculadora AC4 — v65
+   Calculadora AC4 — v66
    ========================================================================== */
 
 /* Inter (variable, 100–900) self-hosted — sem dependência do Google Fonts,
@@ -659,6 +659,20 @@ textarea.control { min-height: 74px; resize: vertical; }
 .planning-day { background: #f4b942; }
 .planning-night { background: #2536a8; }
 .planning-hours-labels { display: flex; justify-content: space-between; gap: 10px; margin-top: 7px; color: var(--text-muted); font-size: 0.7rem; font-weight: 750; }
+/* Histórico de 6 meses: altura fixa (sem CLS ao popular), barras via CSSOM. */
+.planning-history { margin: 18px 0 0; }
+.planning-history-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--text-muted); font-size: 0.76rem; font-weight: 750; }
+.planning-history-head strong { color: var(--text); font-variant-numeric: tabular-nums; }
+.planning-history-bars { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; height: 132px; margin: 10px 0 0; padding: 0; list-style: none; }
+.planning-history-col { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 4px; min-width: 0; text-align: center; }
+.planning-history-value { overflow: hidden; color: var(--text-muted); font-size: 0.64rem; font-weight: 750; font-variant-numeric: tabular-nums; text-overflow: ellipsis; white-space: nowrap; }
+.planning-history-track { display: flex; align-items: flex-end; justify-self: center; width: min(100%, 64px); border-radius: 6px; background: var(--surface-3); }
+.planning-history-bar { display: block; width: 100%; height: 0; min-height: 2px; border-radius: 6px; background: color-mix(in srgb, var(--blue-600) 55%, var(--surface-3)); }
+.planning-history-col.is-empty .planning-history-bar { min-height: 0; }
+.planning-history-month { color: var(--text-muted); font-size: 0.68rem; font-weight: 750; text-transform: capitalize; }
+.planning-history-col.is-current .planning-history-bar { background: var(--green-600); }
+.planning-history-col.is-current .planning-history-value,
+.planning-history-col.is-current .planning-history-month { color: var(--text); }
 .planning-status-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 18px; }
 .planning-status {
   min-width: 0;
