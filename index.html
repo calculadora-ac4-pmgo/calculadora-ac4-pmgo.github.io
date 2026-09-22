@@ -15,8 +15,8 @@
   <!-- Preload da fonte principal — reduz reflow/CLS do font-swap da Inter -->
   <link rel="preload" href="assets/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 
-  <link rel="stylesheet" href="css/styles.css?v=65">
-  <script src="js/theme.js?v=65"></script>
+  <link rel="stylesheet" href="css/styles.css?v=66">
+  <script src="js/theme.js?v=66"></script>
 </head>
 <body>
 
@@ -399,6 +399,13 @@
           <div class="planning-hours-bar" id="planningHoursBar"><span class="planning-day" id="planningDayBar"></span><span class="planning-night" id="planningNightBar"></span></div>
           <div class="planning-hours-labels"><span id="planningDayLabel">Dia 0h</span><span id="planningNightLabel">Noite 0h</span></div>
         </div>
+        <figure class="planning-history hidden" id="planningHistory" aria-labelledby="planningHistoryTitle">
+          <figcaption class="planning-history-head">
+            <span id="planningHistoryTitle">Últimos 6 meses (R$)</span>
+            <strong id="planningHistoryAvg"></strong>
+          </figcaption>
+          <ol class="planning-history-bars" id="planningHistoryBars"></ol>
+        </figure>
         <div class="planning-status-grid" id="planningStatusGrid" aria-label="Situação das escalas do mês"></div>
         <button class="planning-alert hidden" id="planningAlert" type="button"></button>
       </div>
@@ -476,7 +483,7 @@
         &copy; <span class="footer-year"></span> Weliton Pinheiro &mdash; Todos os direitos reservados.
       </p>
       <p class="site-footer-meta">
-        Calculadora AC4 &middot; PMGO &middot; v65 &middot;
+        Calculadora AC4 &middot; PMGO &middot; v66 &middot;
         <a href="#" id="footerNovidades" class="footer-link">Novidades</a> &middot;
         <a href="#" id="footerPrivacidade" class="footer-link">Privacidade</a> &middot;
         <a href="#" id="footerFeedback" class="footer-link">Feedback</a> &middot;
@@ -515,7 +522,7 @@
   <dialog class="confirm-dialog whats-new-dialog" id="dialogNovidades" aria-modal="true" aria-labelledby="novidadesTitle" aria-describedby="novidadesIntro">
     <div class="whats-new-body">
       <div class="whats-new-topbar">
-        <span class="whats-new-badge">Nova versão <strong>v65</strong></span>
+        <span class="whats-new-badge">Nova versão <strong>v66</strong></span>
         <button class="btn-icon whats-new-close" id="novidadesFechar" type="button" aria-label="Fechar novidades">
           <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
         </button>
@@ -525,8 +532,8 @@
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3-1.7 4.3L6 9l4.3 1.7L12 15l1.7-4.3L18 9l-4.3-1.7L12 3Z"/><path d="m19 15-.8 2.2L16 18l2.2.8L19 21l.8-2.2L22 18l-2.2-.8L19 15Z"/></svg>
         </span>
         <div>
-          <h2 id="novidadesTitle">Atualizar ficou mais simples</h2>
-          <p id="novidadesIntro">A Calculadora AC4 agora ajuda você a usar sempre a versão mais recente.</p>
+          <h2 id="novidadesTitle">Acompanhe sua evolução</h2>
+          <p id="novidadesIntro">Histórico mensal, lembrete de backup e relatório em PDF mais ágil.</p>
         </div>
       </div>
       <ul class="whats-new-list">
@@ -534,19 +541,19 @@
           <span class="whats-new-item-icon" aria-hidden="true">
             <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m7 16 4-5 4 3 5-7"/></svg>
           </span>
-          <div><strong>Aviso de nova versão</strong><span>Você será informado quando uma atualização estiver pronta.</span></div>
+          <div><strong>Histórico de 6 meses</strong><span>Veja a evolução do valor estimado em “Detalhes do mês”.</span></div>
         </li>
         <li>
           <span class="whats-new-item-icon" aria-hidden="true">
             <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 11a8.1 8.1 0 0 0-15.5-2M4 4v5h5"/><path d="M4 13a8.1 8.1 0 0 0 15.5 2M20 20v-5h-5"/></svg>
           </span>
-          <div><strong>Atualização com um toque</strong><span>Toque em “Atualizar agora” para aplicar e continuar usando.</span></div>
+          <div><strong>PDF mais rápido</strong><span>O relatório abre sem travar a tela ao tocar em PDF.</span></div>
         </li>
         <li>
           <span class="whats-new-item-icon" aria-hidden="true">
             <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg>
           </span>
-          <div><strong>Seus dados permanecem seguros</strong><span>Escalas, metas e modelos continuam salvos somente neste aparelho.</span></div>
+          <div><strong>Lembrete de backup</strong><span>Um aviso discreto sugere salvar uma cópia quando faz tempo desde a última.</span></div>
         </li>
       </ul>
       <p class="whats-new-privacy">
@@ -754,8 +761,8 @@
     </div>
   </dialog>
 
-  <script src="js/force-update.js?v=65"></script>
-  <script type="module" src="js/app.js?v=65"></script>
+  <script src="js/force-update.js?v=66"></script>
+  <script type="module" src="js/app.js?v=66"></script>
 
   <!-- Relatório profissional de impressão — populado pelo JS antes de window.print() -->
   <section id="printReport">

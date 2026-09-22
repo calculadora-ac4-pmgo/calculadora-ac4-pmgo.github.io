@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Calculadora AC4 — v65
+   Calculadora AC4 — v66
    Módulo principal: estado, UI, persistência e exportações.
    Regras de negócio, formatação e agenda vivem em js/modules/.
    ========================================================================== */
@@ -33,7 +33,7 @@ import {
   /* Versão da aplicação (sincronizada pelo tools/bump-version.mjs). Serve para
      carimbar o log de erros e detectar clientes presos em cache antigo:
      se __ac4Version no console divergir do rodapé/CHANGELOG, o SW não atualizou. */
-  const APP_VERSION = '65';
+  const APP_VERSION = '66';
 
   const STORAGE = {
     escalas:   'pmgoEscalas',
@@ -47,6 +47,8 @@ import {
     versao:    'pmgoVersion',
     novidades: 'pmgoNovidadesVistas',
     schema:    'pmgoSchemaVersion',
+    ultimoBackup:   'pmgoUltimoBackup',
+    lembreteBackup: 'pmgoLembreteBackup',
   };
 
   /* ------------------------------------------------------------ estado */
@@ -175,7 +177,27 @@ import {
       metasMensais,
     };
     baixar(`${JSON.stringify(backup, null, 2)}\n`, `backup-calculadora-ac4-v${APP_VERSION}.json`, 'application/json;charset=utf-8');
+    try { localStorage.setItem(STORAGE.ultimoBackup, String(Date.now())); } catch { /* lembrete pode reaparecer */ }
     toast(`Backup gerado com ${escalas.length} escala${escalas.length === 1 ? '' : 's'}.`);
+  }
+
+  /* Lembrete de backup: os dados vivem só neste aparelho. Avisa quem tem
+     escalas e nunca salvou cópia (ou salvou há mais de 30 dias), no máximo
+     uma vez por semana e nunca por cima de um dialog ou do sheet aberto. */
+  const DIA_MS = 24 * 60 * 60 * 1000;
+  function lembrarBackup(agora = Date.now()) {
+    if (escalas.length < 3 || sheetAberto || document.querySelector('dialog[open]')) return false;
+    const ultimo = Number(lerLocal(STORAGE.ultimoBackup)) || 0;
+    const lembrado = Number(lerLocal(STORAGE.lembreteBackup)) || 0;
+    if (agora - lembrado < 7 * DIA_MS) return false;
+    if (ultimo && agora - ultimo <= 30 * DIA_MS) return false;
+    try { localStorage.setItem(STORAGE.lembreteBackup, String(agora)); } catch { return false; }
+    const dias = Math.floor((agora - ultimo) / DIA_MS);
+    toast(ultimo
+      ? `Último backup há ${dias} dias. Salve uma cópia das suas escalas.`
+      : 'Suas escalas ficam só neste aparelho. Salve uma cópia de segurança.',
+    { acao: { rotulo: 'Fazer backup', fn: exportarBackup } });
+    return true;
   }
 
   async function restaurarBackup(file) {
@@ -1186,6 +1208,8 @@ import {
       $('planningProgressTrack').setAttribute('aria-valuenow', String(Math.round(percentual)));
     }
 
+    renderHistorico(mes);
+
     const agora = new Date();
     const atrasadas = listaMes.filter((e) => statusEscala(e) === 'planejada' && (parseDateTimeLocal(e.fim) || new Date(e.fim)) < agora).length;
     const alerta = $('planningAlert');
@@ -1193,6 +1217,45 @@ import {
     alerta.textContent = atrasadas
       ? `${atrasadas} escala${atrasadas === 1 ? '' : 's'} passada${atrasadas === 1 ? '' : 's'} ainda marcada${atrasadas === 1 ? '' : 's'} como planejada${atrasadas === 1 ? '' : 's'}. Revisar`
       : '';
+  }
+
+  /* Histórico dos últimos 6 meses até o mês do painel. Barras em HTML/CSS,
+     sem biblioteca: altura via CSSOM (a CSP bloqueia style inline). */
+  /* Sem "R$" por barra (cabe em 390px); a unidade vai no título do gráfico. */
+  const reaisCompacto = new Intl.NumberFormat('pt-BR', { notation: 'compact', maximumFractionDigits: 1 });
+  const mesCurto = (mes) => {
+    const [ano, numero] = mes.split('-').map(Number);
+    return new Date(ano, numero - 1, 1, 12).toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '');
+  };
+
+  function renderHistorico(mesFinal) {
+    const figura = $('planningHistory');
+    if (!figura) return;
+    const meses = [mesFinal];
+    while (meses.length < 6) meses.unshift(mesAnterior(meses[0]));
+    const porMes = new Map(meses.map((m) => [m, []]));
+    escalas.forEach((e) => porMes.get(toInputMonth(parseDateTimeLocal(e.inicio) || new Date(e.inicio)))?.push(e));
+    const serie = meses.map((m) => ({ mes: m, ...resumoPlanejamento(porMes.get(m)) }));
+    const comDados = serie.filter((s) => s.qtd);
+
+    /* Tendência exige ao menos dois meses com escalas. */
+    figura.classList.toggle('hidden', comDados.length < 2);
+    if (comDados.length < 2) return;
+
+    const maximo = Math.max(...serie.map((s) => s.valor), 1);
+    const media = comDados.reduce((s, x) => s + x.valor, 0) / comDados.length;
+    $('planningHistoryAvg').textContent = `Média ${fmtMoeda(Math.round(media))}`;
+    const barras = $('planningHistoryBars');
+    barras.innerHTML = serie.map((s) => `
+      <li class="planning-history-col${s.mes === mesFinal ? ' is-current' : ''}${s.qtd ? '' : ' is-empty'}">
+        <span class="planning-history-value" aria-hidden="true">${s.qtd ? reaisCompacto.format(s.valor / 100) : '—'}</span>
+        <span class="planning-history-track" aria-hidden="true"><span class="planning-history-bar"></span></span>
+        <span class="planning-history-month" aria-hidden="true">${mesCurto(s.mes)}</span>
+        <span class="sr-only">${fmtMesRef(s.mes)}: ${fmtMoeda(s.valor)}, ${s.qtd} escala${s.qtd === 1 ? '' : 's'}</span>
+      </li>`).join('');
+    barras.querySelectorAll('.planning-history-bar').forEach((el, i) => {
+      el.style.height = `${(serie[i].valor / maximo) * 100}%`;
+    });
   }
 
   function abrirMetaMensal() {
@@ -1677,7 +1740,9 @@ import {
         ${totalRow}
       </table>`;
 
-    window.print();
+    /* window.print() bloqueia a thread até o diálogo fechar; chamado no próprio
+       clique, o tempo no diálogo entra no INP (11s no RUM). Pintar antes. */
+    aposProximoPaint(() => window.print());
   }
 
   /* ------------------------------------------------ agendamento
@@ -2292,6 +2357,10 @@ import {
       render();
       toast('Dados atualizados por outra aba.');
     });
+
+    /* Depois do primeiro uso da tela, para não competir com novidades/instalação. */
+    setTimeout(() => lembrarBackup(), 4000);
+    if (['localhost', '127.0.0.1'].includes(location.hostname)) window.__ac4LembrarBackup = lembrarBackup;
   }
 
   /* Derruba a barreira de primeiro paint (CWV F-02): o <html> nasce com

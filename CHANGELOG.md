@@ -1,5 +1,12 @@
 # Changelog
 
+## v66 — Histórico, backup e PDF mais ágil
+
+- Histórico dos últimos 6 meses no painel mensal, com média e destaque do mês selecionado — HTML/CSS puro, sem biblioteca e com altura reservada (sem CLS).
+- Lembrete de backup para quem tem escalas e nunca salvou cópia (ou salvou há mais de 30 dias), no máximo uma vez por semana, com ação “Fazer backup”.
+- Botão PDF abre o diálogo de impressão após o próximo paint: o tempo gasto no diálogo deixa de contar como INP (11,3 s no Cloudflare RUM).
+- `tools/bump-version.mjs` passa a atualizar também `js/force-update.js`.
+
 ## v64 — Atualização segura da PWA
 
 - Aviso mobile-first quando uma nova versão já está pronta para ser aplicada.
