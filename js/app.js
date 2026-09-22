@@ -33,7 +33,7 @@ import {
   /* Versão da aplicação (sincronizada pelo tools/bump-version.mjs). Serve para
      carimbar o log de erros e detectar clientes presos em cache antigo:
      se __ac4Version no console divergir do rodapé/CHANGELOG, o SW não atualizou. */
-  const APP_VERSION = '64';
+  const APP_VERSION = '65';
 
   const STORAGE = {
     escalas:   'pmgoEscalas',

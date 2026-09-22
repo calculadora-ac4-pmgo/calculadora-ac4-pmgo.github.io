@@ -6,9 +6,10 @@ const SW_VERSION = '65';
 const SHELL = [
   './',
   './index.html',
-  './css/styles.css?v=64',
-  './js/app.js?v=64',
-  './js/theme.js?v=64',
+  './css/styles.css?v=65',
+  './js/app.js?v=65',
+  './js/theme.js?v=65',
+  './js/force-update.js?v=65',
   // módulos importados sem query string (resolvidos pelo import de app.js)
   './js/modules/formato.mjs',
   './js/modules/calculo.mjs',
