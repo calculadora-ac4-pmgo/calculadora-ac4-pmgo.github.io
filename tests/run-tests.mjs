@@ -86,16 +86,17 @@ rodar('Hardening v58 (schema, conflitos e vigência)', validarHardeningV58);
 
 const validarAtualizacaoPWA = () => {
   const sw = readFileSync(join(raiz, 'sw.js'), 'utf8');
+  const versaoApp = readFileSync(join(raiz, 'js/app.js'), 'utf8').match(/const APP_VERSION = '(\d+)'/)?.[1];
   const blocoInstall = sw.slice(sw.indexOf("self.addEventListener('install'"), sw.indexOf("self.addEventListener('message'"));
   const checks = [
     [sw.includes("event.data?.type === 'SKIP_WAITING'"), 'worker aceita atualização solicitada pela interface'],
-    [sw.includes("const SW_VERSION = '64'") && sw.includes("event.data?.type === 'GET_VERSION'"), 'worker informa sua versão antes do aviso'],
+    [versaoApp && sw.includes(`const SW_VERSION = '${versaoApp}'`) && sw.includes("event.data?.type === 'GET_VERSION'"), 'worker informa sua versão antes do aviso'],
     [sw.includes('self.addEventListener(\'message\''), 'canal de mensagem registrado'],
     [!blocoInstall.includes('skipWaiting'), 'instalação não força recarga durante preenchimento'],
   ];
   const falhas = checks.filter(([ok]) => !ok).map(([, nome]) => nome);
   return falhas.length ? falhas : 'ATUALIZAÇÃO PWA SEGURA OK';
 };
-rodar('Atualização PWA v64 (espera + ativação explícita)', validarAtualizacaoPWA);
+rodar('Atualização PWA (espera + ativação explícita)', validarAtualizacaoPWA);
 
 process.exit(falhou ? 1 : 0);

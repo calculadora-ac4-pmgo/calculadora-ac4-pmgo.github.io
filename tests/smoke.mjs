@@ -265,11 +265,11 @@ const ROTEIRO = `(async () => {
   const dlgNovidades = document.getElementById('dialogNovidades');
   ok('Novidades: dialog abre pelo rodapé', !!dlgNovidades && dlgNovidades.open);
   ok('Novidades: apresenta versão e funcionalidades',
-     dlgNovidades.querySelector('.whats-new-badge')?.textContent.includes('v64') &&
+     dlgNovidades.querySelector('.whats-new-badge')?.textContent.includes('v' + window.__ac4Version) &&
      dlgNovidades.querySelectorAll('.whats-new-list li').length === 3);
   document.getElementById('novidadesContinuar').click();
   ok('Novidades: fecha e registra somente a versão vista',
-     !dlgNovidades.open && localStorage.getItem('pmgoNovidadesVistas') === '64');
+     !dlgNovidades.open && localStorage.getItem('pmgoNovidadesVistas') === window.__ac4Version);
 
   localStorage.removeItem('pmgoEscalas');
   return JSON.stringify(passos);
