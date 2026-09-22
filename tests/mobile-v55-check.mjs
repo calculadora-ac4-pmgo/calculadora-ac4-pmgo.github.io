@@ -37,7 +37,7 @@ const perfil = await mkdtemp(join(tmpdir(), 'ac4-v55-'));
 const chrome = await new Promise((resolve, reject) => {
   const proc = spawn(chromePath(), ['--headless=new','--disable-gpu','--no-sandbox','--no-first-run','--disable-extensions',`--user-data-dir=${perfil}`,'--remote-debugging-port=0','about:blank']);
   let stderr = '';
-  const timer = setTimeout(() => reject(new Error(`Chrome não iniciou em 20s.\n${stderr}`)), 20000);
+  const timer = setTimeout(() => reject(new Error(`Chrome não iniciou em 60s.\n${stderr}`)), 60000);
   proc.stderr.on('data', (d) => {
     stderr += d;
     const m = stderr.match(/DevTools listening on (ws:\/\/\S+)/);

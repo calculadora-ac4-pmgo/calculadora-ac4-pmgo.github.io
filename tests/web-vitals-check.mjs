@@ -57,7 +57,7 @@ const lancarChrome = (chrome, perfil) => new Promise((resolve, reject) => {
     '--disable-extensions', `--user-data-dir=${perfil}`, '--remote-debugging-port=0', 'about:blank',
   ]);
   let stderr = '';
-  const timer = setTimeout(() => reject(new Error(`Chrome não expôs o DevTools em 20s.\n${stderr}`)), 20000);
+  const timer = setTimeout(() => reject(new Error(`Chrome não expôs o DevTools em 60s.\n${stderr}`)), 60000);
   proc.stderr.on('data', (d) => {
     stderr += d;
     const m = stderr.match(/DevTools listening on (ws:\/\/\S+)/);
