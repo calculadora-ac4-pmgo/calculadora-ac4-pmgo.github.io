@@ -208,8 +208,8 @@ Em testes com celulares de colegas, o fluxo de "Agenda" no celular ficou **confu
    (Se o Chrome não for achado automaticamente, defina `CHROME_PATH`.)
 4. **Fluxo de trabalho do projeto**:
    - Branch → commit → push → `gh pr create` → **aguardar o check `test` do PR** → `gh pr merge --merge --delete-branch` → CI da main testa de novo e faz o deploy.
-   - Qualquer mudança em `index.html`/`css`/`js` exige bump de versão: `node tools/bump-version.mjs <n>` (próxima: **v55**).
-   - Smoke pode falhar esporadicamente no runner ("Chrome não expôs o DevTools em 20s") — é flake de infraestrutura; `gh run rerun <id> --failed` resolve. **Exceção**: se o job de *deploy* do Pages falhar, disparar run novo com `gh workflow run deploy.yml` (não usar rerun no deploy).
+   - Qualquer mudança em `index.html`/`css`/`js` exige bump de versão: `node tools/bump-version.mjs <n>` (versão atual e próxima: ver `CLAUDE.md` na raiz).
+   - Smoke pode falhar esporadicamente no runner ("Chrome não expôs o DevTools em 60s") — é flake de infraestrutura; `gh run rerun <id> --failed` resolve. **Exceção**: se o job de *deploy* do Pages falhar, disparar run novo com `gh workflow run deploy.yml` (não usar rerun no deploy).
 5. **Ler antes de mexer em regra/valor**: [`portaria-ssp-621-2026.md`](portaria-ssp-621-2026.md) (base normativa) e [`relatorio_auditoria_producao_v46.md`](relatorio_auditoria_producao_v46.md) (riscos e backlog).
 
 ### Regras invioláveis do projeto (resumo)
@@ -221,6 +221,21 @@ Em testes com celulares de colegas, o fluxo de "Agenda" no celular ficou **confu
 - Mobile-first: regras de layout mobile em `@media (max-width: 760px)`; desktop não muda sem pedido.
 - Formulário mobile: campos **empilhados** (rótulo em cima) — nunca rótulo à esquerda com `datetime-local`.
 - Nunca confiar no repaint de `input[type=datetime-local]` após set via JS no Android — manter o espelho `#fimResumo`.
+
+
+---
+
+## Sessão de 22/09/2026 — v65 a v67 e estudo estratégico
+
+> Ponto de entrada para agentes de IA agora é o [`CLAUDE.md`](../CLAUDE.md) na raiz; backlog em
+> [`ESTUDO_ESTRATEGICO_v67.md`](ESTUDO_ESTRATEGICO_v67.md).
+
+- **v65 (deploy destravado):** o deploy falhava desde o PR #58 porque `tests/run-tests.mjs` fixava `SW_VERSION = '64'`. Testes passaram a ler a versão do app; `force-update.js` virou limpeza única por versão.
+- **PR #59:** actions do workflow atualizadas para Node 24 (pin por SHA) e runner `ubuntu-26.04`.
+- **v66 (PR #60):** PDF abre após o próximo paint (INP de 11,3 s no RUM); histórico de 6 meses no painel; lembrete de backup (`pmgoUltimoBackup`, `pmgoLembreteBackup`); `bump-version.mjs` passou a atualizar `force-update.js`.
+- **v67 (PR #61):** o redesign da v65 nunca tinha ido ao ar (pasta `ac4-v65-files/` apagada em vez de movida no commit `2d6f7a3`). Restaurado a partir de `f31c0f8`; novo teste "Release" (topo do CHANGELOG = versão do app; proibidas pastas de rascunho na raiz).
+- **PR #62:** limite de inicialização do Chrome nos testes: 20 s → 60 s.
+- **Estudo estratégico v67:** placar, 7 riscos (R1–R7) e backlog de 30/90/365 dias em `ESTUDO_ESTRATEGICO_v67.md`. Próxima tarefa recomendada: **R1** (dados apagados no Safari/iOS).
 
 ---
 
