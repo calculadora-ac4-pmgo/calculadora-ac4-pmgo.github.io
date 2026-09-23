@@ -14,7 +14,11 @@ majoritário em **celular**. Produção: <https://calculadora-ac4-pmgo.github.io
 
 ## Arquitetura em uma tela
 
-- Sem build, sem framework, **sem dependências em produção**. `index.html` + `css/styles.css` + `js/app.js` (IIFE, UI e estado) + `js/modules/*.mjs` (funções puras: `calculo`, `formato`, `agenda`, `persistencia`).
+- Sem build, sem framework, **sem dependências em produção**. `index.html` + `css/styles.css` + `js/app.js` (IIFE: estado, eventos e orquestração da UI) + `js/modules/*.mjs`:
+  - funções puras: `calculo` (regra da Portaria), `formato`, `agenda` (.ics/links), `persistencia`, `templates` (HTML da lista), `relatorio` (PDF/CSV/texto compartilhado);
+  - `pwa` (fábrica `criarPWA(ctx)`: atualização e instalação);
+  - `testes` (suítes de regressão, **import dinâmico só em localhost**; testes aguardam `window.__ac4TestesProntos`).
+  - Módulo novo? Coloque no `SHELL` do `sw.js` (o teste "Módulos no cache offline" confere).
 - Dados **só no aparelho** (`localStorage`, chaves `pmgo*`). Nunca coletar dados pessoais (LGPD).
 - `sw.js`: network-first, atualização só com confirmação do usuário (`SKIP_WAITING` via banner).
 - Não há mais limpeza forçada: o `js/force-update.js` (v65–v68) recarregava a página a cada versão sem perguntar e foi removido na v69. Caches antigos são apagados no `activate` do `sw.js`. **Não reintroduzir** (o teste "Atualização PWA" bloqueia).
@@ -23,7 +27,7 @@ majoritário em **celular**. Produção: <https://calculadora-ac4-pmgo.github.io
 ## Fluxo de trabalho obrigatório
 
 1. Branch → commits → `npm run verify` (lint + unit + smoke + mobile + mobile-v55 + vitals) → PR → CI verde → `gh pr merge --merge --delete-branch` → acompanhar o deploy da `main` → **conferir o site publicado** (ex.: `curl -s https://calculadora-ac4-pmgo.github.io/sw.js | sed -n 4,5p`). Não declarar concluído só com o workflow verde.
-2. Mudou `index.html`, `css/` ou `js/`? **Bump de versão:** `node tools/bump-version.mjs <n>` (atualiza index, sw, app.js, styles.css e package.json). Versão atual: **v71** → próxima **v72**.
+2. Mudou `index.html`, `css/` ou `js/`? **Bump de versão:** `node tools/bump-version.mjs <n>` (atualiza index, sw, app.js, styles.css e package.json). Versão atual: **v72** → próxima **v73**.
 3. Todo bump exige **entrada nova no topo do `CHANGELOG.md`** com a mesma versão (o teste "Release" falha se não houver) e, se houver novidade para o usuário, o conteúdo do `#dialogNovidades` em `index.html` (**exatamente 3 itens** na lista; o smoke confere) **e o atributo `data-conteudo` com a versão atual** — é ele que decide se o aviso reabre sozinho (sem novidade, mantenha o valor antigo para não repetir o aviso).
 4. Os testes regeneram PNGs em `artifacts/v55/`. Não commitar isso por acidente: `git checkout -- artifacts/` antes do `git add`.
 5. Mensagens de commit e PR em português, no estilo do histórico (`feat(v66): …`, `fix: …`, `ci: …`).

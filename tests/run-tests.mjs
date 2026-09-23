@@ -40,6 +40,8 @@ globalThis.location = { protocol: 'https:', hostname: 'localhost', origin: 'http
 
 /* ---- carrega o app (módulo ES — os imports de js/modules/ resolvem sozinhos) ---- */
 await import(pathToFileURL(join(raiz, 'js', 'app.js')).href);
+/* As suítes vivem em js/modules/testes.mjs, carregado sob demanda em localhost. */
+await globalThis.__ac4TestesProntos;
 
 /* ---- executa as suítes ---- */
 let falhou = false;
@@ -175,11 +177,70 @@ rodar('Conformidade com a Portaria 621/2026 (Anexo I)', validarAnexoI);
    __ac4TestesLancamento zera e regrava as escalas reais do aparelho. */
 const validarGanchosLocais = () => {
   const app = readFileSync(join(raiz, 'js/app.js'), 'utf8');
-  const expostos = app.split('\n')
-    .filter((l) => /window\.__ac4(Testes\w*|ValidarICS|MailtoFeedback|SimularAtualizacao|LembrarBackup)\s*=/.test(l))
-    .filter((l) => !l.includes('if (ambienteDeTeste)') && !/^\s{6,}/.test(l));
-  return expostos.length ? expostos.map((l) => `gancho fora de ambienteDeTeste: ${l.trim()}`) : 'GANCHOS SÓ EM LOCALHOST OK';
+  /* app.js + módulos de produção (testes.mjs só carrega em localhost). */
+  const modulos = readdirSync(join(raiz, 'js', 'modules'))
+    .filter((f) => f.endsWith('.mjs') && f !== 'testes.mjs')
+    .map((f) => readFileSync(join(raiz, 'js', 'modules', f), 'utf8'));
+  const linhas = [app, ...modulos].join('\n').split('\n');
+  /* Um gancho é aceito na mesma linha do if (ambienteDeTeste) ou na linha
+     logo após a abertura do bloco if (ambienteDeTeste) {. */
+  const expostos = linhas
+    .map((l, i) => [l, linhas[i - 1] || ''])
+    .filter(([l]) => /window\.__ac4(Testes\w*|ValidarICS|MailtoFeedback|SimularAtualizacao|LembrarBackup)\s*=/.test(l))
+    .filter(([l, anterior]) => !l.includes('if (ambienteDeTeste)') && !anterior.includes('if (ambienteDeTeste) {'))
+    .map(([l]) => `gancho fora de ambienteDeTeste: ${l.trim()}`);
+  /* P3-2: as suítes ficam em js/modules/testes.mjs — nunca importado de forma
+     estática; o import dinâmico precisa estar dentro do bloco if (ambienteDeTeste). */
+  if (/^import[^;]*modules\/testes\.mjs/m.test(app)) expostos.push('testes.mjs importado estaticamente em app.js');
+  const iImport = linhas.findIndex((l) => l.includes("import('./modules/testes.mjs')"));
+  if (iImport < 1 || !linhas[iImport - 1].includes('if (ambienteDeTeste) {')) expostos.push('import de testes.mjs fora de if (ambienteDeTeste)');
+  return expostos.length ? expostos : 'GANCHOS SÓ EM LOCALHOST OK';
 };
 rodar('Ganchos de teste restritos a localhost', validarGanchosLocais);
+
+/* Modularização (auditoria v67, P3-2): todo módulo em js/modules/ carregado
+   pelo app precisa estar no SHELL do Service Worker, senão o app quebra offline.
+   Exceção: módulos só de teste, carregados sob demanda em localhost. */
+const validarShellModulos = () => {
+  const sw = readFileSync(join(raiz, 'sw.js'), 'utf8');
+  const soTeste = new Set(['testes.mjs']);
+  const faltando = readdirSync(join(raiz, 'js', 'modules'))
+    .filter((f) => f.endsWith('.mjs') && !soTeste.has(f))
+    .filter((f) => !sw.includes(`'./js/modules/${f}'`));
+  return faltando.length ? faltando.map((f) => `fora do SHELL do sw.js: js/modules/${f}`) : 'MÓDULOS NO SHELL OK';
+};
+rodar('Módulos no cache offline do Service Worker', validarShellModulos);
+
+/* Módulos puros extraídos do app.js (P3-2): templates e exportações. */
+const { botoesAcaoHTML, cardEscalaHTML } = await import('../js/modules/templates.mjs');
+const { montarCSV, montarRelatorioImpressao, montarTextoResumo } = await import('../js/modules/relatorio.mjs');
+const validarModulosExtraidos = () => {
+  const hostil = '"><img src=x onerror=alert(1)>';
+  const e = { id: hostil, inicio: '2026-07-10T08:00', fim: '2026-07-10T20:00', descricao: '=1+1 <b>x</b>', origem: 'AC4', qtdPm: 2, status: 'realizada' };
+  const r = calcularEscala(e, TABELA_OFICIAL);
+  const csv = montarCSV([{ e, r }, { e: { ...e, qtdPm: 1 }, r }]);
+  const linhasCsv = csv.slice(1).split('\r\n');
+  const { resumoHTML, tabelaHTML } = montarRelatorioImpressao([{ e, r }]);
+  const checks = [
+    [!botoesAcaoHTML(hostil).includes('<img'), 'id hostil escapado nos botões de ação'],
+    [!cardEscalaHTML(e, r).includes('<img') && !cardEscalaHTML(e, r).includes('<b>'), 'id e unidade escapados no card'],
+    [csv.startsWith('﻿'), 'CSV começa com BOM UTF-8'],
+    [linhasCsv.length === 4, 'CSV: cabeçalho + 2 escalas + total'],
+    [linhasCsv[1].startsWith('"\'=1+1'), 'CSV neutraliza fórmula na unidade'],
+    [linhasCsv[1].includes('"Realizada"'), 'CSV traz a situação'],
+    [linhasCsv[3].endsWith(';1440,00'), 'CSV: total = 2 PMs × R$ 480 + R$ 480'],
+    [!tabelaHTML.includes('<b>') && tabelaHTML.includes('&lt;b&gt;'), 'PDF escapa a unidade'],
+    [resumoHTML.includes('R$') && resumoHTML.includes('960,00'), 'PDF: resumo com o valor total'],
+    (() => {
+      const pref = { ...e, origem: 'PREFEITURAS' };
+      const txt = montarTextoResumo([{ e: pref, r }, { e: { ...pref, qtdPm: 1 }, r }]);
+      return [txt.includes('Origem: Prefeituras') && txt.includes('TOTAL — 2 escalas') && txt.includes('1.440,00') && txt.includes('Vermelha'),
+        'Resumo compartilhado: origem pelo labelOrigem, total e tipo da escala'];
+    })(),
+  ];
+  const falhas = checks.filter(([ok]) => !ok).map(([, nome]) => nome);
+  return falhas.length ? falhas : 'TEMPLATES E EXPORTAÇÕES OK';
+};
+rodar('Templates e exportações (módulos extraídos)', validarModulosExtraidos);
 
 process.exit(falhou ? 1 : 0);

@@ -130,6 +130,7 @@ const ROTEIRO = `(async () => {
 
   // aguarda a inicialização do app (formulário renderizado e listeners ativos)
   for (let i = 0; i < 50 && !document.getElementById('formEscala'); i++) await espera(100);
+  await window.__ac4TestesProntos; // suítes carregadas sob demanda (js/modules/testes.mjs)
   localStorage.removeItem('pmgoEscalas');
 
   ok('Formulário de lançamento presente', !!document.getElementById('formEscala'));
