@@ -4,17 +4,17 @@
 
 ---
 
-## 📍 Estado atual — 23/09/2026 (v71)
+## 📍 Estado atual — 23/09/2026 (v72)
 
 > **Fonte única do estado do projeto.** Ao encerrar uma sessão, atualize esta tabela e acrescente a
 > sessão logo abaixo (mais recente primeiro). Os blocos mais antigos são histórico.
 
 | Item | Estado |
 | --- | --- |
-| Versão em produção | **v71** — https://calculadora-ac4-pmgo.github.io/ · próxima **v72** |
+| Versão em produção | **v72** — https://calculadora-ac4-pmgo.github.io/ · próxima **v73** |
 | Projeto | **Em evolução ativa** (o "modo de manutenção" de 08/07 foi encerrado na v55) |
 | Regra de cálculo | Portaria SSP 621/2026 + **só horas inteiras por faixa** (decisão do gestor, v71). Suíte "Conformidade com o Anexo I" com 52 casos, 10 deles da planilha do gestor |
-| Última auditoria | [`relatorio_auditoria_producao_v67.md`](relatorio_auditoria_producao_v67.md) (BIH TECHS): 8,6/10. Itens P2-1…P2-4, P3-1, P3-3, P3-4 e P3-6 resolvidos entre a v68 e a v71 |
+| Última auditoria | [`relatorio_auditoria_producao_v67.md`](relatorio_auditoria_producao_v67.md) (BIH TECHS): 8,6/10. Itens P2-1…P2-4, P3-1…P3-4 e P3-6 resolvidos entre a v68 e a v72; aberto só o P3-5 (SRI/privacidade) |
 | CI | Lint + 8 suítes unitárias + smoke (44 passos) + 2 mobile + Web Vitals (7 cenários) em todo PR; deploy só na `main` |
 | Proteção da `main` | PR obrigatório, check `test` obrigatório **também para admin**, merge commit (`--merge`) — ver sessão de 23/09 |
 | Monitor de uptime | UptimeRobot criado pelo gestor em 08/07/2026 (HTTP, 5 min). **Pendente do gestor:** confirmar que o alerta por e-mail está ativo |
@@ -35,6 +35,7 @@
   - Regras revistas contra a Portaria e contra a planilha do gestor: 10 escalas reais, iguais coluna a coluna.
   - Lista mostra as 30 escalas mais recentes com "Mostrar anteriores".
   - `Intl` cacheado; com 300 escalas, adicionar caiu de 2–4 s para 0,2–0,5 s.
+- **v72 (P3-2):** `app.js` dividido em módulos (`templates`, `relatorio`, `pwa`, `testes` sob demanda), sem mudar comportamento. Saída de lista, CSV e PDF idêntica byte a byte à v71. Ids escapados nos templates.
 - **Governança (P2-4/P3-3):** documentos reconciliados (este bloco, escopo, checklist, backlog). A proteção da `main` passou a valer também para admin, com merge commit.
 - **Aprendizado:** nesta estação os testes de desempenho e animação oscilam quando a CPU está ocupada por outros programas. O CI (runner limpo) é o juiz. Compare sempre com a `main` nas mesmas condições antes de concluir que houve regressão.
 

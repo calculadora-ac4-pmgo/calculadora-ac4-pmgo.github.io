@@ -1,5 +1,16 @@
 # Changelog
 
+## v72 — `app.js` dividido em módulos (auditoria v67, P3-2)
+
+Refatoração sem mudança de comportamento: `js/app.js` passou de 2.489 para ~1.860 linhas.
+- `js/modules/templates.mjs`: cards, botões de ação e seletor de situação. Agora os **ids das escalas são escapados** no HTML: um backup adulterado não consegue mais injetar marcação (a CSP já bloqueava scripts).
+- `js/modules/relatorio.mjs`: relatório do PDF, planilha CSV e texto de compartilhamento, como funções puras testadas em Node.
+- `js/modules/pwa.mjs`: atualização segura e instalação da PWA, com estado encapsulado.
+- `js/modules/testes.mjs`: suítes de regressão **carregadas sob demanda só em localhost** (`window.__ac4TestesProntos`); não vão mais para o aparelho do usuário.
+- **Equivalência conferida:** lista, totais, CSV e relatório do PDF idênticos byte a byte aos da v71, com 20 escalas variadas em 390 px e 1280 px.
+- Texto compartilhado usa `labelOrigem()` para a origem, como a tela e o PDF (resto do P3-6). Ex.: "Prefeituras" em vez de "PREFEITURAS".
+- **Novos testes:** todo módulo precisa estar no cache offline do SW; ganchos de teste só em localhost, varrendo também os módulos; templates e exportações, incluindo id hostil e CSV injection.
+
 ## v71 — Horas inteiras e lista rápida com histórico longo
 
 - **Regra de valor (decisão do gestor, 23/09/2026):** só as horas inteiras de cada faixa (AD/AN/VD/VN) são pagas; a fração de hora não é paga. Os valores ficam sempre em reais inteiros. Ex.: sex 08:00→18:20 paga 10h VD = R$ 400,00 (antes R$ 413,33). Escalas em hora cheia não mudam: 32.256 combinações conferidas (1–192h, todo início de hora da semana). `calcularEscala` passa a retornar `horasPagas`. Registrado em `docs/portaria-ssp-621-2026.md`. Novos casos de teste, incluindo o exemplo do gestor (qui 18:00→sex 05:00 = R$ 351,00).

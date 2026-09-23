@@ -138,7 +138,7 @@ próprio ("Fazendário", "PREFEITURAS"). No PDF usa `labelOrigem()` ("Faz./Sec. 
 | P2-3 dados no iPhone | `storage.persist()` após lançamento + data do último backup + aviso do Safari no Compartilhar | v70 · PR #66 |
 | P2-4 documentação contraditória | Diário com "Estado atual" único no topo; escopo e checklist sem a importação `.ics`; backlog do estudo atualizado (R1, R7 e uptime concluídos; R5 parcial) | PR de governança |
 | P3-1 ganchos de teste em produção | Só em `localhost` + teste de regressão | v68 · PR #64 |
-| P3-2 `app.js` grande | **Aberto** (backlog) | — |
+| P3-2 `app.js` grande | Dividido em módulos (`templates`, `relatorio`, `pwa`, `testes` sob demanda); 2.489 → ~1.860 linhas; saída idêntica byte a byte; ids escapados nos templates | v72 |
 | P3-3 proteção contornada | Histórico linear desligado (o projeto usa merge commit); `enforce_admins` ligado. O check `test` agora vale para todos | GitHub Settings, 23/09 |
 | P3-4 `artifacts/` publicados | Excluídos do deploy | v68 · PR #64 |
 | P3-5 script de terceiros sem SRI | **Aberto** (depende do texto de privacidade, R4) | — |
@@ -146,4 +146,4 @@ próprio ("Fazendário", "PREFEITURAS"). No PDF usa `labelOrigem()` ("Faz./Sec. 
 
 **Extra (fora do relatório original):** revisão da regra contra a Portaria a pedido do gestor. Decisão do gestor: pagar **só horas inteiras por faixa**. Suíte "Conformidade com o Anexo I" com 52 casos, 10 deles da planilha do gestor, todos iguais coluna a coluna (v71).
 
-**Situação:** todos os P2 resolvidos. Restam P3-2 (modularização) e P3-5 (SRI/privacidade), ambos sem risco imediato.
+**Situação:** todos os P2 resolvidos. Resta só o P3-5 (SRI/privacidade), sem risco imediato.

@@ -222,7 +222,7 @@ dependem de decisão ou ação humana fora do repositório.
 - [ ] **R4 [código + gestão]** Novo texto do `#dialogPrivacidade` (controlador, encarregado, finalidade, base legal, operadores, transferência internacional) após validação jurídica; ROPA registrado.
 - [ ] **[gestão]** Primeira rodada de usabilidade/acessibilidade com 5–8 policiais (tarefas e SUS acima).
 - [ ] **R5 [código]** Tabela da Portaria em arquivo de dados versionado (fonte DOE), testes gerados do Anexo, versão da tabela impressa no PDF. *Parcial:* testes gerados do Anexo I feitos na **v71** (suíte "Conformidade com o Anexo I", 52 casos); faltam o arquivo de dados e a versão no PDF.
-- [ ] **[código]** Dividir `js/app.js` em módulos carregados sob demanda (item P3-2 da auditoria v67; `app.js` com ~2,5 mil linhas).
+- [x] **[código]** Dividir `js/app.js` em módulos (item P3-2 da auditoria v67) — **v72**: 2.489 → ~1.860 linhas; `templates`, `relatorio`, `pwa` e `testes` (este sob demanda, só em localhost).
 - [ ] **R3 [gestão]** Segundo mantenedor com acesso ao repositório.
 
 ### 12 meses — Escalar

@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Calculadora AC4 — v71
+   Calculadora AC4 — v72
    Módulo principal: estado, UI, persistência e exportações.
    Regras de negócio, formatação e agenda vivem em js/modules/.
    ========================================================================== */
@@ -7,22 +7,25 @@ import {
   fmtMoeda, fmtHoras, fmtDataHora, fmtData, fmtDiaSemana, fmtHora,
   combinarDataHoraLocal, parseDateTimeLocal, formatarDataHoraInput, toInputLocal,
   calcularTerminoPorDuracao, validarIntervaloEscala, toInputMonth, fmtMesRef, escapeHTML,
-  csvTextoSeguro,
 } from './modules/formato.mjs';
 import {
   PORTARIA_ATUAL, VALORES_OFICIAIS, TABELA_OFICIAL, regraNormativaParaData, labelOrigem,
   calcularEscala as calcularEscalaBase, tabelaEscalaValida,
 } from './modules/calculo.mjs';
 import {
-  ICS_DOMAIN, dataICS, desdobrarLinhasICS,
   montarICS as montarICSBase,
-  validarICS as validarICSBase,
   gerarLinkGoogleAgenda as gerarLinkGoogleAgendaBase,
   gerarLinkOutlookAgenda as gerarLinkOutlookAgendaBase,
 } from './modules/agenda.mjs';
 import {
   STORAGE_SCHEMA_VERSION, STATUS_ESCALA, gerarIdEscala, desserializarEscalas, detectarConflitos,
 } from './modules/persistencia.mjs';
+import {
+  STATUS_INFO, statusEscala, rotuloQuantidadePm,
+  botoesAcaoHTML, seletorStatusHTML, cardEscalaHTML,
+} from './modules/templates.mjs';
+import { montarRelatorioImpressao, montarCSV, montarTextoResumo, baixarArquivo } from './modules/relatorio.mjs';
+import { criarPWA } from './modules/pwa.mjs';
 
 (() => {
   'use strict';
@@ -33,7 +36,7 @@ import {
   /* Versão da aplicação (sincronizada pelo tools/bump-version.mjs). Serve para
      carimbar o log de erros e detectar clientes presos em cache antigo:
      se __ac4Version no console divergir do rodapé/CHANGELOG, o SW não atualizou. */
-  const APP_VERSION = '71';
+  const APP_VERSION = '72';
 
   const STORAGE = {
     escalas:   'pmgoEscalas',
@@ -68,11 +71,6 @@ import {
   let modelos = [];
   let metasMensais = {};
   let versaoAnterior = null;
-  let deferredInstallPrompt = null;
-  let workerAtualizacao = null;
-  let atualizacaoPendente = false;
-  let recarregandoPorAtualizacao = false;
-  let mostrarInstalacaoAposConversao = () => {};
   let submetendo = false;
   let sheetAberto = false;
   let fundoInerte = [];
@@ -83,13 +81,6 @@ import {
   /* Ganchos de teste (window.__ac4Testes*, simulações) só existem em ambiente
      local; em produção ficam só os de suporte (__ac4Erros, __ac4Version). */
   const ambienteDeTeste = ['localhost', '127.0.0.1'].includes(location.hostname);
-  const STATUS_INFO = Object.freeze({
-    planejada: { label: 'Planejada', curto: 'Planejadas' },
-    realizada: { label: 'Realizada', curto: 'Realizadas' },
-    conferida: { label: 'Conferida', curto: 'Conferidas' },
-    recebida: { label: 'Recebida', curto: 'Recebidas' },
-  });
-  const statusEscala = (e) => STATUS_ESCALA.includes(e?.status) ? e.status : 'planejada';
 
   function setDetalhesAvancados(aberto) {
     document.querySelectorAll('.advanced-field').forEach((el) => el.classList.toggle('hidden', !aberto));
@@ -166,7 +157,7 @@ import {
       toast('Não há escalas válidas para gerar o arquivo .ics.', { erro: true });
       return null;
     }
-    baixar(arquivo.conteudo, 'escalas-ac4.ics', 'text/calendar;charset=utf-8');
+    baixarArquivo(arquivo.conteudo, 'escalas-ac4.ics', 'text/calendar;charset=utf-8');
     const total = `${arquivo.eventos} evento${arquivo.eventos === 1 ? '' : 's'}`;
     const ignoradas = arquivo.ignoradas
       ? ` ${arquivo.ignoradas} escala${arquivo.ignoradas === 1 ? '' : 's'} inválida${arquivo.ignoradas === 1 ? '' : 's'} foram ignoradas.`
@@ -185,7 +176,7 @@ import {
       modelos,
       metasMensais,
     };
-    baixar(`${JSON.stringify(backup, null, 2)}\n`, `backup-calculadora-ac4-v${APP_VERSION}.json`, 'application/json;charset=utf-8');
+    baixarArquivo(`${JSON.stringify(backup, null, 2)}\n`, `backup-calculadora-ac4-v${APP_VERSION}.json`, 'application/json;charset=utf-8');
     try { localStorage.setItem(STORAGE.ultimoBackup, String(Date.now())); } catch { /* lembrete pode reaparecer */ }
     toast(`Backup gerado com ${escalas.length} escala${escalas.length === 1 ? '' : 's'}.`);
   }
@@ -635,157 +626,6 @@ import {
     return lista;
   }
 
-  /* -------------------------------------------------- testes de regressão */
-  if (ambienteDeTeste) window.__ac4Testes = function () {
-    const h = (n) => n * 60;
-    const casos = [
-      { caso: '1 sex 03/07 18h→sáb 8h (14h)',  inicio: '2026-07-03T18:00', fim: '2026-07-04T08:00', AD: 0,         AN: 0,    VD: h(7),  VN: h(7),  centavos: 59500 },
-      { caso: '2 sáb 04/07 8h→dom 8h (24h)',   inicio: '2026-07-04T08:00', fim: '2026-07-05T08:00', AD: 0,         AN: 0,    VD: h(17), VN: h(7),  centavos: 99500 },
-      { caso: 'Azul dia: seg 06/07 8h→18h',     inicio: '2026-07-06T08:00', fim: '2026-07-06T18:00', AD: h(10),     AN: 0,    VD: 0,     VN: 0,     centavos: 30000 },
-      { caso: 'Azul noite: seg 06/07 22h→ter 5h',inicio:'2026-07-06T22:00', fim: '2026-07-07T05:00', AD: 0,         AN: h(7), VD: 0,     VN: 0,     centavos: 23100 },
-      { caso: 'Início qui, vira sex 02/07 20h→sex 6h', inicio: '2026-07-02T20:00', fim: '2026-07-03T06:00', AD: h(2), AN: h(7), VD: h(1), VN: 0, centavos: 33100 },
-      /* Fronteiras (§10 da auditoria) — dom→seg cruzando 05h, 1 min, término 00:00, bissexto */
-      { caso: 'Fronteira dom→seg: dom 05/07 20h→seg 08h', inicio: '2026-07-05T20:00', fim: '2026-07-06T08:00', AD: h(3), AN: 0,    VD: h(2), VN: h(7), centavos: 48500 },
-      { caso: 'Escala de 1 minuto (seg 06/07 10:00)',      inicio: '2026-07-06T10:00', fim: '2026-07-06T10:01', AD: 1,    AN: 0,    VD: 0,    VN: 0,    centavos: 0 },
-      /* Só horas inteiras por categoria (v71): a fração de hora não é paga */
-      { caso: 'Fração VD: sex 10/07 08:00→18:20 paga 10h', inicio: '2026-07-10T08:00', fim: '2026-07-10T18:20', AD: 0,    AN: 0,    VD: 620,  VN: 0,    centavos: 40000 },
-      { caso: 'Fração VD: sex 10/07 08:00→18:10 paga 10h', inicio: '2026-07-10T08:00', fim: '2026-07-10T18:10', AD: 0,    AN: 0,    VD: 610,  VN: 0,    centavos: 40000 },
-      { caso: 'Meia hora AD: seg 06/07 07:00→19:30 paga 12h', inicio: '2026-07-06T07:00', fim: '2026-07-06T19:30', AD: 750, AN: 0,   VD: 0,    VN: 0,    centavos: 36000 },
-      { caso: 'Fração por faixa: seg 21:30→ter 06:00',     inicio: '2026-07-06T21:30', fim: '2026-07-07T06:00', AD: 90,   AN: h(7), VD: 0,    VN: 0,    centavos: 26100 },
-      { caso: 'Término 00:00 (seg 06/07 22h→ter 00:00)',   inicio: '2026-07-06T22:00', fim: '2026-07-07T00:00', AD: 0,    AN: h(2), VD: 0,    VN: 0,    centavos: 6600 },
-      { caso: 'Bissexto: ter 29/02/2028 08h→18h',          inicio: '2028-02-29T08:00', fim: '2028-02-29T18:00', AD: h(10),AN: 0,    VD: 0,    VN: 0,    centavos: 30000 },
-      { caso: 'Vermelha madrugada: sex 03/07 22h→sáb 06h', inicio: '2026-07-03T22:00', fim: '2026-07-04T06:00', AD: 0,    AN: 0,    VD: h(1), VN: h(7), centavos: 35500 },
-    ];
-    const resultados = casos.map((c) => {
-      const r = calcularEscala({ inicio: c.inicio, fim: c.fim });
-      const ok = ['AD','AN','VD','VN'].every((k) => r.cont[k] === c[k]) && r.valorCentavos === c.centavos;
-      return { caso: c.caso, ok, esperado: fmtMoeda(c.centavos), obtido: fmtMoeda(r.valorCentavos) };
-    });
-    if (console.table) console.table(resultados);
-    return resultados.every((r) => r.ok) ? 'TODOS OS CASOS OK' : resultados;
-  };
-
-  /* Suíte de segurança + invariantes (§10 da auditoria, itens 5 e 6).
-     Puros — rodam em Node no CI e no console do site. */
-  if (ambienteDeTeste) window.__ac4TestesExtras = function () {
-    const resultados = [];
-    const add = (caso, ok, detalhes = '') => resultados.push({ caso, ok: Boolean(ok), detalhes: String(detalhes) });
-
-    /* CSV injection: campo iniciado por = + - @ (ou tab/CR) sai com apóstrofo
-       protetor; texto comum passa intacto. Cobre o exportarCSV. */
-    const casosCSV = [
-      ['=2+2', "'=2+2"], ['+1', "'+1"], ['-1', "'-1"], ['@x', "'@x"],
-      ['\tTAB', "'\tTAB"], ['1ª CIA', '1ª CIA'], ['', ''], ['a=b', 'a=b'],
-    ];
-    casosCSV.forEach(([entrada, esperado]) => {
-      const got = csvTextoSeguro(entrada);
-      add(`csvTextoSeguro(${JSON.stringify(entrada)})`, got === esperado, got);
-    });
-
-    /* Invariantes de calcularEscala sobre 50 escalas aleatórias válidas:
-       cont soma = mins; diurno+noturno = mins; vermelha ≤ mins; valor é inteiro
-       ≥ 0, em reais inteiros, e reproduz Σ horas inteiras×tarifa por categoria;
-       total = Σ dos valores por escala. */
-    const tabela = { portaria: PORTARIA_ATUAL, valores: { AD: 3000, AN: 3300, VD: 4000, VN: 4500 } };
-    const base = new Date('2026-01-01T00:00').getTime();
-    let invariantesOk = true, somaManual = 0, somaReduce = 0;
-    const lista = [];
-    for (let i = 0; i < 50; i++) {
-      const ini = new Date(base + Math.floor(Math.random() * 365 * 24 * 60) * 60000);
-      const dur = 1 + Math.floor(Math.random() * (192 * 60 - 1)); // 1 min .. 192h
-      const fim = new Date(ini.getTime() + dur * 60000);
-      const e = { inicio: formatarDataHoraInput(ini), fim: formatarDataHoraInput(fim) };
-      const r = calcularEscalaBase(e, tabela);
-      const somaCont = r.cont.AD + r.cont.AN + r.cont.VD + r.cont.VN;
-      const h = (m) => Math.floor(m / 60);
-      const esperadoCent = h(r.cont.AD) * 3000 + h(r.cont.AN) * 3300 + h(r.cont.VD) * 4000 + h(r.cont.VN) * 4500;
-      const ok = somaCont === r.mins
-        && r.minDiurno + r.minNoturno === r.mins
-        && r.minVermelha <= r.mins
-        && Number.isInteger(r.valorCentavos) && r.valorCentavos >= 0
-        && r.valorCentavos % 100 === 0
-        && r.valorCentavos === esperadoCent;
-      if (!ok) invariantesOk = false;
-      somaManual += r.valorCentavos;
-      lista.push(r.valorCentavos);
-    }
-    somaReduce = lista.reduce((s, v) => s + v, 0);
-    add('Invariantes de cálculo em 50 escalas aleatórias', invariantesOk);
-    add('Total geral = Σ dos valores por escala', somaManual === somaReduce, `${somaManual} = ${somaReduce}`);
-
-    if (console.table) console.table(resultados);
-    return resultados.every((r) => r.ok) ? 'TODOS OS TESTES EXTRAS OK' : resultados;
-  };
-
-  if (ambienteDeTeste) window.__ac4TestesLancamento = function () {
-    const resultados = [];
-    const add = (caso, ok, detalhes = '') => resultados.push({ caso, ok: Boolean(ok), detalhes });
-    const idsCampos = ['escalaInicio', 'escalaFim', 'escalaDuracao', 'escalaQtdPm', 'escalaDescricao', 'escalaOrigem'];
-    const snapshot = {
-      escalas: JSON.parse(JSON.stringify(escalas)),
-      filtroMes,
-      local: localStorage.getItem(STORAGE.escalas),
-      session: sessionStorage.getItem(STORAGE.escalas),
-      campos: Object.fromEntries(idsCampos.map((id) => [id, $(id)?.value ?? ''])),
-    };
-
-    try {
-      const inicio12 = formatarDataHoraInput(combinarDataHoraLocal('2026-07-05', '08:00'));
-      const fim12 = calcularTerminoPorDuracao(inicio12, 12);
-      const inicio14 = formatarDataHoraInput(combinarDataHoraLocal('2026-07-10', '18:00'));
-      const fim14 = calcularTerminoPorDuracao(inicio14, 14);
-      const inicio24 = formatarDataHoraInput(combinarDataHoraLocal('2026-07-05', '08:00'));
-      const fim24 = calcularTerminoPorDuracao(inicio24, 24);
-
-      add('Combinar data + hora inicial', inicio12 === '2026-07-05T08:00', inicio12);
-      add('Calcular término de 12h', fim12 === '2026-07-05T20:00', fim12);
-      add('Calcular término de 14h com virada de dia', fim14 === '2026-07-11T08:00', fim14);
-      add('Calcular término de 24h com virada de dia', fim24 === '2026-07-06T08:00', fim24);
-      add('Aceitar término maior que início', validarIntervaloEscala(inicio24, fim24).ok);
-      add('Rejeitar término igual ao início', !validarIntervaloEscala(inicio24, inicio24).ok);
-      add('Rejeitar término anterior ao início', !validarIntervaloEscala(fim24, inicio24).ok);
-      add('Aceitar duração no limite de 192h', validarIntervaloEscala('2026-07-05T08:00', '2026-07-13T08:00').ok);
-      const acimaLimite = validarIntervaloEscala('2026-07-05T08:00', '2036-07-05T08:00');
-      add('Rejeitar duração acima de 192h (typo de ano)', !acimaLimite.ok && acimaLimite.campo === 'fim', acimaLimite.mensagem);
-
-      const escalaTeste = {
-        id: 'teste-lancamento-ac4',
-        inicio: inicio24,
-        fim: fim24,
-        descricao: 'Escala AC4',
-        origem: 'AC4',
-        qtdPm: 1,
-        tabela: lerTabelaAtual(),
-      };
-      add('Simular criação de objeto de escala', escalaTeste.inicio === '2026-07-05T08:00' && escalaTeste.fim === '2026-07-06T08:00' && escalaTeste.origem === 'AC4');
-
-      escalas = [];
-      filtroMes = '';
-      escalas.push(escalaTeste);
-      salvar();
-      const gravadas = JSON.parse(localStorage.getItem(STORAGE.escalas) || '[]');
-      add('Adicionar escala válida ao estado', escalas.length === 1 && escalas[0].id === escalaTeste.id);
-      add('Storage grava e recupera escalas', gravadas.length === 1 && gravadas[0].fim === '2026-07-06T08:00');
-
-      render();
-      const linhas = document.querySelectorAll('#listaEscalas tbody tr').length;
-      add('Renderizar lista/tabela após adicionar escala', linhas === 1, `${linhas} linha(s)`);
-      add('Totais recalculados após adicionar escala', $('totHoras')?.textContent === '24h' && $('totValor')?.textContent !== 'R$ 0,00', `${$('totHoras')?.textContent} / ${$('totValor')?.textContent}`);
-    } finally {
-      escalas = snapshot.escalas;
-      filtroMes = snapshot.filtroMes;
-      if (snapshot.local === null) localStorage.removeItem(STORAGE.escalas);
-      else localStorage.setItem(STORAGE.escalas, snapshot.local);
-      if (snapshot.session === null) sessionStorage.removeItem(STORAGE.escalas);
-      else sessionStorage.setItem(STORAGE.escalas, snapshot.session);
-      Object.entries(snapshot.campos).forEach(([id, valor]) => { if ($(id)) $(id).value = valor; });
-      render();
-    }
-
-    if (console.table) console.table(resultados);
-    return resultados.every((r) => r.ok) ? 'TODOS OS TESTES DE LANCAMENTO OK' : resultados;
-  };
-
   /* --------------------------------------------------------------- ações */
   function lerQtdPm() {
     const val = parseInt($('escalaQtdPm')?.value || '1', 10);
@@ -877,7 +717,7 @@ import {
       }
       if (!salvar()) { escalas = escalasAntes; render(); return; }
       render();
-      if (novoRegistro) { mostrarInstalacaoAposConversao(); pedirArmazenamentoPersistente(); }
+      if (novoRegistro) { pwa.mostrarInstalacaoAposConversao(); pedirArmazenamentoPersistente(); }
       /* No mobile, salvar com sucesso fecha o bottom sheet. */
       if (isMobileViewport()) fecharPainelLancamentoMobile();
     } finally {
@@ -922,8 +762,6 @@ import {
     const v = $('escalaFim')?.value || '';
     el.textContent = parseDateTimeLocal(v) ? `${fmtDiaSemana(v)}, ${fmtDataHora(v)}` : '';
   }
-
-  const rotuloQuantidadePm = (qtd) => `${qtd} ${qtd === 1 ? 'PM' : 'PMs'}`;
 
   function formatarTerminoMobile(valor) {
     const data = parseDateTimeLocal(valor);
@@ -1380,70 +1218,7 @@ import {
   function gerarTextoResumo() {
     const lista = escalasOrdenadas();
     if (!lista.length) return '';
-    const resultados = lista.map((e) => ({ e, r: calcularEscala(e) }));
-    const totMins  = resultados.reduce((s, x) => s + x.r.mins, 0);
-    const totValor = resultados.reduce((s, x) => s + x.r.valorCentavos * (x.e.qtdPm || 1), 0);
-
-    const DIAS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-    const SEP = '─────────────────────';
-
-    const dataCompleta = (iso) => {
-      const d = new Date(iso);
-      return `${DIAS[d.getDay()]}, ${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
-    };
-
-    let texto = `📋 *SIMULAÇÃO DE ESCALAS — AC4 / PMGO*\n${SEP}\n\n`;
-
-    resultados.forEach(({ e, r }, i) => {
-      const qtd       = e.qtdPm || 1;
-      const isVerm    = r.minVermelha > 0;
-      const tipoEmoji = isVerm ? '🔴' : '🔵';
-      const tipoNome  = isVerm ? 'Vermelha' : 'Azul';
-      const mesmodia  = fmtData(e.inicio) === fmtData(e.fim);
-      const fimStr    = mesmodia
-        ? fmtHora(e.fim)
-        : `${fmtHora(e.fim)} (${DIAS[new Date(e.fim).getDay()]}, ${String(new Date(e.fim).getDate()).padStart(2, '0')}/${String(new Date(e.fim).getMonth() + 1).padStart(2, '0')})`;
-
-      if (lista.length > 1) {
-        texto += `*${i + 1}. Escala ${tipoNome} ${tipoEmoji}*\n`;
-      } else {
-        texto += `*Escala ${tipoNome} ${tipoEmoji}*\n`;
-      }
-
-      texto += `📅 ${dataCompleta(e.inicio)}\n`;
-      texto += `🕐 ${fmtHora(e.inicio)} → ${fimStr}\n`;
-
-      if (r.minNoturno > 0 && r.minDiurno > 0) {
-        texto += `⏱ ${fmtHoras(r.mins)}  |  Diurno: ${fmtHoras(r.minDiurno)}  /  Noturno: ${fmtHoras(r.minNoturno)}\n`;
-      } else {
-        texto += `⏱ ${fmtHoras(r.mins)} (${r.minNoturno > 0 ? 'Noturno' : 'Diurno'})\n`;
-      }
-
-      const unidStr = e.descricao && e.descricao !== 'Escala AC4' ? e.descricao : '—';
-      const oriStr  = (e.origem || 'AC4').replace('CONVENIO_', 'Conv. ').replace('FAZENDARIO_SEC_ECON', 'Fazendário/Sec.Econ.');
-      texto += `📍 Unidade: ${unidStr}  |  Origem: ${oriStr}\n`;
-      texto += `📌 Situação: ${STATUS_INFO[statusEscala(e)].label}\n`;
-
-      if (qtd > 1) {
-        texto += `👮 ${qtd} PMs  ·  ${fmtMoeda(r.valorCentavos)}/PM\n`;
-        texto += `💰 *${fmtMoeda(r.valorCentavos * qtd)}* (total ${qtd} PMs)\n`;
-      } else {
-        texto += `💰 *${fmtMoeda(r.valorCentavos)}*\n`;
-      }
-
-      if (i < resultados.length - 1) texto += `\n${SEP}\n\n`;
-    });
-
-    if (lista.length > 1) {
-      texto += `\n${SEP}\n`;
-      texto += `📊 *TOTAL — ${lista.length} escalas*\n`;
-      texto += `⏱ ${fmtHoras(totMins)}  |  💰 *${fmtMoeda(totValor)}*\n`;
-      texto += `${SEP}\n`;
-    }
-
-    texto += `\n⚠️ _Portaria SSP n.º 621/2026 · Valor simulado_\n`;
-    texto += `_Sujeito à conferência administrativa — AC4 PMGO_`;
-    return texto;
+    return montarTextoResumo(lista.map((e) => ({ e, r: calcularEscala(e) })));
   }
 
   let resumoCompartilhamentoCache = '';
@@ -1547,106 +1322,6 @@ import {
       b.addEventListener('click', () => selecionarTipoFeedback(b));
     });
   }
-
-  /* Botões de ação de uma escala — reusados na tabela (desktop) e nos
-     cards enxutos (mobile). A delegação em #listaEscalas trata ambos. */
-  const botoesAcaoHTML = (id) => `
-    <div class="escala-actions">
-      <button class="btn-icon gcal" data-acao="agenda" data-id="${id}" title="Adicionar esta escala à agenda" aria-label="Adicionar esta escala à agenda">
-        <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4M12 13v4M10 15h4"/></svg>
-      </button>
-      <button class="btn-icon" data-acao="duplicar" data-id="${id}" title="Duplicar para o dia seguinte" aria-label="Duplicar">
-        <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
-      </button>
-      <button class="btn-icon" data-acao="editar" data-id="${id}" title="Editar" aria-label="Editar">
-        <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
-      </button>
-      <button class="btn-icon delete" data-acao="remover" data-id="${id}" title="Excluir" aria-label="Excluir">
-        <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
-      </button>
-    </div>`;
-
-  const fmtDiaSemanaLinha = (iso) =>
-    fmtDiaSemana(iso)
-      .split('-')
-      .map((parte) => parte ? parte[0].toLocaleUpperCase('pt-BR') + parte.slice(1) : parte)
-      .join('-');
-  const fmtMoedaLinha = (centavos) => fmtMoeda(centavos).replace(/\u00a0/g, ' ');
-
-  const seletorStatusHTML = (e, classe = '') => {
-    const atual = statusEscala(e);
-    return `<label class="status-control ${classe}">
-      <span class="sr-only">Situação da escala</span>
-      <select class="status-select status-select--${atual}" data-status-id="${escapeHTML(String(e.id))}" aria-label="Situação da escala">
-        ${STATUS_ESCALA.map((status) => `<option value="${status}"${status === atual ? ' selected' : ''}>${STATUS_INFO[status].label}</option>`).join('')}
-      </select>
-    </label>`;
-  };
-
-  const botoesCardMobileHTML = (id, statusHTML = '') => `
-    <div class="ec-card-actions" aria-label="Ações da escala">
-      ${statusHTML}
-      <button class="ec-action-btn" data-acao="editar" data-id="${id}" type="button">
-        <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
-        <span>Editar</span>
-      </button>
-      <details class="ec-more">
-        <summary class="ec-action-btn" aria-label="Mais ações desta escala">
-          <svg class="icon icon-sm" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>
-          <span>Mais</span>
-        </summary>
-        <div class="ec-more-menu">
-          <button data-acao="agenda" data-id="${id}" type="button">Adicionar à agenda</button>
-          <button data-acao="duplicar" data-id="${id}" type="button">Duplicar para amanhã</button>
-          <button class="delete" data-acao="remover" data-id="${id}" type="button">Excluir escala</button>
-        </div>
-      </details>
-    </div>`;
-
-  /* Formatadores reaproveitados: toLocaleDateString() cria um Intl novo por
-     chamada — caro com centenas de cards (auditoria v67, P2-1). */
-  const diaSemanaCurtoBR = new Intl.DateTimeFormat('pt-BR', { weekday: 'short' });
-  const mesCurtoBR = new Intl.DateTimeFormat('pt-BR', { month: 'short' });
-  const siglaData = (fmt, data) => fmt.format(data).replace('.', '').toUpperCase();
-
-  /* Card de escala (mobile): leitura confortável + ações grandes.
-     Estrutura própria — o desktop segue usando a tabela, sem alteração. */
-  const cardEscalaHTML = (e, r) => {
-    const qtd = e.qtdPm || 1;
-    const valorTotal = r.valorCentavos * qtd;
-    const inicio = parseDateTimeLocal(e.inicio) || new Date(e.inicio);
-    const dataLinha = `${siglaData(diaSemanaCurtoBR, inicio)} · ${String(inicio.getDate()).padStart(2, '0')} ${siglaData(mesCurtoBR, inicio)}`;
-    const mudouDia = fmtData(e.inicio) !== fmtData(e.fim);
-    const fimDia = mudouDia
-      ? `${siglaData(diaSemanaCurtoBR, parseDateTimeLocal(e.fim) || new Date(e.fim))} `
-      : '';
-    const horarioLinha = `${fmtHora(e.inicio)} → ${fimDia}${fmtHora(e.fim)}`;
-    const resumo = `${fmtData(e.inicio)} - ${fmtDiaSemanaLinha(e.inicio)} - ${fmtHoras(r.mins)} - ${fmtMoedaLinha(valorTotal)}`;
-    const duracaoLinha = r.mins % 60 === 0 ? `${r.mins / 60} ${r.mins === 60 ? 'hora' : 'horas'}` : fmtHoras(r.mins);
-    const unidade = e.descricao && e.descricao !== 'Escala AC4' ? e.descricao : '';
-    /* Layout v65: identificação à esquerda, valor alinhado à direita (leitura
-       em "F", como extratos bancários) e situação + ações numa única linha. */
-    return `
-      <div class="escala-card escala-card--${statusEscala(e)}" role="listitem" aria-label="${escapeHTML(resumo)}">
-        <div class="ec-card-main">
-          <div class="ec-card-head">
-            <div class="ec-date-line">${escapeHTML(dataLinha)}</div>
-            <div class="ec-card-info">
-              <div class="ec-time">${escapeHTML(horarioLinha)}</div>
-              <div class="ec-duration">${escapeHTML(duracaoLinha)}${unidade ? ` <span class="ec-unit">· ${escapeHTML(unidade)}</span>` : ''}</div>
-            </div>
-          </div>
-          <div class="ec-card-amount">
-            ${qtd === 1
-              ? `<div class="ec-money">${fmtMoedaLinha(r.valorCentavos)}</div>`
-              : `<div class="ec-total">${fmtMoedaLinha(valorTotal)}</div>
-                 <div class="ec-qtd">${rotuloQuantidadePm(qtd)}</div>
-                 <div class="ec-per-pm">${fmtMoedaLinha(r.valorCentavos)} por PM</div>`}
-          </div>
-        </div>
-        ${botoesCardMobileHTML(e.id, seletorStatusHTML(e, 'ec-status'))}
-      </div>`;
-  };
 
   /* ----------------------------------------------------------- render */
   function render() {
@@ -1766,80 +1441,12 @@ import {
   function imprimirRelatorio() {
     const lista = escalasOrdenadas();
     if (!lista.length) { toast('Adicione escalas antes de imprimir.', { erro: true }); return; }
-
-    const resultados = lista.map((e) => ({ e, r: calcularEscala(e) }));
-    const totMins    = resultados.reduce((s, x) => s + x.r.mins, 0);
-    const totDiurno  = resultados.reduce((s, x) => s + x.r.minDiurno, 0);
-    const totNoturno = resultados.reduce((s, x) => s + x.r.minNoturno, 0);
-    const totValor   = resultados.reduce((s, x) => s + x.r.valorCentavos * (x.e.qtdPm || 1), 0);
-
-    const DIAS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-
+    const { resumoHTML, tabelaHTML } = montarRelatorioImpressao(lista.map((e) => ({ e, r: calcularEscala(e) })));
     $('prDate').textContent = new Date().toLocaleString('pt-BR', {
       day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
     });
-
-    $('prSummary').innerHTML = [
-      `<div><span class="pr-label">Escalas:</span> <strong>${lista.length}</strong></div>`,
-      `<div><span class="pr-label">Horas totais:</span> <strong>${fmtHoras(totMins)}</strong></div>`,
-      `<div><span class="pr-label">H. diurnas:</span> <strong>${fmtHoras(totDiurno)}</strong></div>`,
-      `<div><span class="pr-label">H. noturnas:</span> <strong>${fmtHoras(totNoturno)}</strong></div>`,
-      `<div><span class="pr-label">Valor estimado:</span> <strong>${fmtMoeda(totValor)}</strong></div>`,
-    ].join('');
-
-    let rows = '';
-    resultados.forEach(({ e, r }, i) => {
-      const qtd      = e.qtdPm || 1;
-      const valor    = r.valorCentavos * qtd;
-      const mesmodia = fmtData(e.inicio) === fmtData(e.fim);
-      const fimStr   = mesmodia ? fmtHora(e.fim) : `${fmtData(e.fim)} ${fmtHora(e.fim)}`;
-      const unidade  = e.descricao && e.descricao !== 'Escala AC4' ? escapeHTML(e.descricao) : '—';
-      const origem   = escapeHTML(labelOrigem(e.origem));
-      const situacao = STATUS_INFO[statusEscala(e)].label;
-      const valorCell = qtd > 1
-        ? `${fmtMoeda(valor)}<small>${fmtMoeda(r.valorCentavos)}/PM</small>`
-        : fmtMoeda(valor);
-      rows += `
-        <tr>
-          <td class="pr-num">${i + 1}</td>
-          <td class="pr-center">${DIAS[new Date(e.inicio).getDay()]}</td>
-          <td>${fmtData(e.inicio)}</td>
-          <td class="pr-center">${fmtHora(e.inicio)}</td>
-          <td>${fimStr}</td>
-          <td class="pr-center">${fmtHoras(r.mins)}</td>
-          <td>${unidade}</td>
-          <td>${origem}</td>
-          <td>${situacao}</td>
-          <td class="pr-center">${fmtHoras(r.minDiurno)}</td>
-          <td class="pr-center">${fmtHoras(r.minNoturno)}</td>
-          <td class="pr-valor">${valorCell}</td>
-        </tr>`;
-    });
-
-    const totalRow = lista.length > 1 ? `
-      <tfoot>
-        <tr class="pr-total-row">
-          <td colspan="9">TOTAL GERAL</td>
-          <td class="pr-center">${fmtHoras(totDiurno)}</td>
-          <td class="pr-center">${fmtHoras(totNoturno)}</td>
-          <td class="pr-valor">${fmtMoeda(totValor)}</td>
-        </tr>
-      </tfoot>` : '';
-
-    $('prTableWrap').innerHTML = `
-      <table class="pr-table">
-        <thead>
-          <tr>
-            <th>N.º</th><th>Dia</th><th>Data</th><th>Início</th>
-            <th>Término</th><th>Duração</th><th>Unidade</th>
-            <th>Origem Remunerado</th><th>Situação</th><th>H. Diurnas</th>
-            <th>H. Noturnas</th><th>Valor Estimado</th>
-          </tr>
-        </thead>
-        <tbody>${rows}</tbody>
-        ${totalRow}
-      </table>`;
-
+    $('prSummary').innerHTML = resumoHTML;
+    $('prTableWrap').innerHTML = tabelaHTML;
     /* window.print() bloqueia a thread até o diálogo fechar; chamado no próprio
        clique, o tempo no diálogo entra no INP (11s no RUM). Pintar antes. */
     aposProximoPaint(() => window.print());
@@ -1951,273 +1558,23 @@ import {
   function exportarCSV() {
     const lista = escalasOrdenadas();
     if (!lista.length) { toast('Adicione escalas antes de exportar CSV.', { erro: true }); return; }
-    const sep = ';';
-    const num = (cent) => (cent / 100).toFixed(2).replace('.', ',');
-    /* Campos de texto livre passam por csvTextoSeguro antes das aspas —
-       impede que "=..." digitado na Unidade vire fórmula no Excel. */
-    const celTexto = (s) => `"${csvTextoSeguro(s).replace(/"/g, '""')}"`;
-    const linhas = [['Unidade', 'Origem', 'Situação', 'Início', 'Término', 'Qtd. PM', 'Horas', 'H. diurnas', 'H. noturnas', 'Portaria', 'Valor/PM (R$)', 'Valor total (R$)'].join(sep)];
-    let total = 0;
-    lista.forEach((e) => {
-      const r = calcularEscala(e);
-      const qtd = e.qtdPm || 1;
-      const valorTotal = r.valorCentavos * qtd;
-      total += valorTotal;
-      linhas.push([
-        celTexto(e.descricao || 'Escala AC4'),
-        celTexto(e.origem || 'AC4'),
-        celTexto(STATUS_INFO[statusEscala(e)].label),
-        fmtDataHora(e.inicio), fmtDataHora(e.fim),
-        qtd,
-        (r.mins / 60).toFixed(2).replace('.', ','),
-        (r.minDiurno  / 60).toFixed(2).replace('.', ','),
-        (r.minNoturno / 60).toFixed(2).replace('.', ','),
-        celTexto(r.tabela.portaria || ''),
-        num(r.valorCentavos),
-        num(valorTotal),
-      ].join(sep));
-    });
-    linhas.push(['TOTAL', '', '', '', '', '', '', '', '', '', '', num(total)].join(sep));
-    baixar('﻿' + linhas.join('\r\n'), 'escalas-ac4.csv', 'text/csv;charset=utf-8');
+    baixarArquivo(montarCSV(lista.map((e) => ({ e, r: calcularEscala(e) }))), 'escalas-ac4.csv', 'text/csv;charset=utf-8');
     toast('Planilha CSV gerada.');
   }
 
-  function baixar(conteudo, nome, tipo) {
-    const blob = new Blob([conteudo], { type: tipo });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = nome; a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 5000);
-  }
-
-  /* -------------------------------------------- validar ICS (debug) */
-  if (ambienteDeTeste) window.__ac4ValidarICS = function (entrada) {
-    const fonte = Array.isArray(entrada) ? entrada : escalasOrdenadas();
-    const resultado = validarICSBase(fonte, tabelaParaCalculo());
-    if (resultado.falhas.length && console.table) console.table(resultado.falhas);
-    return resultado;
-  };
-
-  if (ambienteDeTeste) window.__ac4TestesAgendamento = function () {
-    const casos = [
-      { id: 'agenda-2027-08-03', inicio: '2027-08-03T18:00', fim: '2027-08-04T08:00', descricao: 'Escala 03/08/2027', origem: 'AC4', qtdPm: 1 },
-      { id: 'agenda-2026-08-05', inicio: '2026-08-05T08:00', fim: '2026-08-06T08:00', descricao: 'Escala 05/08/2026', origem: 'AC4', qtdPm: 1 },
-    ];
-    const arquivo = montarICS(casos);
-    const linhas = desdobrarLinhasICS(arquivo.conteudo);
-    const eventos = linhas.filter((l) => l === 'BEGIN:VEVENT').length;
-    const uids = linhas.filter((l) => l.startsWith('UID:')).map((l) => l.slice(4));
-    const esperado = [
-      `DTSTART:${dataICS(casos[0].inicio)}`,
-      `DTEND:${dataICS(casos[0].fim)}`,
-      `DTSTART:${dataICS(casos[1].inicio)}`,
-      `DTEND:${dataICS(casos[1].fim)}`,
-    ];
-    const resultados = [
-      { caso: 'Gera dois eventos no mesmo arquivo .ics', ok: arquivo.eventos === 2 && eventos === 2 },
-      { caso: 'Inclui as datas da escala de 03/08/2027', ok: linhas.includes(esperado[0]) && linhas.includes(esperado[1]) },
-      { caso: 'Inclui as datas da escala de 05/08/2026', ok: linhas.includes(esperado[2]) && linhas.includes(esperado[3]) },
-      { caso: 'Gera UIDs estáveis e únicos', ok: uids.length === 2 && new Set(uids).size === 2 && uids.every((uid) => uid.endsWith(`@${ICS_DOMAIN}`)) },
-      { caso: 'Validação iCalendar aprova múltiplas escalas', ok: window.__ac4ValidarICS(casos).ok },
-      {
-        caso: 'Link do Outlook pessoal com datas UTC e evento',
-        ok: (() => {
-          const url = new URL(gerarLinkOutlookAgenda(casos[0], false));
-          return url.origin === 'https://outlook.live.com'
-            && url.searchParams.get('rru') === 'addevent'
-            && url.searchParams.get('startdt') === new Date(casos[0].inicio).toISOString()
-            && url.searchParams.get('enddt') === new Date(casos[0].fim).toISOString()
-            && url.searchParams.get('subject') === casos[0].descricao;
-        })(),
-      },
-      {
-        caso: 'Link do Outlook corporativo usa outlook.office.com',
-        ok: new URL(gerarLinkOutlookAgenda(casos[0], true)).origin === 'https://outlook.office.com',
-      },
-    ];
-    if (console.table) console.table(resultados);
-    return resultados.every((r) => r.ok) ? 'TODOS OS TESTES DE AGENDAMENTO OK' : resultados;
-  };
-
-  /* -------------------------------------------- atualização segura da PWA */
-  function exibirBannerAtualizacao(worker) {
-    if (!worker) return;
-    workerAtualizacao = worker;
-    atualizacaoPendente = true;
-    $('pwaBanner')?.classList.add('hidden');
-    $('updateBanner')?.classList.remove('hidden', 'is-updating');
-    const btn = $('updateNow');
-    if (btn) { btn.disabled = false; btn.textContent = 'Atualizar agora'; }
-  }
-
-  function ocultarBannerAtualizacao() {
-    $('updateBanner')?.classList.add('hidden');
-  }
-
-  function aplicarAtualizacaoPWA() {
-    if (!workerAtualizacao || recarregandoPorAtualizacao) return;
-    recarregandoPorAtualizacao = true;
-    $('updateBanner')?.classList.add('is-updating');
-    const btn = $('updateNow');
-    if (btn) { btn.disabled = true; btn.textContent = 'Atualizando…'; }
-    workerAtualizacao.postMessage({ type: 'SKIP_WAITING' });
-
-    /* Rede ou navegador podem atrasar a troca do worker. O usuário recupera o
-       controle sem entrar em ciclo de recarregamento. */
-    setTimeout(() => {
-      if (!recarregandoPorAtualizacao) return;
-      recarregandoPorAtualizacao = false;
-      $('updateBanner')?.classList.remove('is-updating');
-      if (btn) { btn.disabled = false; btn.textContent = 'Tentar novamente'; }
-      toast('Não foi possível aplicar agora. Tente novamente.', { erro: true });
-    }, 8000);
-  }
-
-  function consultarVersaoWorker(worker) {
-    return new Promise((resolve) => {
-      if (typeof globalThis.MessageChannel !== 'function') { resolve(null); return; }
-      const canal = new globalThis.MessageChannel();
-      const limite = setTimeout(() => resolve(null), 1200);
-      canal.port1.onmessage = (event) => {
-        clearTimeout(limite);
-        resolve(String(event.data?.version || '') || null);
-      };
-      try { worker.postMessage({ type: 'GET_VERSION' }, [canal.port2]); }
-      catch { clearTimeout(limite); resolve(null); }
-    });
-  }
-
-  async function avaliarWorkerAtualizacao(worker) {
-    if (!worker) return;
-    const versaoWorker = await consultarVersaoWorker(worker);
-    if (versaoWorker === APP_VERSION) {
-      /* A página atual já pertence à mesma versão. Ativa apenas o cache novo,
-         sem aviso ou reload redundante. */
-      worker.postMessage({ type: 'SKIP_WAITING' });
-      return;
-    }
-    exibirBannerAtualizacao(worker);
-  }
-
-  async function initAtualizacoesPWA() {
-    on('updateNow', 'click', aplicarAtualizacaoPWA);
-    on('updateLater', 'click', ocultarBannerAtualizacao);
-
-    /* Gancho restrito ao ambiente local para validar a interface sem instalar
-       um Service Worker real durante os testes HTTP. */
-    if (ambienteDeTeste) {
-      window.__ac4SimularAtualizacao = () => exibirBannerAtualizacao({
-        postMessage: (mensagem) => { window.__ac4UltimaMensagemSW = mensagem; },
-      });
-    }
-
-    if (!('serviceWorker' in navigator) || location.protocol !== 'https:') return;
-
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (!recarregandoPorAtualizacao) return;
-      recarregandoPorAtualizacao = false;
-      window.location.reload();
-    });
-
-    try {
-      const registro = await navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' });
-      const acompanharInstalacao = (worker) => {
-        if (!worker) return;
-        if (worker.state === 'installed') { avaliarWorkerAtualizacao(worker); return; }
-        worker.addEventListener('statechange', () => {
-          if (worker.state === 'installed' && navigator.serviceWorker.controller) avaliarWorkerAtualizacao(worker);
-        });
-      };
-
-      if (registro.waiting && navigator.serviceWorker.controller) avaliarWorkerAtualizacao(registro.waiting);
-      registro.addEventListener('updatefound', () => acompanharInstalacao(registro.installing));
-      acompanharInstalacao(registro.installing);
-
-      const verificar = () => registro.update().catch(() => {});
-      verificar();
-      window.addEventListener('online', verificar);
-      document.addEventListener('visibilitychange', () => { if (!document.hidden) verificar(); });
-    } catch {
-      /* Offline ou navegador sem suporte completo: o app segue pelo cache. */
-    }
-  }
-
-  /* -------------------------------------------- PWA install prompt */
-  function initPWA() {
-    if (rodandoInstalado()) return;
-
-    const dismissed = lerLocal(STORAGE.pwaBanner);
-    const isIOS = ehIOS();
-    let visitas = Number(lerLocal(STORAGE.pwaVisitas) || 0) + 1;
-    if (!Number.isFinite(visitas)) visitas = 1;
-    try { localStorage.setItem(STORAGE.pwaVisitas, String(Math.min(visitas, 99))); } catch {}
-    let usuarioEngajado = visitas >= 2 || escalas.length > 0;
-
-    const mostrarBotaoInstalar = () => $('shareInstallOpt')?.classList.remove('hidden');
-    const ocultarBotaoInstalar = () => $('shareInstallOpt')?.classList.add('hidden');
-
-    /* Entrada de instalação sempre disponível via Compartilhar → Instalar,
-       em qualquer navegador/sistema que ainda não esteja rodando instalado. */
-    mostrarBotaoInstalar();
-
-    const instrucaoManual = () => dialogConfirmar(
-      isIOS
-        ? 'No Safari: toque em ⬆︎ Compartilhar e depois em “Adicionar à Tela de Início” para instalar o app.'
-        : 'Para instalar: abra o menu do navegador (⋮) e toque em “Instalar app” ou “Adicionar à tela inicial”.',
-      { textoOk: 'Entendi', perigoso: false }
-    );
-
-    async function instalar() {
-      /* Android/Chrome: usa o prompt nativo quando disponível. */
-      if (deferredInstallPrompt) {
-        deferredInstallPrompt.prompt();
-        const { outcome } = await deferredInstallPrompt.userChoice;
-        deferredInstallPrompt = null;
-        if (outcome === 'accepted') {
-          ocultarBotaoInstalar();
-          $('pwaBanner')?.classList.add('hidden');
-          toast('App instalado! Acesse pela tela inicial.');
-        }
-        return;
-      }
-      /* iOS e demais casos sem prompt nativo: instrução passo a passo. */
-      await instrucaoManual();
-    }
-
-    /* A promoção não interrompe a primeira jornada. Ela aparece na segunda
-       visita, para quem já tem escalas ou após o primeiro lançamento. */
-    const mostrarBannerSeRelevante = () => {
-      if (dismissed || !usuarioEngajado || atualizacaoPendente) return;
-      if (isIOS || deferredInstallPrompt) $('pwaBanner')?.classList.remove('hidden');
-    };
-    mostrarInstalacaoAposConversao = () => {
-      usuarioEngajado = true;
-      mostrarBannerSeRelevante();
-    };
-    mostrarBannerSeRelevante();
-
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault();
-      deferredInstallPrompt = e;
-      mostrarBannerSeRelevante();
-      mostrarBotaoInstalar();
-    });
-
-    on('shareInstallOpt', 'click', () => { $('dialogShare')?.close(); haptic(10); instalar(); });
-    on('pwaBannerInstall', 'click', instalar);
-    on('pwaBannerClose', 'click', () => {
-      $('pwaBanner')?.classList.add('hidden');
-      try { localStorage.setItem(STORAGE.pwaBanner, '1'); } catch { /* banner apenas não persistirá */ }
-    });
-  }
+  /* -------------------------------------------- PWA (js/modules/pwa.mjs) */
+  const pwa = criarPWA({
+    $, on, toast, dialogConfirmar, haptic, APP_VERSION, STORAGE, lerLocal,
+    ambienteDeTeste, ehIOS, rodandoInstalado, totalEscalas: () => escalas.length,
+  });
 
   /* -------------------------------------------------------------- init */
   function init() {
     initObservabilidade();
     initTema();
     carregar();
-    initPWA();
-    initAtualizacoesPWA();
+    pwa.initPWA();
+    pwa.initAtualizacoesPWA();
     initNovidades();
     renderModelos();
     setDetalhesAvancados(false);
@@ -2486,4 +1843,18 @@ import {
     const printYear = $('printYear');
     if (printYear) printYear.textContent = ano;
   });
+  /* Suítes de regressão: módulo carregado sob demanda só em localhost —
+     não vai para o aparelho do usuário. tests/*.mjs aguardam esta promessa. */
+  if (ambienteDeTeste) {
+    window.__ac4TestesProntos = import('./modules/testes.mjs').then(({ instalarTestes }) => instalarTestes({
+      calcularEscala, lerTabelaAtual, tabelaParaCalculo, escalasOrdenadas, montarICS,
+      gerarLinkOutlookAgenda, salvar, render, $, STORAGE,
+      estado: {
+        get escalas() { return escalas; },
+        set escalas(v) { escalas = v; },
+        get filtroMes() { return filtroMes; },
+        set filtroMes(v) { filtroMes = v; },
+      },
+    }));
+  }
 })();
