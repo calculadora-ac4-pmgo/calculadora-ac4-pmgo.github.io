@@ -271,6 +271,20 @@ const ROTEIRO = `(async () => {
   ok('Backup: backup recente dispensa o lembrete', window.__ac4LembrarBackup() === false);
   localStorage.removeItem('pmgoUltimoBackup');
   localStorage.removeItem('pmgoLembreteBackup');
+  // 4g. situação do backup no Compartilhar (v70)
+  ok('Backup: status informa quando nunca houve backup',
+     window.__ac4StatusBackup().startsWith('Você ainda não fez backup'), window.__ac4StatusBackup());
+  localStorage.setItem('pmgoUltimoBackup', String(Date.now() - 3 * 24 * 60 * 60 * 1000));
+  ok('Backup: status mostra data e há quantos dias',
+     window.__ac4StatusBackup().startsWith('Último backup: ') && window.__ac4StatusBackup().includes('(há 3 dias).'),
+     window.__ac4StatusBackup());
+  document.getElementById('btnShare')?.click();
+  await espera(150);
+  ok('Backup: status aparece no Compartilhar',
+     document.getElementById('shareBackupStatus')?.textContent.startsWith('Último backup:'),
+     document.getElementById('shareBackupStatus')?.textContent);
+  document.getElementById('dialogShare')?.close();
+  localStorage.removeItem('pmgoUltimoBackup');
   // guarda as 3 escalas para a fase com recarga (disparo automático real)
   localStorage.setItem('__smokeTresEscalas', localStorage.getItem('pmgoEscalas'));
 
@@ -365,6 +379,20 @@ try {
   }, sessionId);
   passos.push({ nome: 'Atualização exibe novidades automaticamente uma única vez',
     ok: avisoAtualizacao.result.value === true, detalhe: String(avisoAtualizacao.result.value) });
+
+  // Versão sem novidade nova: quem já viu o conteúdo atual (data-conteudo) não recebe o aviso de novo.
+  await cdp.enviar('Runtime.evaluate', {
+    expression: `localStorage.setItem('pmgoVersion','1'); localStorage.setItem('pmgoNovidadesVistas', document.getElementById('dialogNovidades').dataset.conteudo);`,
+  }, sessionId);
+  const semNovidade = cdp.aguardarEvento('Page.loadEventFired');
+  await cdp.enviar('Page.navigate', { url: `http://127.0.0.1:${porta}/` }, sessionId);
+  await semNovidade;
+  const avisoRepetido = await cdp.enviar('Runtime.evaluate', {
+    expression: `(async()=>{await new Promise(r=>setTimeout(r,400));return !!document.getElementById('dialogNovidades')?.open})()`,
+    awaitPromise: true, returnByValue: true,
+  }, sessionId);
+  passos.push({ nome: 'Novidades já vistas não reaparecem em versão sem conteúdo novo',
+    ok: avisoRepetido.result.value === false, detalhe: String(avisoRepetido.result.value) });
 
   // Lembrete de backup real: com 3 escalas e sem backup, o aviso aparece sozinho após a abertura.
   await cdp.enviar('Runtime.evaluate', {
