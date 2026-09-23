@@ -1,5 +1,16 @@
 # Changelog
 
+## v71 — Horas inteiras e lista rápida com histórico longo
+
+- **Regra de valor (decisão do gestor, 23/09/2026):** só as horas inteiras de cada faixa (AD/AN/VD/VN) são pagas; a fração de hora não é paga. Os valores ficam sempre em reais inteiros. Ex.: sex 08:00→18:20 paga 10h VD = R$ 400,00 (antes R$ 413,33). Escalas em hora cheia não mudam: 32.256 combinações conferidas (1–192h, todo início de hora da semana). `calcularEscala` passa a retornar `horasPagas`. Registrado em `docs/portaria-ssp-621-2026.md`. Novos casos de teste, incluindo o exemplo do gestor (qui 18:00→sex 05:00 = R$ 351,00).
+- **Desempenho com histórico longo (auditoria v67, P2-1):** com 300 escalas, adicionar escala levava 2,1–3,7 s (até 8 s sob carga). Agora custa 1,4–1,9× o de 5 escalas:
+  - a lista mostra as 30 escalas mais recentes, com o botão "Mostrar escalas anteriores". Os totais somam todas. Antes eram ~21 mil nós por render;
+  - formatadores de data (`Intl.DateTimeFormat`) reaproveitados em vez de criados a cada chamada (~1 s com 300 escalas), com saída idêntica em 80.000 comparações;
+  - cache do resultado do cálculo por início, fim e tabela;
+  - ordenação sem converter datas no comparador.
+- **Conformidade com a Portaria:** nova suíte com 52 casos: 42 gerados do Anexo I (cada dia × diurno, noturno, madrugada do dia anterior, viradas das 5h e das 22h, fração não paga) + 10 escalas reais da planilha do gestor, todas iguais coluna a coluna. Documento da Portaria atualizado: leitura das fronteiras com horas inteiras e o que a Portaria não trata (fração, feriados, teto de 192h).
+- Web Vitals: cenário 7 com 300 escalas mede a lista em partes, os totais e os CTAs em relação ao cenário de 5 escalas (robusto ao ruído do runner).
+
 ## v70 — Dados mais protegidos e novidades sem repetição
 
 Itens P2-3 (R1) de `docs/relatorio_auditoria_producao_v67.md` e aviso de novidades repetido:

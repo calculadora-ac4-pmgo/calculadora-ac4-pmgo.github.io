@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Calculadora AC4 — v70
+   Calculadora AC4 — v71
    Módulo principal: estado, UI, persistência e exportações.
    Regras de negócio, formatação e agenda vivem em js/modules/.
    ========================================================================== */
@@ -11,7 +11,7 @@ import {
 } from './modules/formato.mjs';
 import {
   PORTARIA_ATUAL, VALORES_OFICIAIS, TABELA_OFICIAL, regraNormativaParaData, labelOrigem,
-  calcularEscala as calcularEscalaBase,
+  calcularEscala as calcularEscalaBase, tabelaEscalaValida,
 } from './modules/calculo.mjs';
 import {
   ICS_DOMAIN, dataICS, desdobrarLinhasICS,
@@ -33,7 +33,7 @@ import {
   /* Versão da aplicação (sincronizada pelo tools/bump-version.mjs). Serve para
      carimbar o log de erros e detectar clientes presos em cache antigo:
      se __ac4Version no console divergir do rodapé/CHANGELOG, o SW não atualizou. */
-  const APP_VERSION = '70';
+  const APP_VERSION = '71';
 
   const STORAGE = {
     escalas:   'pmgoEscalas',
@@ -59,6 +59,12 @@ import {
   let filtroOrigem = '';
   let filtroBusca = '';
   let filtroStatus = '';
+  /* Lista em partes (auditoria v67, P2-1): com centenas de escalas, montar
+     todos os cards e linhas criava ~21 mil nós e ~1,5 s por render. Mostra as
+     mais recentes; os totais continuam somando todas. */
+  const PASSO_LISTA = 30;
+  let limiteLista = PASSO_LISTA;
+  let assinaturaFiltros = '';
   let modelos = [];
   let metasMensais = {};
   let versaoAnterior = null;
@@ -321,7 +327,25 @@ import {
 
   /* Pontes para os módulos — injetam a tabela vigente lida do DOM,
      mantendo as assinaturas originais nos pontos de uso. */
-  const calcularEscala = (e) => calcularEscalaBase(e, tabelaParaCalculo());
+  /* Cache do cálculo (auditoria v67, P2-1): o laço minuto a minuto é caro e
+     cada render() pede o mesmo cálculo várias vezes (lista, painel do mês,
+     histórico). O resultado depende só de início, fim e da tabela aplicada —
+     tudo na chave. Resultados congelados: nenhum chamador os altera. */
+  const cacheCalculo = new Map();
+  const LIMITE_CACHE_CALCULO = 5000;
+  const calcularEscala = (e) => {
+    const vigente = tabelaParaCalculo();
+    const t = tabelaEscalaValida(e.tabela) ? e.tabela : vigente;
+    const v = t.valores;
+    const chave = `${e.inicio}|${e.fim}|${v.AD}|${v.AN}|${v.VD}|${v.VN}|${t.portaria || ''}`;
+    let r = cacheCalculo.get(chave);
+    if (!r) {
+      if (cacheCalculo.size >= LIMITE_CACHE_CALCULO) cacheCalculo.clear();
+      r = Object.freeze(calcularEscalaBase(e, vigente));
+      cacheCalculo.set(chave, r);
+    }
+    return r;
+  };
   const montarICS = (lista) => montarICSBase(lista, tabelaParaCalculo());
   const gerarLinkGoogleAgenda = (e) => gerarLinkGoogleAgendaBase(e, tabelaParaCalculo());
   const gerarLinkOutlookAgenda = (e, corporativo) => gerarLinkOutlookAgendaBase(e, tabelaParaCalculo(), corporativo);
@@ -596,7 +620,10 @@ import {
   const haptic = (p = 10) => { try { navigator.vibrate?.(p); } catch {} };
 
   function escalasOrdenadas() {
-    let lista = [...escalas].sort((a, b) => (parseDateTimeLocal(a.inicio) || new Date(a.inicio)) - (parseDateTimeLocal(b.inicio) || new Date(b.inicio)));
+    let lista = escalas
+      .map((e) => [+(parseDateTimeLocal(e.inicio) || new Date(e.inicio)), e])
+      .sort((a, b) => a[0] - b[0])
+      .map(([, e]) => e);
     if (filtroMes) lista = lista.filter((e) => toInputMonth(parseDateTimeLocal(e.inicio) || new Date(e.inicio)) === filtroMes);
     if (filtroOrigem) lista = lista.filter((e) => (e.origem || 'AC4') === filtroOrigem);
     if (filtroStatus) lista = lista.filter((e) => statusEscala(e) === filtroStatus);
@@ -619,7 +646,12 @@ import {
       { caso: 'Início qui, vira sex 02/07 20h→sex 6h', inicio: '2026-07-02T20:00', fim: '2026-07-03T06:00', AD: h(2), AN: h(7), VD: h(1), VN: 0, centavos: 33100 },
       /* Fronteiras (§10 da auditoria) — dom→seg cruzando 05h, 1 min, término 00:00, bissexto */
       { caso: 'Fronteira dom→seg: dom 05/07 20h→seg 08h', inicio: '2026-07-05T20:00', fim: '2026-07-06T08:00', AD: h(3), AN: 0,    VD: h(2), VN: h(7), centavos: 48500 },
-      { caso: 'Escala de 1 minuto (seg 06/07 10:00)',      inicio: '2026-07-06T10:00', fim: '2026-07-06T10:01', AD: 1,    AN: 0,    VD: 0,    VN: 0,    centavos: 50 },
+      { caso: 'Escala de 1 minuto (seg 06/07 10:00)',      inicio: '2026-07-06T10:00', fim: '2026-07-06T10:01', AD: 1,    AN: 0,    VD: 0,    VN: 0,    centavos: 0 },
+      /* Só horas inteiras por categoria (v71): a fração de hora não é paga */
+      { caso: 'Fração VD: sex 10/07 08:00→18:20 paga 10h', inicio: '2026-07-10T08:00', fim: '2026-07-10T18:20', AD: 0,    AN: 0,    VD: 620,  VN: 0,    centavos: 40000 },
+      { caso: 'Fração VD: sex 10/07 08:00→18:10 paga 10h', inicio: '2026-07-10T08:00', fim: '2026-07-10T18:10', AD: 0,    AN: 0,    VD: 610,  VN: 0,    centavos: 40000 },
+      { caso: 'Meia hora AD: seg 06/07 07:00→19:30 paga 12h', inicio: '2026-07-06T07:00', fim: '2026-07-06T19:30', AD: 750, AN: 0,   VD: 0,    VN: 0,    centavos: 36000 },
+      { caso: 'Fração por faixa: seg 21:30→ter 06:00',     inicio: '2026-07-06T21:30', fim: '2026-07-07T06:00', AD: 90,   AN: h(7), VD: 0,    VN: 0,    centavos: 26100 },
       { caso: 'Término 00:00 (seg 06/07 22h→ter 00:00)',   inicio: '2026-07-06T22:00', fim: '2026-07-07T00:00', AD: 0,    AN: h(2), VD: 0,    VN: 0,    centavos: 6600 },
       { caso: 'Bissexto: ter 29/02/2028 08h→18h',          inicio: '2028-02-29T08:00', fim: '2028-02-29T18:00', AD: h(10),AN: 0,    VD: 0,    VN: 0,    centavos: 30000 },
       { caso: 'Vermelha madrugada: sex 03/07 22h→sáb 06h', inicio: '2026-07-03T22:00', fim: '2026-07-04T06:00', AD: 0,    AN: 0,    VD: h(1), VN: h(7), centavos: 35500 },
@@ -652,7 +684,8 @@ import {
 
     /* Invariantes de calcularEscala sobre 50 escalas aleatórias válidas:
        cont soma = mins; diurno+noturno = mins; vermelha ≤ mins; valor é inteiro
-       ≥ 0 e reproduz round(Σ minutos×tarifa/60); total = Σ dos valores por escala. */
+       ≥ 0, em reais inteiros, e reproduz Σ horas inteiras×tarifa por categoria;
+       total = Σ dos valores por escala. */
     const tabela = { portaria: PORTARIA_ATUAL, valores: { AD: 3000, AN: 3300, VD: 4000, VN: 4500 } };
     const base = new Date('2026-01-01T00:00').getTime();
     let invariantesOk = true, somaManual = 0, somaReduce = 0;
@@ -664,11 +697,13 @@ import {
       const e = { inicio: formatarDataHoraInput(ini), fim: formatarDataHoraInput(fim) };
       const r = calcularEscalaBase(e, tabela);
       const somaCont = r.cont.AD + r.cont.AN + r.cont.VD + r.cont.VN;
-      const esperadoCent = Math.round((r.cont.AD * 3000 + r.cont.AN * 3300 + r.cont.VD * 4000 + r.cont.VN * 4500) / 60);
+      const h = (m) => Math.floor(m / 60);
+      const esperadoCent = h(r.cont.AD) * 3000 + h(r.cont.AN) * 3300 + h(r.cont.VD) * 4000 + h(r.cont.VN) * 4500;
       const ok = somaCont === r.mins
         && r.minDiurno + r.minNoturno === r.mins
         && r.minVermelha <= r.mins
         && Number.isInteger(r.valorCentavos) && r.valorCentavos >= 0
+        && r.valorCentavos % 100 === 0
         && r.valorCentavos === esperadoCent;
       if (!ok) invariantesOk = false;
       somaManual += r.valorCentavos;
@@ -1568,16 +1603,22 @@ import {
       </details>
     </div>`;
 
+  /* Formatadores reaproveitados: toLocaleDateString() cria um Intl novo por
+     chamada — caro com centenas de cards (auditoria v67, P2-1). */
+  const diaSemanaCurtoBR = new Intl.DateTimeFormat('pt-BR', { weekday: 'short' });
+  const mesCurtoBR = new Intl.DateTimeFormat('pt-BR', { month: 'short' });
+  const siglaData = (fmt, data) => fmt.format(data).replace('.', '').toUpperCase();
+
   /* Card de escala (mobile): leitura confortável + ações grandes.
      Estrutura própria — o desktop segue usando a tabela, sem alteração. */
   const cardEscalaHTML = (e, r) => {
     const qtd = e.qtdPm || 1;
     const valorTotal = r.valorCentavos * qtd;
     const inicio = parseDateTimeLocal(e.inicio) || new Date(e.inicio);
-    const dataLinha = `${inicio.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '').toUpperCase()} · ${String(inicio.getDate()).padStart(2, '0')} ${inicio.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase()}`;
+    const dataLinha = `${siglaData(diaSemanaCurtoBR, inicio)} · ${String(inicio.getDate()).padStart(2, '0')} ${siglaData(mesCurtoBR, inicio)}`;
     const mudouDia = fmtData(e.inicio) !== fmtData(e.fim);
     const fimDia = mudouDia
-      ? `${(parseDateTimeLocal(e.fim) || new Date(e.fim)).toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '').toUpperCase()} `
+      ? `${siglaData(diaSemanaCurtoBR, parseDateTimeLocal(e.fim) || new Date(e.fim))} `
       : '';
     const horarioLinha = `${fmtHora(e.inicio)} → ${fimDia}${fmtHora(e.fim)}`;
     const resumo = `${fmtData(e.inicio)} - ${fmtDiaSemanaLinha(e.inicio)} - ${fmtHoras(r.mins)} - ${fmtMoedaLinha(valorTotal)}`;
@@ -1627,6 +1668,10 @@ import {
     $('pctNoturnas').textContent = totMins ? `${((totNoturno / totMins) * 100).toFixed(1).replace('.', ',')}% do total` : '0% do total';
 
     const filtrosAtivos = !!(filtroMes || filtroOrigem || filtroBusca || filtroStatus);
+    const assinatura = [filtroMes, filtroOrigem, filtroStatus, filtroBusca].join('|');
+    if (assinatura !== assinaturaFiltros) { assinaturaFiltros = assinatura; limiteLista = PASSO_LISTA; }
+    const visiveis = resultados.slice(-limiteLista);
+    const ocultas = resultados.length - visiveis.length;
     const sufixo = filtroMes ? ` em ${fmtMesRef(filtroMes)}` : ' no período';
     $('totQtd').textContent = `${lista.length} escala${lista.length === 1 ? '' : 's'}${sufixo}`;
     /* Resumo compacto do card de Valor (mobile): "96h · 8 escalas" */
@@ -1660,7 +1705,7 @@ import {
           </tr></thead>
           <tbody>`;
 
-    resultados.forEach(({ e, r }) => {
+    visiveis.forEach(({ e, r }) => {
       const qtd = e.qtdPm || 1;
       const valorTotal = r.valorCentavos * qtd;
       const tipoChips = [];
@@ -1705,8 +1750,14 @@ import {
 
     /* Cards enxutos (mobile) — vêm antes da tabela no DOM; CSS mostra um ou
        outro conforme a largura. Mesma fonte de dados, sem tocar no desktop. */
-    const cardsMobile = `<div class="escala-cards" role="list" aria-label="Escalas lançadas">${resultados.map(({ e, r }) => cardEscalaHTML(e, r)).join('')}</div>`;
-    container.innerHTML = cardsMobile + html;
+    const cardsMobile = `<div class="escala-cards" role="list" aria-label="Escalas lançadas">${visiveis.map(({ e, r }) => cardEscalaHTML(e, r)).join('')}</div>`;
+    const anteriores = ocultas
+      ? `<div class="lista-anteriores">
+          <button class="btn btn-outline btn-sm" data-acao="anteriores" type="button">Mostrar ${Math.min(ocultas, PASSO_LISTA)} escalas anteriores</button>
+          <span>${ocultas} escala${ocultas === 1 ? '' : 's'} mais antiga${ocultas === 1 ? '' : 's'} fora da lista · os totais incluem todas</span>
+        </div>`
+      : '';
+    container.innerHTML = anteriores + cardsMobile + html;
   }
 
   /* ------------------------------------------------------- exportações */
@@ -2364,6 +2415,7 @@ import {
     on('listaEscalas', 'click', (ev) => {
       const btn = ev.target.closest('[data-acao]');
       if (!btn) return;
+      if (btn.dataset.acao === 'anteriores') { limiteLista += PASSO_LISTA; render(); return; }
       const id = btn.dataset.id;
       if (btn.dataset.acao === 'remover')        removerEscala(id);
       else if (btn.dataset.acao === 'editar')    editarEscala(id);

@@ -43,8 +43,20 @@
 
 1. **A tarifa é por dia da semana em que a hora é trabalhada** (Anexo I organiza os valores por coluna de dia) — não pelo dia de início da escala. Escala que atravessa a virada do dia combina faixas.
 2. **O período noturno "de 22h de um dia às 5h do dia seguinte" pertence ao dia em que começou** (Art. 1º, parágrafo único): a madrugada até 4h59 é remunerada pela tarifa noturna do dia anterior. Ex.: noturno de quinta = 22h de quinta às 5h de sexta, a R$ 33,00.
-3. A aplicação apura **minuto a minuto** e arredonda o valor uma única vez por escala, em centavos.
+3. A aplicação classifica **minuto a minuto** e **paga só as horas inteiras de cada faixa** (AD/AN/VD/VN); a fração de hora não é paga. A Portaria não trata de fração de hora; a regra foi definida pelo gestor em 23/09/2026 (v71), porque os valores pagos são sempre em reais inteiros. Ex.: sex 08:00→18:20 = 10h20 VD → paga 10h (R$ 400,00); qui 18:00→sex 05:00 = 4h AD + 7h AN → R$ 120,00 + R$ 231,00 = R$ 351,00. Até a v70 a fração era paga proporcionalmente (ex.: 10h20 VD = R$ 413,33).
 
 ### Observação de fronteira (registrada na auditoria v46)
 
-A Portaria descreve o diurno como "5h01 às 21h59" e o noturno como "22h às 5h" — texto que deixa o minuto exato das 5h00 e o intervalo 21h59–22h00 sem enquadramento literal contínuo. A aplicação adota a leitura contínua padrão: noturno = [22h00, 05h00) e diurno = [05h00, 22h00). A diferença máxima em relação a qualquer leitura alternativa é de 1 minuto por virada de período (≤ R$ 0,25 por escala) e só existe em escalas que cruzam exatamente essas fronteiras.
+A Portaria descreve o diurno como "5h01 às 21h59" e o noturno como "22h às 5h" — texto que deixa o minuto exato das 5h00 e o intervalo 21h59–22h00 sem enquadramento literal contínuo. A aplicação adota a leitura contínua padrão: noturno = [22h00, 05h00) e diurno = [05h00, 22h00), ou seja, as horas noturnas são 22h–23h, …, 4h–5h (7 horas) e as diurnas 5h–6h, …, 21h–22h (17 horas).
+
+Com o pagamento só por horas inteiras (v71), essa leitura é a que preserva as horas cheias: qualquer leitura que deslocasse 1 minuto (ex.: noturno até 5h00 inclusive) quebraria a hora 5h–6h em 59 minutos e ela deixaria de ser paga.
+
+### Conferência automática
+
+`tests/run-tests.mjs` → "Conformidade com a Portaria 621/2026 (Anexo I)": 52 casos derivados diretamente desta tabela (para cada dia da semana: hora diurna, hora noturna, madrugada paga pelo noturno do dia anterior, viradas das 5h e das 22h, fração não paga) e 10 escalas reais da planilha do gestor, conferidas coluna a coluna (ex.: qui 24/09/2026 18h → sex 05h = R$ 351,00; seg 21/09/2026 04h → 06h = R$ 75,00; qui 13/08/2026 18h → sex 08h = R$ 471,00). Roda no CI em todo PR.
+
+### O que a Portaria não trata
+
+- **Fração de hora:** decisão do gestor (23/09/2026) — só horas inteiras por faixa.
+- **Feriados:** a Portaria classifica só por dia da semana; feriado em dia útil segue a tarifa daquele dia.
+- **Limite de horas:** o teto de 192h por lançamento é regra do gestor (limite de horas do policial), não da Portaria.

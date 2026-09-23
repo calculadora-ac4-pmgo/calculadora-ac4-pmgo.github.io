@@ -4,6 +4,8 @@
    - Vermelha: dia operacional do minuto é sex/sáb/dom.
    - Noturno: [22:00, 05:00) minuto a minuto.
    - Minutos entre 00:00 e 04:59 usam o dia operacional anterior.
+   - Pagamento só por horas inteiras em cada faixa (AD/AN/VD/VN): a fração
+     de hora não é paga — decisão do gestor em 23/09/2026 (v71).
    Funções puras, sem acesso ao DOM.
    ========================================================================== */
 import { parseDateTimeLocal } from './formato.mjs';
@@ -50,7 +52,8 @@ export function regraNormativaParaData(valor, regras = REGRAS_NORMATIVAS) {
  * @property {number} minDiurno Minutos diurnos (AD+VD).
  * @property {number} minNoturno Minutos noturnos (AN+VN).
  * @property {number} minVermelha Minutos em dia vermelho (VD+VN).
- * @property {number} valorCentavos Valor total por PM, em centavos.
+ * @property {{AD:number, AN:number, VD:number, VN:number}} horasPagas Horas inteiras pagas por categoria.
+ * @property {number} valorCentavos Valor total por PM, em centavos (sempre em reais inteiros com as tarifas oficiais).
  * @property {Tabela} tabela Tabela efetivamente usada no cálculo.
  */
 
@@ -70,7 +73,8 @@ function diaReferenciaOperacional(data, minutoDoDia, noturno) {
 
 /**
  * Calcula minutos por categoria (AD/AN/VD/VN) e o valor de uma escala,
- * classificando minuto a minuto conforme a Portaria SSP nº 621/2026.
+ * classificando minuto a minuto conforme a Portaria SSP nº 621/2026. O valor
+ * paga só as horas inteiras de cada categoria (a fração de hora é descartada).
  * Usa a tabela congelada no lançamento (`e.tabela`) quando válida — preserva o
  * histórico se a Portaria mudar; caso contrário usa a tabela vigente.
  * @param {Escala} e
@@ -95,13 +99,17 @@ export function calcularEscala(e, tabelaVigente = TABELA_OFICIAL) {
     cont[vermelha ? (noturno ? 'VN' : 'VD') : (noturno ? 'AN' : 'AD')]++;
   }
 
-  const centavosMinuto = Object.keys(cont).reduce((s, k) => s + cont[k] * tabela.valores[k], 0);
+  /* Só horas inteiras por categoria: 10h20 VD paga 10h; 1h30 AD + 7h AN paga
+     1h AD + 7h AN. Garante valores sem centavos com as tarifas oficiais. */
+  const horasPagas = { AD: 0, AN: 0, VD: 0, VN: 0 };
+  Object.keys(cont).forEach((k) => { horasPagas[k] = Math.floor(cont[k] / 60); });
+  const valorCentavos = Object.keys(horasPagas).reduce((s, k) => s + horasPagas[k] * tabela.valores[k], 0);
   return {
-    mins, cont,
+    mins, cont, horasPagas,
     minDiurno: cont.AD + cont.VD,
     minNoturno: cont.AN + cont.VN,
     minVermelha: cont.VD + cont.VN,
-    valorCentavos: Math.round(centavosMinuto / 60),
+    valorCentavos,
     tabela,
   };
 }
