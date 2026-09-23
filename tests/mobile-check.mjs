@@ -135,7 +135,10 @@ const ROTEIRO_MOBILE = `(async () => {
 
   // 3b. novidades em bottom sheet, sem prejudicar a navegação mobile
   document.getElementById('footerNovidades').click();
-  await espera(350);
+  await espera(50);
+  /* Espera a animação de entrada terminar: medir no meio do slideUp (com
+     overshoot) dava 393px/base 849 em máquina carregada — falso negativo. */
+  await Promise.all(document.getElementById('dialogNovidades').getAnimations({ subtree: true }).map((a) => a.finished.catch(() => {})));
   const novidades = rect('#dialogNovidades');
   const acaoNovidades = rect('#novidadesContinuar');
   ok('Novidades usa bottom sheet ajustado ao celular',

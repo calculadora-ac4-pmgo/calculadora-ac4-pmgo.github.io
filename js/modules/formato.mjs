@@ -23,19 +23,25 @@ export const fmtHoras = (mins) => {
   return m === 0 ? `${h}h` : `${h}h${String(m).padStart(2, '0')}`;
 };
 
-export const fmtDataHora = (iso) =>
-  new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+/* Formatadores criados uma única vez: toLocale*String() monta um
+   Intl.DateTimeFormat novo a cada chamada, e a lista chama estas funções
+   ~10 vezes por escala (≈1 s com 300 escalas — auditoria v67, P2-1).
+   A saída é idêntica à de toLocale*String com as mesmas opções. */
+const fmtDataHoraBR = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+const fmtDataBR = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+const fmtDiaSemanaBR = new Intl.DateTimeFormat('pt-BR', { weekday: 'long' });
+const fmtHoraBR = new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
-export const fmtData = (iso) =>
-  new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+export const fmtDataHora = (iso) => fmtDataHoraBR.format(new Date(iso));
+
+export const fmtData = (iso) => fmtDataBR.format(new Date(iso));
 
 export const fmtDiaSemana = (iso) => {
-  const n = new Date(iso).toLocaleDateString('pt-BR', { weekday: 'long' });
+  const n = fmtDiaSemanaBR.format(new Date(iso));
   return n[0].toUpperCase() + n.slice(1);
 };
 
-export const fmtHora = (iso) =>
-  new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+export const fmtHora = (iso) => fmtHoraBR.format(new Date(iso));
 
 export const dataLocalValida = (date) =>
   date instanceof Date && Number.isFinite(date.getTime());

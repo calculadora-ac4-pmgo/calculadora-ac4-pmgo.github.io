@@ -23,7 +23,7 @@ majoritário em **celular**. Produção: <https://calculadora-ac4-pmgo.github.io
 ## Fluxo de trabalho obrigatório
 
 1. Branch → commits → `npm run verify` (lint + unit + smoke + mobile + mobile-v55 + vitals) → PR → CI verde → `gh pr merge --merge --delete-branch` → acompanhar o deploy da `main` → **conferir o site publicado** (ex.: `curl -s https://calculadora-ac4-pmgo.github.io/sw.js | sed -n 4,5p`). Não declarar concluído só com o workflow verde.
-2. Mudou `index.html`, `css/` ou `js/`? **Bump de versão:** `node tools/bump-version.mjs <n>` (atualiza index, sw, app.js, styles.css e package.json). Versão atual: **v70** → próxima **v71**.
+2. Mudou `index.html`, `css/` ou `js/`? **Bump de versão:** `node tools/bump-version.mjs <n>` (atualiza index, sw, app.js, styles.css e package.json). Versão atual: **v71** → próxima **v72**.
 3. Todo bump exige **entrada nova no topo do `CHANGELOG.md`** com a mesma versão (o teste "Release" falha se não houver) e, se houver novidade para o usuário, o conteúdo do `#dialogNovidades` em `index.html` (**exatamente 3 itens** na lista; o smoke confere) **e o atributo `data-conteudo` com a versão atual** — é ele que decide se o aviso reabre sozinho (sem novidade, mantenha o valor antigo para não repetir o aviso).
 4. Os testes regeneram PNGs em `artifacts/v55/`. Não commitar isso por acidente: `git checkout -- artifacts/` antes do `git add`.
 5. Mensagens de commit e PR em português, no estilo do histórico (`feat(v66): …`, `fix: …`, `ci: …`).
@@ -32,6 +32,7 @@ majoritário em **celular**. Produção: <https://calculadora-ac4-pmgo.github.io
 
 - **Incidente v65:** o PR #58 colocou o redesign numa pasta `ac4-v65-files/` e o commit seguinte a apagou em vez de mover. O CI passou porque testava o código antigo. Hoje o teste "Release" bloqueia pastas `ac4-vNN-files/` na raiz. Arquivos novos vão **direto no lugar final**.
 - **Testes com número de versão fixo quebram o deploy** a cada bump. Leia a versão de `APP_VERSION` (`js/app.js`) ou de `window.__ac4Version` no navegador.
+- **Valor = só horas inteiras por faixa** (AD/AN/VD/VN), decisão do gestor na v71: fração de hora não é paga. Não voltar ao pagamento proporcional por minuto.
 - **Datas de teste** precisam estar na vigência da Portaria (≥ 01/07/2026); antes disso `validarTabelaAtual` recusa a escala.
 - **Toasts são enfileirados** (um por vez, ~3,8 s cada). Em testes, não espere um toast específico logo após outras ações; teste a regra pela função e o fluxo real com recarga da página.
 - **Ganchos de teste** só em localhost: `window.__ac4SimularAtualizacao`, `window.__ac4LembrarBackup`, `window.__ac4Testes*`.

@@ -20,6 +20,11 @@ const raiz = join(dirname(fileURLToPath(import.meta.url)), '..');
 const LIMITE_CLS = 0.10;          // orçamento de CLS por cenário
 const LIMITE_INTERACAO_MS = 200;  // até o diálogo aberto + dois frames (CI)
 const LIMITE_LONGTASK_MS = 200;   // nenhuma long task acima disso na interação
+/* Histórico longo (cenário 7): a mesma interação com 300 escalas não pode
+   custar mais que FATOR_HISTORICO × o custo com 5 escalas (cenário 4), medido
+   na mesma execução — robusto ao ruído da máquina. Referência da v71: sem a
+   lista em partes a razão era 10–18× (2,1–3,7 s); com ela, 1,4–1,9×. */
+const FATOR_HISTORICO = 3;
 
 const MIME = {
   '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8',
@@ -182,6 +187,21 @@ const TOTAL_ESPERADO = fmtMoeda(
 const SEMEAR_ESCALAS = `localStorage.setItem('pmgoEscalas', ${JSON.stringify(JSON.stringify(ESCALAS_SEMENTE))}); 'ok'`;
 
 const LIMPAR_ESCALAS = `localStorage.removeItem('pmgoEscalas'); 'ok'`;
+
+/* Histórico longo (auditoria v67, P2-1): 300 escalas de 24h, uma por dia a partir
+   de 01/09/2026 — sem sobrepor a escala lançada nos CTAs (20/08/2026). O cálculo
+   minuto a minuto sem cache fazia cada render recalcular tudo várias vezes. */
+const pad2 = (n) => String(n).padStart(2, '0');
+const dataLocal = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T08:00`;
+const ESCALAS_HISTORICO = Array.from({ length: 300 }, (_, i) => ({
+  id: `hist-${i}`,
+  inicio: dataLocal(new Date(2026, 8, 1 + i)),
+  fim: dataLocal(new Date(2026, 8, 2 + i)),
+  descricao: 'Escala AC4', origem: 'AC4', qtdPm: 1, status: 'planejada',
+}));
+const TOTAL_HISTORICO = fmtMoeda(ESCALAS_HISTORICO.reduce((s, e) => s + calcularEscala(e, TABELA_OFICIAL).valorCentavos, 0))
+  .replace(new RegExp(String.fromCharCode(160), 'g'), ' ');
+const SEMEAR_HISTORICO = `localStorage.setItem('pmgoEscalas', ${JSON.stringify(JSON.stringify(ESCALAS_HISTORICO))}); 'ok'`;
 
 /* Interação de compartilhamento: clique → diálogo aberto + dois frames pintados.
    showModal é síncrono; o custo real (montar o sheet, estilo, paint) aparece nos
@@ -354,6 +374,48 @@ try {
     { nome: 'launch-panel não é fixed no desktop', ok: !m4.launchPanelFixed, detalhe: m4.launchPanelFixed ? 'position: fixed' : 'ok' },
     { nome: 'Sem overflow horizontal', ok: m4.semOverflowX, detalhe: '' },
   ]));
+
+  /* Cenário 7 — histórico longo: 300 escalas de 24h, mobile 390×844.
+     Mede a carga e os mesmos CTAs do cenário 4 com o armazenamento cheio. */
+  await viewportMobile();
+  await avaliar(SEMEAR_HISTORICO);
+  await navegar();
+  const m7 = await avaliar(MEDICAO_CARGA);
+  const t0Carga = await avaliar(`performance.getEntriesByType('navigation')[0]?.domContentLoadedEventEnd || 0`);
+  /* CTAs no estado padrão (30 escalas visíveis de 300). */
+  const i7 = await avaliar(INTERACOES_CTA);
+  await new Promise((r) => setTimeout(r, 300));
+  /* "Mostrar anteriores" amplia a lista em mais uma parte (30 → 60; a escala
+     lançada acima é a mais antiga, então a lista tem 301 no total). */
+  const a7 = await avaliar(`(async () => {
+    const btn = document.querySelector('#listaEscalas [data-acao="anteriores"]');
+    if (!btn) return JSON.stringify({ existe: false });
+    const t0 = performance.now();
+    btn.click();
+    const frames = await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r('frames'))));
+    return JSON.stringify({ existe: true, ms: performance.now() - t0, frames,
+      linhas: document.querySelectorAll('#listaEscalas tbody tr').length });
+  })()`);
+  const checkHistorico = (nome, medida, referencia) => {
+    const limite = Math.max(LIMITE_INTERACAO_MS, FATOR_HISTORICO * referencia.ms);
+    return {
+      nome: `${nome} ≤ ${FATOR_HISTORICO}× o de 5 escalas`,
+      ok: medida.frames === 'frames' && medida.ms <= limite,
+      detalhe: `${fmtMs(medida.ms)} (5 escalas: ${fmtMs(referencia.ms)})`,
+    };
+  };
+  reportar('Cenário 7 — histórico longo: 300 escalas (390×844)', [
+    { nome: 'Barreira app-pending removida após init', ok: !m7.appPending && m7.appReady, detalhe: m7.appPending ? 'app-pending presente' : 'app-ready' },
+    { nome: 'Lista mostra só as 30 mais recentes', ok: m7.linhas === 30, detalhe: `${m7.linhas} linha(s)` },
+    { nome: 'Total soma as 300 escalas', ok: m7.totValor === TOTAL_HISTORICO, detalhe: `${m7.totValor} (esperado ${TOTAL_HISTORICO})` },
+    { nome: 'DOMContentLoaded com 300 escalas', ok: true, detalhe: fmtMs(t0Carga) },
+    { nome: '"Mostrar anteriores" amplia para 60', ok: a7.existe && a7.linhas === 60, detalhe: `${a7.linhas ?? 0} linha(s)` },
+    a7.existe ? checkHistorico('"Mostrar anteriores"', a7, i4.enviar) : { nome: '"Mostrar anteriores"', ok: false, detalhe: 'botão ausente' },
+    checkHistorico('Abrir lançamento mobile', i7.abrir, i4.abrir),
+    checkHistorico('Selecionar duração rápida', i7.duracao, i4.duracao),
+    checkHistorico('Adicionar escala', i7.enviar, i4.enviar),
+    { nome: 'Envio persiste exatamente uma escala', ok: i7.adicionou, detalhe: '' },
+  ]);
 
   /* Cenário 6 — resiliência: erro proposital no init() não pode deixar a tela
      presa em app-pending. A sabotagem remove #escalaInicio antes do init rodar

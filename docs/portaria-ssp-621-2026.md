@@ -43,7 +43,7 @@
 
 1. **A tarifa é por dia da semana em que a hora é trabalhada** (Anexo I organiza os valores por coluna de dia) — não pelo dia de início da escala. Escala que atravessa a virada do dia combina faixas.
 2. **O período noturno "de 22h de um dia às 5h do dia seguinte" pertence ao dia em que começou** (Art. 1º, parágrafo único): a madrugada até 4h59 é remunerada pela tarifa noturna do dia anterior. Ex.: noturno de quinta = 22h de quinta às 5h de sexta, a R$ 33,00.
-3. A aplicação apura **minuto a minuto** e arredonda o valor uma única vez por escala, em centavos.
+3. A aplicação classifica **minuto a minuto** e **paga só as horas inteiras de cada faixa** (AD/AN/VD/VN); a fração de hora não é paga. A Portaria não trata de fração de hora; a regra foi definida pelo gestor em 23/09/2026 (v71), porque os valores pagos são sempre em reais inteiros. Ex.: sex 08:00→18:20 = 10h20 VD → paga 10h (R$ 400,00); qui 18:00→sex 05:00 = 4h AD + 7h AN → R$ 120,00 + R$ 231,00 = R$ 351,00. Até a v70 a fração era paga proporcionalmente (ex.: 10h20 VD = R$ 413,33).
 
 ### Observação de fronteira (registrada na auditoria v46)
 
