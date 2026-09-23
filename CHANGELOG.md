@@ -1,5 +1,14 @@
 # Changelog
 
+## v69 — Fim da recarga forçada a cada versão
+
+Item P2-2 de `docs/relatorio_auditoria_producao_v67.md`:
+
+- Removido `js/force-update.js` (hotfix da v65). A cada versão nova ele desregistrava todos os Service Workers, apagava os caches e recarregava a página sem perguntar, anulando a atualização com confirmação da v64.
+- A atualização volta a acontecer só pelo banner "Nova versão disponível". Os caches antigos continuam sendo apagados no `activate` do `sw.js`.
+- A chave `pmgoForceUpdate` que sobrou é removida do `localStorage` na inicialização.
+- `tools/bump-version.mjs` não mexe mais no arquivo removido. O teste "Atualização PWA" impede que a limpeza forçada volte.
+
 ## v68 — Higiene da auditoria v67
 
 Primeiros itens do plano de ação de `docs/relatorio_auditoria_producao_v67.md`:

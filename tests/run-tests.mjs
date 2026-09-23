@@ -3,7 +3,7 @@
    O app.js só toca o DOM dentro de funções; no carregamento bastam stubs. */
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join } from 'node:path';
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { regraNormativaParaData, TABELA_OFICIAL } from '../js/modules/calculo.mjs';
 import { desserializarEscalas, detectarConflitos, normalizarEscala, STORAGE_SCHEMA_VERSION } from '../js/modules/persistencia.mjs';
 
@@ -87,6 +87,7 @@ rodar('Hardening v58 (schema, conflitos e vigência)', validarHardeningV58);
 
 const validarAtualizacaoPWA = () => {
   const sw = readFileSync(join(raiz, 'sw.js'), 'utf8');
+  const index = readFileSync(join(raiz, 'index.html'), 'utf8');
   const versaoApp = readFileSync(join(raiz, 'js/app.js'), 'utf8').match(/const APP_VERSION = '(\d+)'/)?.[1];
   const blocoInstall = sw.slice(sw.indexOf("self.addEventListener('install'"), sw.indexOf("self.addEventListener('message'"));
   const checks = [
@@ -94,6 +95,9 @@ const validarAtualizacaoPWA = () => {
     [versaoApp && sw.includes(`const SW_VERSION = '${versaoApp}'`) && sw.includes("event.data?.type === 'GET_VERSION'"), 'worker informa sua versão antes do aviso'],
     [sw.includes('self.addEventListener(\'message\''), 'canal de mensagem registrado'],
     [!blocoInstall.includes('skipWaiting'), 'instalação não força recarga durante preenchimento'],
+    // Auditoria v67 (P2-2): a limpeza forçada recarregava a página a cada versão sem perguntar.
+    [!existsSync(join(raiz, 'js/force-update.js')) && !index.includes('force-update') && !sw.includes('force-update'),
+      'sem limpeza forçada (force-update.js) — atualização só pelo banner'],
   ];
   const falhas = checks.filter(([ok]) => !ok).map(([, nome]) => nome);
   return falhas.length ? falhas : 'ATUALIZAÇÃO PWA SEGURA OK';
