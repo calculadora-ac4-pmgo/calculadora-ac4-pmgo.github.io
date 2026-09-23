@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Calculadora AC4 — v69
+   Calculadora AC4 — v70
    ========================================================================== */
 
 /* Inter (variable, 100–900) self-hosted — sem dependência do Google Fonts,
@@ -1324,6 +1324,13 @@ textarea.control { min-height: 74px; resize: vertical; }
 .share-handle { width: 40px; height: 4px; background: var(--border-strong); border-radius: 999px; margin: 0 auto 16px; }
 .share-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
 .share-title { font-size: 1rem; font-weight: 800; }
+.share-backup-status {
+  margin: 0 0 4px;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+.share-backup-status:empty { display: none; }
 .share-close { background: var(--surface-2); border-color: var(--border); }
 .share-grid {
   display: grid;

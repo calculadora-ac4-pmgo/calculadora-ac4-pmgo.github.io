@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Calculadora AC4 — v69
+   Calculadora AC4 — v70
    Módulo principal: estado, UI, persistência e exportações.
    Regras de negócio, formatação e agenda vivem em js/modules/.
    ========================================================================== */
@@ -33,7 +33,7 @@ import {
   /* Versão da aplicação (sincronizada pelo tools/bump-version.mjs). Serve para
      carimbar o log de erros e detectar clientes presos em cache antigo:
      se __ac4Version no console divergir do rodapé/CHANGELOG, o SW não atualizou. */
-  const APP_VERSION = '69';
+  const APP_VERSION = '70';
 
   const STORAGE = {
     escalas:   'pmgoEscalas',
@@ -182,6 +182,37 @@ import {
     baixar(`${JSON.stringify(backup, null, 2)}\n`, `backup-calculadora-ac4-v${APP_VERSION}.json`, 'application/json;charset=utf-8');
     try { localStorage.setItem(STORAGE.ultimoBackup, String(Date.now())); } catch { /* lembrete pode reaparecer */ }
     toast(`Backup gerado com ${escalas.length} escala${escalas.length === 1 ? '' : 's'}.`);
+  }
+
+  /* Pede ao navegador que não apague os dados por falta de espaço ou de uso
+     (Safari/iOS apaga após 7 dias sem visita). Chamado só após um lançamento,
+     uma vez por sessão — o Firefox pode perguntar ao usuário. Recusa é tolerada. */
+  let persistenciaSolicitada = false;
+  async function pedirArmazenamentoPersistente() {
+    if (persistenciaSolicitada || !navigator.storage?.persist) return;
+    persistenciaSolicitada = true;
+    try {
+      if (!(await navigator.storage.persisted())) await navigator.storage.persist();
+    } catch { /* sem suporte: o lembrete de backup continua sendo a proteção */ }
+  }
+
+  const ehIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const rodandoInstalado = () => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+
+  /* Situação do backup exibida no Compartilhar, perto dos botões Backup/Restaurar. */
+  function textoStatusBackup(agora = Date.now()) {
+    const ultimo = Number(lerLocal(STORAGE.ultimoBackup)) || 0;
+    let texto;
+    if (!ultimo) texto = 'Você ainda não fez backup. As escalas ficam só neste aparelho.';
+    else {
+      const dias = Math.max(0, Math.floor((agora - ultimo) / DIA_MS));
+      const quando = dias === 0 ? 'hoje' : dias === 1 ? 'ontem' : `há ${dias} dias`;
+      texto = `Último backup: ${fmtData(new Date(ultimo))} (${quando}).`;
+    }
+    if (ehIOS() && !rodandoInstalado()) {
+      texto += ' No iPhone, instale o app na Tela de Início: o Safari pode apagar dados de sites sem uso por 7 dias.';
+    }
+    return texto;
   }
 
   /* Lembrete de backup: os dados vivem só neste aparelho. Avisa quem tem
@@ -518,7 +549,12 @@ import {
 
     /* Instalações novas começam direto no fluxo principal. O aviso automático
        é reservado a quem realmente acabou de receber uma atualização. */
-    if (versaoAnterior && versaoAnterior !== APP_VERSION && lerLocal(STORAGE.novidades) !== APP_VERSION) {
+    /* Só reabre se o CONTEÚDO do aviso mudou desde o último visto
+       (data-conteudo no #dialogNovidades); versões só técnicas não repetem
+       o mesmo aviso. */
+    const conteudo = Number(dlg.dataset.conteudo) || Number(APP_VERSION);
+    const vistoEm = Number(lerLocal(STORAGE.novidades)) || 0;
+    if (versaoAnterior && versaoAnterior !== APP_VERSION && vistoEm < conteudo) {
       aposProximoPaint(abrirNovidades);
     }
   }
@@ -806,7 +842,7 @@ import {
       }
       if (!salvar()) { escalas = escalasAntes; render(); return; }
       render();
-      if (novoRegistro) mostrarInstalacaoAposConversao();
+      if (novoRegistro) { mostrarInstalacaoAposConversao(); pedirArmazenamentoPersistente(); }
       /* No mobile, salvar com sucesso fecha o bottom sheet. */
       if (isMobileViewport()) fecharPainelLancamentoMobile();
     } finally {
@@ -1418,6 +1454,7 @@ import {
     urlWhatsAppCache = '';
     const nativeBtn = $('shareNative');
     if (nativeBtn) nativeBtn.classList.toggle('hidden', !navigator.share);
+    if ($('shareBackupStatus')) $('shareBackupStatus').textContent = textoStatusBackup();
     dlg.showModal();
     aposProximoPaint(prepararCompartilhamento);
   }
@@ -2056,11 +2093,10 @@ import {
 
   /* -------------------------------------------- PWA install prompt */
   function initPWA() {
-    const jaInstalado = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
-    if (jaInstalado) return;
+    if (rodandoInstalado()) return;
 
     const dismissed = lerLocal(STORAGE.pwaBanner);
-    const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
+    const isIOS = ehIOS();
     let visitas = Number(lerLocal(STORAGE.pwaVisitas) || 0) + 1;
     if (!Number.isFinite(visitas)) visitas = 1;
     try { localStorage.setItem(STORAGE.pwaVisitas, String(Math.min(visitas, 99))); } catch {}
@@ -2372,7 +2408,10 @@ import {
 
     /* Depois do primeiro uso da tela, para não competir com novidades/instalação. */
     setTimeout(() => lembrarBackup(), 4000);
-    if (ambienteDeTeste) window.__ac4LembrarBackup = lembrarBackup;
+    if (ambienteDeTeste) {
+      window.__ac4LembrarBackup = lembrarBackup;
+      window.__ac4StatusBackup = textoStatusBackup;
+    }
   }
 
   /* Derruba a barreira de primeiro paint (CWV F-02): o <html> nasce com

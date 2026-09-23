@@ -1,5 +1,15 @@
 # Changelog
 
+## v70 — Dados mais protegidos e novidades sem repetição
+
+Itens P2-3 (R1) de `docs/relatorio_auditoria_producao_v67.md` e aviso de novidades repetido:
+
+- **Armazenamento persistente:** depois do primeiro lançamento da sessão, o app chama `navigator.storage.persist()` para o navegador não apagar as escalas. A recusa é tolerada. A chamada não acontece ao abrir a página porque o Firefox pode perguntar ao usuário.
+- **Situação do backup no Compartilhar:** "Último backup: dd/mm/aaaa (há N dias)" ou aviso de que ainda não houve backup. No iPhone fora do app instalado, explica que o Safari pode apagar dados de sites sem uso por 7 dias.
+- **Novidades por conteúdo:** o `#dialogNovidades` ganhou `data-conteudo` (versão do texto). O aviso só reabre sozinho quando esse número passa do último conteúdo visto, e versões técnicas não repetem o mesmo aviso. **Ao mudar o texto das novidades, atualize `data-conteudo`.**
+- Novidades da v70: armazenamento protegido, data do último backup e atualização sob controle do usuário (v69).
+- Smoke +4 passos: status do backup (sem backup, com data, no Compartilhar) e novidades já vistas que não reaparecem.
+
 ## v69 — Fim da recarga forçada a cada versão
 
 Item P2-2 de `docs/relatorio_auditoria_producao_v67.md`:
