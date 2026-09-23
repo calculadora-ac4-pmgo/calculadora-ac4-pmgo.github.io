@@ -17,6 +17,6 @@
     "verify": "npm run lint && npm test"
   },
   "devDependencies": {
-    "eslint": "10.9.1"
+    "eslint": "10.11.0"
   }
 }
