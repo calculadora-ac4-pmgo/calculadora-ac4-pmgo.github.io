@@ -35,7 +35,8 @@ if (!('navigator' in globalThis)) {
   Object.defineProperty(globalThis, 'navigator', { value: { userAgent: 'node-ci' } });
 }
 globalThis.matchMedia = () => ({ matches: false, addEventListener: () => {} });
-globalThis.location = { protocol: 'https:', origin: 'https://calculadora-ac4-pmgo.github.io' };
+// hostname local: os ganchos window.__ac4Testes* só são expostos fora da produção.
+globalThis.location = { protocol: 'https:', hostname: 'localhost', origin: 'https://calculadora-ac4-pmgo.github.io' };
 
 /* ---- carrega o app (módulo ES — os imports de js/modules/ resolvem sozinhos) ---- */
 await import(pathToFileURL(join(raiz, 'js', 'app.js')).href);
@@ -114,5 +115,16 @@ const validarRelease = () => {
   return falhas.length ? falhas : 'RELEASE CONSISTENTE OK';
 };
 rodar('Release (CHANGELOG × versão, sem rascunhos na raiz)', validarRelease);
+
+/* Auditoria v67 (P3-1): ganchos de teste não podem ser expostos em produção.
+   __ac4TestesLancamento zera e regrava as escalas reais do aparelho. */
+const validarGanchosLocais = () => {
+  const app = readFileSync(join(raiz, 'js/app.js'), 'utf8');
+  const expostos = app.split('\n')
+    .filter((l) => /window\.__ac4(Testes\w*|ValidarICS|MailtoFeedback|SimularAtualizacao|LembrarBackup)\s*=/.test(l))
+    .filter((l) => !l.includes('if (ambienteDeTeste)') && !/^\s{6,}/.test(l));
+  return expostos.length ? expostos.map((l) => `gancho fora de ambienteDeTeste: ${l.trim()}`) : 'GANCHOS SÓ EM LOCALHOST OK';
+};
+rodar('Ganchos de teste restritos a localhost', validarGanchosLocais);
 
 process.exit(falhou ? 1 : 0);

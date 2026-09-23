@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Calculadora AC4 — v67
+   Calculadora AC4 — v68
    Módulo principal: estado, UI, persistência e exportações.
    Regras de negócio, formatação e agenda vivem em js/modules/.
    ========================================================================== */
@@ -33,7 +33,7 @@ import {
   /* Versão da aplicação (sincronizada pelo tools/bump-version.mjs). Serve para
      carimbar o log de erros e detectar clientes presos em cache antigo:
      se __ac4Version no console divergir do rodapé/CHANGELOG, o SW não atualizou. */
-  const APP_VERSION = '67';
+  const APP_VERSION = '68';
 
   const STORAGE = {
     escalas:   'pmgoEscalas',
@@ -74,6 +74,9 @@ import {
   const lerLocal = (chave) => { try { return localStorage.getItem(chave); } catch { return null; } };
   const aposProximoPaint = (fn) => requestAnimationFrame(() => requestAnimationFrame(fn));
   const esperarProximoPaint = () => new Promise((resolve) => aposProximoPaint(resolve));
+  /* Ganchos de teste (window.__ac4Testes*, simulações) só existem em ambiente
+     local; em produção ficam só os de suporte (__ac4Erros, __ac4Version). */
+  const ambienteDeTeste = ['localhost', '127.0.0.1'].includes(location.hostname);
   const STATUS_INFO = Object.freeze({
     planejada: { label: 'Planejada', curto: 'Planejadas' },
     realizada: { label: 'Realizada', curto: 'Realizadas' },
@@ -568,7 +571,7 @@ import {
   }
 
   /* -------------------------------------------------- testes de regressão */
-  window.__ac4Testes = function () {
+  if (ambienteDeTeste) window.__ac4Testes = function () {
     const h = (n) => n * 60;
     const casos = [
       { caso: '1 sex 03/07 18h→sáb 8h (14h)',  inicio: '2026-07-03T18:00', fim: '2026-07-04T08:00', AD: 0,         AN: 0,    VD: h(7),  VN: h(7),  centavos: 59500 },
@@ -594,7 +597,7 @@ import {
 
   /* Suíte de segurança + invariantes (§10 da auditoria, itens 5 e 6).
      Puros — rodam em Node no CI e no console do site. */
-  window.__ac4TestesExtras = function () {
+  if (ambienteDeTeste) window.__ac4TestesExtras = function () {
     const resultados = [];
     const add = (caso, ok, detalhes = '') => resultados.push({ caso, ok: Boolean(ok), detalhes: String(detalhes) });
 
@@ -641,7 +644,7 @@ import {
     return resultados.every((r) => r.ok) ? 'TODOS OS TESTES EXTRAS OK' : resultados;
   };
 
-  window.__ac4TestesLancamento = function () {
+  if (ambienteDeTeste) window.__ac4TestesLancamento = function () {
     const resultados = [];
     const add = (caso, ok, detalhes = '') => resultados.push({ caso, ok: Boolean(ok), detalhes });
     const idsCampos = ['escalaInicio', 'escalaFim', 'escalaDuracao', 'escalaQtdPm', 'escalaDescricao', 'escalaOrigem'];
@@ -1430,7 +1433,7 @@ import {
     return `mailto:${FEEDBACK_EMAIL}?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`;
   };
   /* Exposto para o smoke test validar o link sem navegar para fora da página. */
-  window.__ac4MailtoFeedback = montarMailtoFeedback;
+  if (ambienteDeTeste) window.__ac4MailtoFeedback = montarMailtoFeedback;
 
   function selecionarTipoFeedback(botao) {
     feedbackTipo = botao.dataset.tipo || 'Elogio';
@@ -1628,8 +1631,7 @@ import {
         ? `<span class="chip chip-night">${fmtHoras(r.minNoturno)} noturno</span>`
         : '<span class="chip chip-day">Diurno</span>');
       if (qtd > 1) tipoChips.push(`<span class="chip chip-neutral">${qtd} PMs</span>`);
-      const origemLabel = (e.origem || 'AC4').replace('CONVENIO_', 'Conv. ').replace('FAZENDARIO_SEC_ECON', 'Fazendário');
-      tipoChips.push(`<span class="chip chip-origem">${escapeHTML(origemLabel)}</span>`);
+      tipoChips.push(`<span class="chip chip-origem">${escapeHTML(labelOrigem(e.origem))}</span>`);
 
       const fimStr = fmtData(e.inicio) === fmtData(e.fim) ? fmtHora(e.fim) : `${fmtData(e.fim)} ${fmtHora(e.fim)}`;
       const unidadeTexto = e.descricao && e.descricao !== 'Escala AC4' ? e.descricao : '-';
@@ -1899,14 +1901,14 @@ import {
   }
 
   /* -------------------------------------------- validar ICS (debug) */
-  window.__ac4ValidarICS = function (entrada) {
+  if (ambienteDeTeste) window.__ac4ValidarICS = function (entrada) {
     const fonte = Array.isArray(entrada) ? entrada : escalasOrdenadas();
     const resultado = validarICSBase(fonte, tabelaParaCalculo());
     if (resultado.falhas.length && console.table) console.table(resultado.falhas);
     return resultado;
   };
 
-  window.__ac4TestesAgendamento = function () {
+  if (ambienteDeTeste) window.__ac4TestesAgendamento = function () {
     const casos = [
       { id: 'agenda-2027-08-03', inicio: '2027-08-03T18:00', fim: '2027-08-04T08:00', descricao: 'Escala 03/08/2027', origem: 'AC4', qtdPm: 1 },
       { id: 'agenda-2026-08-05', inicio: '2026-08-05T08:00', fim: '2026-08-06T08:00', descricao: 'Escala 05/08/2026', origem: 'AC4', qtdPm: 1 },
@@ -2013,7 +2015,7 @@ import {
 
     /* Gancho restrito ao ambiente local para validar a interface sem instalar
        um Service Worker real durante os testes HTTP. */
-    if (['localhost', '127.0.0.1'].includes(location.hostname)) {
+    if (ambienteDeTeste) {
       window.__ac4SimularAtualizacao = () => exibirBannerAtualizacao({
         postMessage: (mensagem) => { window.__ac4UltimaMensagemSW = mensagem; },
       });
@@ -2368,7 +2370,7 @@ import {
 
     /* Depois do primeiro uso da tela, para não competir com novidades/instalação. */
     setTimeout(() => lembrarBackup(), 4000);
-    if (['localhost', '127.0.0.1'].includes(location.hostname)) window.__ac4LembrarBackup = lembrarBackup;
+    if (ambienteDeTeste) window.__ac4LembrarBackup = lembrarBackup;
   }
 
   /* Derruba a barreira de primeiro paint (CWV F-02): o <html> nasce com

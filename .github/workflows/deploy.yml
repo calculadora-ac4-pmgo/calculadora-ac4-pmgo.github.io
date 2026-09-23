@@ -73,12 +73,12 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
 
-      - name: Montar artefato público (só os arquivos do app — sem docs, tests e tools)
+      - name: Montar artefato público (só os arquivos do app — sem docs, tests, tools e capturas)
         run: |
           mkdir -p _site
           rsync -a --exclude '.git*' --exclude '_site' \
-            --exclude 'docs' --exclude 'tests' --exclude 'tools' \
-            --exclude 'eslint.config.mjs' --exclude 'node_modules' \
+            --exclude 'docs' --exclude 'tests' --exclude 'tools' --exclude 'artifacts' \
+            --exclude 'eslint.config.mjs' --exclude 'node_modules' --exclude '.editorconfig' \
             --exclude 'package*.json' --exclude '*.md' \
             ./ _site/
 
