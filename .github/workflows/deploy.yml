@@ -80,6 +80,7 @@ jobs:
             --exclude 'docs' --exclude 'tests' --exclude 'tools' --exclude 'artifacts' \
             --exclude 'eslint.config.mjs' --exclude 'node_modules' --exclude '.editorconfig' \
             --exclude 'package*.json' --exclude '*.md' \
+            --exclude '/js/modules/testes.mjs' \
             ./ _site/
 
       - name: Upload artifact
