@@ -4,7 +4,7 @@
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join } from 'node:path';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
-import { regraNormativaParaData, TABELA_OFICIAL } from '../js/modules/calculo.mjs';
+import { calcularEscala, regraNormativaParaData, TABELA_OFICIAL } from '../js/modules/calculo.mjs';
 import { desserializarEscalas, detectarConflitos, normalizarEscala, STORAGE_SCHEMA_VERSION } from '../js/modules/persistencia.mjs';
 
 const raiz = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -119,6 +119,45 @@ const validarRelease = () => {
   return falhas.length ? falhas : 'RELEASE CONSISTENTE OK';
 };
 rodar('Release (CHANGELOG × versão, sem rascunhos na raiz)', validarRelease);
+
+/* Conformidade com a Portaria SSP 621/2026 — casos derivados direto do Anexo I
+   (docs/portaria-ssp-621-2026.md), um por dia da semana e faixa:
+   - diurno (5h01–21h59) e noturno (22h) do próprio dia, pela coluna do dia;
+   - madrugada (00h–5h) paga pelo noturno do DIA ANTERIOR (Art. 1º, par. único:
+     "22h de um dia e 5h do dia seguinte");
+   - virada às 5h: 04h→06h = 1h noturno do dia anterior + 1h diurno do dia;
+   - virada às 22h: 21h→23h = 1h diurno + 1h noturno do mesmo dia;
+   - só horas inteiras por faixa (decisão do gestor, v71). */
+const validarAnexoI = () => {
+  const ANEXO = { // centavos/hora por dia (0 = domingo … 6 = sábado)
+    diurno:  [4000, 3000, 3000, 3000, 3000, 4000, 4000],
+    noturno: [4500, 3300, 3300, 3300, 3300, 4500, 4500],
+  };
+  const NOMES = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
+  const pad = (n) => String(n).padStart(2, '0');
+  // semana de 05/07/2026 (domingo) a 11/07/2026 (sábado)
+  const dia = (d, h, m = 0) => `2026-07-${pad(5 + d)}T${pad(h)}:${pad(m)}`;
+  const casos = [];
+  for (let d = 0; d < 7; d++) {
+    const ant = (d + 6) % 7;
+    casos.push(
+      [`${NOMES[d]} 10h→11h (diurno do dia)`, dia(d, 10), dia(d, 11), ANEXO.diurno[d]],
+      [`${NOMES[d]} 22h→23h (noturno do dia)`, dia(d, 22), dia(d, 23), ANEXO.noturno[d]],
+      [`${NOMES[d]} 02h→03h (madrugada = noturno de ${NOMES[ant]})`, dia(d + 1, 2), dia(d + 1, 3), ANEXO.noturno[d]],
+      [`${NOMES[d]} 04h→06h (virada das 5h)`, dia(d, 4), dia(d, 6), ANEXO.noturno[ant] + ANEXO.diurno[d]],
+      [`${NOMES[d]} 21h→23h (virada das 22h)`, dia(d, 21), dia(d, 23), ANEXO.diurno[d] + ANEXO.noturno[d]],
+      [`${NOMES[d]} 08h→20h40 (fração não paga)`, dia(d, 8), dia(d, 20, 40), 12 * ANEXO.diurno[d]],
+    );
+  }
+  // exemplo conferido pelo gestor em 23/09/2026: qui 24/09 18h → sex 05h = R$ 351,00
+  casos.push(['qui 24/09/2026 18h→sex 05h (exemplo do gestor)', '2026-09-24T18:00', '2026-09-25T05:00', 35100]);
+  const falhas = casos
+    .map(([nome, inicio, fim, esperado]) => [nome, esperado, calcularEscala({ inicio, fim }, TABELA_OFICIAL).valorCentavos])
+    .filter(([, esperado, obtido]) => esperado !== obtido)
+    .map(([nome, esperado, obtido]) => `${nome}: esperado ${esperado / 100}, obtido ${obtido / 100}`);
+  return falhas.length ? falhas : `ANEXO I CONFORME (${casos.length} casos)`;
+};
+rodar('Conformidade com a Portaria 621/2026 (Anexo I)', validarAnexoI);
 
 /* Auditoria v67 (P3-1): ganchos de teste não podem ser expostos em produção.
    __ac4TestesLancamento zera e regrava as escalas reais do aparelho. */
