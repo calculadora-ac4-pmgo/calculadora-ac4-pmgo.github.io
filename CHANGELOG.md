@@ -1,5 +1,13 @@
 # Changelog
 
+## v68 — Higiene da auditoria v67
+
+Primeiros itens do plano de ação de `docs/relatorio_auditoria_producao_v67.md`:
+
+- Ganchos de teste (`__ac4Testes*`, `__ac4ValidarICS`, `__ac4MailtoFeedback`) só existem em `localhost`; em produção ficam apenas os de suporte (`__ac4Erros`, `__ac4Version`). Evita que `__ac4TestesLancamento`, que regrava as escalas, rode no aparelho do usuário (P3-1).
+- Origem do remunerado com o mesmo rótulo na tela e no PDF, via `labelOrigem()` (ex.: "Prefeituras", "Faz./Sec. Econ.") (P3-6).
+- Deploy deixa de publicar `artifacts/` (capturas dos testes) e `.editorconfig` (P3-4).
+
 ## v67 — Design premium (restaurado)
 
 O redesign planejado para a v65 foi descartado por engano no PR #58 (a pasta
