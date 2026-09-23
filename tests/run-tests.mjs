@@ -207,7 +207,11 @@ const validarShellModulos = () => {
   const faltando = readdirSync(join(raiz, 'js', 'modules'))
     .filter((f) => f.endsWith('.mjs') && !soTeste.has(f))
     .filter((f) => !sw.includes(`'./js/modules/${f}'`));
-  return faltando.length ? faltando.map((f) => `fora do SHELL do sw.js: js/modules/${f}`) : 'MÓDULOS NO SHELL OK';
+  const falhas = faltando.map((f) => `fora do SHELL do sw.js: js/modules/${f}`);
+  /* Módulos só de teste também ficam fora do site publicado (deploy.yml). */
+  const deploy = readFileSync(join(raiz, '.github', 'workflows', 'deploy.yml'), 'utf8');
+  soTeste.forEach((f) => { if (!deploy.includes(`--exclude '/js/modules/${f}'`)) falhas.push(`deploy publica js/modules/${f}`); });
+  return falhas.length ? falhas : 'MÓDULOS NO SHELL OK';
 };
 rodar('Módulos no cache offline do Service Worker', validarShellModulos);
 
