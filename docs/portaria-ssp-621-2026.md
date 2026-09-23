@@ -53,7 +53,7 @@ Com o pagamento só por horas inteiras (v71), essa leitura é a que preserva as 
 
 ### Conferência automática
 
-`tests/run-tests.mjs` → "Conformidade com a Portaria 621/2026 (Anexo I)": 44 casos derivados diretamente desta tabela (para cada dia da semana: hora diurna, hora noturna, madrugada paga pelo noturno do dia anterior, viradas das 5h e das 22h, fração não paga) e os exemplos conferidos na planilha do gestor (qui 24/09/2026 18h → sex 05h = R$ 351,00; seg 21/09/2026 04h → 06h = R$ 75,00). Roda no CI em todo PR.
+`tests/run-tests.mjs` → "Conformidade com a Portaria 621/2026 (Anexo I)": 52 casos derivados diretamente desta tabela (para cada dia da semana: hora diurna, hora noturna, madrugada paga pelo noturno do dia anterior, viradas das 5h e das 22h, fração não paga) e 10 escalas reais da planilha do gestor, conferidas coluna a coluna (ex.: qui 24/09/2026 18h → sex 05h = R$ 351,00; seg 21/09/2026 04h → 06h = R$ 75,00; qui 13/08/2026 18h → sex 08h = R$ 471,00). Roda no CI em todo PR.
 
 ### O que a Portaria não trata
 

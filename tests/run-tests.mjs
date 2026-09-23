@@ -151,8 +151,18 @@ const validarAnexoI = () => {
   }
   // exemplo conferido pelo gestor em 23/09/2026: qui 24/09 18h → sex 05h = R$ 351,00
   casos.push(['qui 24/09/2026 18h→sex 05h (exemplo do gestor)', '2026-09-24T18:00', '2026-09-25T05:00', 35100]);
-  // planilha do gestor: seg 21/09 04h→06h = 1h noturno de domingo (R$ 45) + 1h diurno de segunda (R$ 30)
-  casos.push(['seg 21/09/2026 04h→06h (planilha do gestor)', '2026-09-21T04:00', '2026-09-21T06:00', 7500]);
+  // planilha do gestor (23/09/2026) — conferida coluna a coluna (AD/VD/AN/VN)
+  [
+    ['sex 07/08 18h→sáb 08h', '2026-08-07T18:00', '2026-08-08T08:00', 59500],   // VD 280 + VN 315
+    ['sáb 08/08 08h→dom 08h', '2026-08-08T08:00', '2026-08-09T08:00', 99500],   // VD 680 + VN 315
+    ['qui 13/08 18h→sex 08h', '2026-08-13T18:00', '2026-08-14T08:00', 47100],   // AD 120 + VD 120 + AN 231
+    ['sex 14/08 18h→sáb 08h', '2026-08-14T18:00', '2026-08-15T08:00', 59500],
+    ['sáb 15/08 08h→dom 08h', '2026-08-15T08:00', '2026-08-16T08:00', 99500],
+    ['qui 27/08 18h→sex 02h', '2026-08-27T18:00', '2026-08-28T02:00', 25200],   // AD 120 + AN 132
+    ['sex 28/08 18h→sáb 08h', '2026-08-28T18:00', '2026-08-29T08:00', 59500],
+    ['sáb 29/08 08h→dom 08h', '2026-08-29T08:00', '2026-08-30T08:00', 99500],
+    ['seg 21/09 04h→06h', '2026-09-21T04:00', '2026-09-21T06:00', 7500],       // VN 45 (domingo) + AD 30
+  ].forEach(([nome, inicio, fim, cent]) => casos.push([`${nome} (planilha do gestor)`, inicio, fim, cent]));
   const falhas = casos
     .map(([nome, inicio, fim, esperado]) => [nome, esperado, calcularEscala({ inicio, fim }, TABELA_OFICIAL).valorCentavos])
     .filter(([, esperado, obtido]) => esperado !== obtido)

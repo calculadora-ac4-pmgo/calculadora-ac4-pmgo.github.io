@@ -8,7 +8,7 @@
   - formatadores de data (`Intl.DateTimeFormat`) reaproveitados em vez de criados a cada chamada (~1 s com 300 escalas), com saída idêntica em 80.000 comparações;
   - cache do resultado do cálculo por início, fim e tabela;
   - ordenação sem converter datas no comparador.
-- **Conformidade com a Portaria:** nova suíte com 44 casos: 42 gerados do Anexo I (cada dia × diurno, noturno, madrugada do dia anterior, viradas das 5h e das 22h, fração não paga) + 2 exemplos da planilha do gestor (R$ 351,00 e R$ 75,00). Documento da Portaria atualizado: leitura das fronteiras com horas inteiras e o que a Portaria não trata (fração, feriados, teto de 192h).
+- **Conformidade com a Portaria:** nova suíte com 52 casos: 42 gerados do Anexo I (cada dia × diurno, noturno, madrugada do dia anterior, viradas das 5h e das 22h, fração não paga) + 10 escalas reais da planilha do gestor, todas iguais coluna a coluna. Documento da Portaria atualizado: leitura das fronteiras com horas inteiras e o que a Portaria não trata (fração, feriados, teto de 192h).
 - Web Vitals: cenário 7 com 300 escalas mede a lista em partes, os totais e os CTAs em relação ao cenário de 5 escalas (robusto ao ruído do runner).
 
 ## v70 — Dados mais protegidos e novidades sem repetição
