@@ -15,15 +15,33 @@
 | Projeto | **Em evolução ativa** (o "modo de manutenção" de 08/07 foi encerrado na v55) |
 | Regra de cálculo | Portaria SSP 621/2026 + **só horas inteiras por faixa** (decisão do gestor, v71). Suíte "Conformidade com o Anexo I" com 52 casos, 10 deles da planilha do gestor |
 | Última auditoria | [`relatorio_auditoria_producao_v67.md`](relatorio_auditoria_producao_v67.md) (BIH TECHS): 8,6/10. Itens P2-1…P2-4, P3-1…P3-4 e P3-6 resolvidos entre a v68 e a v72; aberto só o P3-5 (SRI/privacidade) |
-| CI | Lint + 8 suítes unitárias + smoke (44 passos) + 2 mobile + Web Vitals (7 cenários) em todo PR; deploy só na `main` |
+| CI | Lint + 10 suítes unitárias + smoke (44 passos) + 2 mobile + Web Vitals (7 cenários) em todo PR; deploy só na `main` |
+| Repositório | Sem PR aberto, sem trabalho pendente em branch. Dependências: ESLint 10.11.0 (única, só de desenvolvimento) |
 | Proteção da `main` | PR obrigatório, check `test` obrigatório **também para admin**, merge commit (`--merge`) — ver sessão de 23/09 |
 | Monitor de uptime | UptimeRobot criado pelo gestor em 08/07/2026 (HTTP, 5 min). **Pendente do gestor:** confirmar que o alerta por e-mail está ativo |
 | Backlog | [`ESTUDO_ESTRATEGICO_v67.md`](ESTUDO_ESTRATEGICO_v67.md), seção *Backlog executável* |
 | Contexto para agentes | [`CLAUDE.md`](../CLAUDE.md) na raiz |
 
+### ▶️ Retomar na próxima estação (sessão encerrada em 23/09/2026)
+
+O GitHub está idêntico à estação que encerrou: nada ficou só no computador local. Na próxima estação:
+
+- **Já tem o repositório clonado?** Só atualize:
+  ```sh
+  cd <pasta do repositório>
+  git status              # deve dizer "nothing to commit"; se houver mudanças antigas, pergunte antes de descartar
+  git checkout main
+  git pull --ff-only      # traz v68 … v72 e a documentação
+  npm ci --ignore-scripts # ESLint 10.11.0
+  ```
+- **Não tem?** Siga *"Como retomar em outra estação de trabalho"* mais abaixo (`git clone`).
+- **Conferir:** `git log --oneline -1` deve mostrar o último merge da `main` no GitHub, e `sed -n 4p sw.js` deve mostrar `ac4-v72` (ou versão mais nova).
+- **Atenção (aprendido nesta sessão):** a pasta `.git` precisa estar na **raiz** do projeto. Em 23/09 ela estava numa subpasta `calculadora-ac4-pmgo.github.io/`, e a pasta principal parecia não ser um repositório.
+- **Próximos passos possíveis** (nada urgente): P3-5 (SRI/privacidade, depende de validação jurídica), backlog R2/R6/R4 do estudo estratégico, confirmar o alerta por e-mail do UptimeRobot. As 5 branches antigas no GitHub (`codex/v58…`, `codex/v59…`, `codex/v60…`, `feat/fase-55…`, `feat/v65…`) já estão mescladas e podem ser apagadas quando quiser.
+
 ---
 
-## Sessão de 23/09/2026 — auditoria BIH TECHS e v68–v71
+## Sessão de 23/09/2026 — auditoria BIH TECHS e v68–v72
 
 - **Estação:** notebook sincronizado com o GitHub (o `.git` estava numa subpasta e foi devolvido à raiz).
 - **Auditoria de produção v67** (BIH TECHS): nota 8,6/10, sem P0/P1. Relatório em [`relatorio_auditoria_producao_v67.md`](relatorio_auditoria_producao_v67.md).
@@ -35,7 +53,9 @@
   - Regras revistas contra a Portaria e contra a planilha do gestor: 10 escalas reais, iguais coluna a coluna.
   - Lista mostra as 30 escalas mais recentes com "Mostrar anteriores".
   - `Intl` cacheado; com 300 escalas, adicionar caiu de 2–4 s para 0,2–0,5 s.
-- **v72 (P3-2):** `app.js` dividido em módulos (`templates`, `relatorio`, `pwa`, `testes` sob demanda), sem mudar comportamento. Saída de lista, CSV e PDF idêntica byte a byte à v71. Ids escapados nos templates.
+- **v72 (PR #69, P3-2):** `app.js` dividido em módulos (`templates`, `relatorio`, `pwa`, `testes` sob demanda), sem mudar comportamento. Saída de lista, CSV e PDF idêntica byte a byte à v71. Ids escapados nos templates.
+- **PR #70:** `js/modules/testes.mjs` fora do site publicado (404), com teste que exige a exclusão no `deploy.yml`.
+- **PR #57 (Dependabot):** ESLint 10.9.1 → 10.11.0, com `@dependabot rebase` porque a proteção exige branch atualizada.
 - **Governança (P2-4/P3-3):** documentos reconciliados (este bloco, escopo, checklist, backlog). A proteção da `main` passou a valer também para admin, com merge commit.
 - **Aprendizado:** nesta estação os testes de desempenho e animação oscilam quando a CPU está ocupada por outros programas. O CI (runner limpo) é o juiz. Compare sempre com a `main` nas mesmas condições antes de concluir que houve regressão.
 
