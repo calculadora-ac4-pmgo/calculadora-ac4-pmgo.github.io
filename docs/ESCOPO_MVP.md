@@ -7,10 +7,12 @@
 >    armazena nome, posto/graduação, RG, matrícula ou qualquer dado pessoal do policial.
 >    Os campos de identificação previstos originalmente no Módulo 1 e no Módulo 4 estão
 >    **fora do escopo** de forma definitiva.
-> 2. **Importação de agenda (.ics): entregue na v30 (06/07/2026).** Além da
->    **exportação** para agenda (arquivo `.ics` e link direto para o Google Agenda),
->    a aplicação importa eventos de arquivo `.ics` com filtros por data e
->    palavras-chave e tela de revisão — Módulo 3 completo, validado por testes no CI.
+> 2. **Importação de agenda (.ics): entregue na v30 e REMOVIDA na v48 (07/07/2026)**
+>    por decisão do gestor ("o objetivo é fazer cálculo no sistema"). Permanece só a
+>    **exportação** para agenda (arquivo `.ics` e links diretos para Google Agenda e
+>    Outlook). Não reintroduzir sem nova decisão.
+> 3. **Regra de valor (v71, 23/09/2026):** só horas inteiras por faixa são pagas —
+>    ver `portaria-ssp-621-2026.md`.
 
 ## Objetivo
 
@@ -22,7 +24,7 @@ A ferramenta deve permitir que o policial:
 - calcule horas diurnas e noturnas;
 - estime o valor a receber conforme tabela vigente;
 - exporte as escalas para agenda (`.ics` / Google Agenda), planilha (`.csv`) e relatório em PDF;
-- importe eventos de arquivo `.ics` da agenda, com revisão antes de consolidar (v30);
+- ~~importe eventos de arquivo `.ics` da agenda~~ (entregue na v30, removido na v48 por decisão do gestor);
 - ~~informe seus dados básicos~~ (removido — LGPD).
 
 ## Identidade visual
@@ -73,9 +75,11 @@ Requisitos:
 
 A aplicação **exporta** escalas para agenda: arquivo `.ics` (RFC 5545, validado por testes automatizados no CI) e link direto para o Google Agenda com os dados pré-preenchidos.
 
-### Entregue — importação (v30)
+### Removido — importação (entregue na v30, removida na v48)
 
-A aplicação **importa** agenda por arquivo `.ics`, exportado pelo próprio policial no Google Agenda, atendendo aos parâmetros do MVP seguro.
+> **Fora do escopo desde a v48:** o gestor decidiu que o cálculo é feito no próprio sistema; a importação foi removida por completo (dialog, parser e testes). O texto abaixo é histórico.
+
+A aplicação **importava** agenda por arquivo `.ics`, exportado pelo próprio policial no Google Agenda, atendendo aos parâmetros do MVP seguro.
 
 Parâmetros mínimos:
 
@@ -127,5 +131,5 @@ Na versão inicial, a geração pode ser feita por `window.print()`, permitindo 
 - [x] O sistema gera relatório pronto para salvar em PDF.
 - [x] O sistema exporta escalas para agenda (`.ics` / Google Agenda), com validação automatizada.
 - [x] O README explica como usar a aplicação.
-- [x] O sistema importa eventos de arquivo `.ics` com tela de revisão (v30).
-- [x] O sistema filtra eventos por data e palavras-chave na importação (v30).
+- [x] ~~O sistema importa eventos de arquivo `.ics` com tela de revisão (v30).~~ Removido na v48.
+- [x] ~~O sistema filtra eventos por data e palavras-chave na importação (v30).~~ Removido na v48.

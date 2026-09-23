@@ -4,7 +4,45 @@
 
 ---
 
-## 🏁 PROJETO FINALIZADO — 08/07/2026 (v54)
+## 📍 Estado atual — 23/09/2026 (v71)
+
+> **Fonte única do estado do projeto.** Ao encerrar uma sessão, atualize esta tabela e acrescente a
+> sessão logo abaixo (mais recente primeiro). Os blocos mais antigos são histórico.
+
+| Item | Estado |
+| --- | --- |
+| Versão em produção | **v71** — https://calculadora-ac4-pmgo.github.io/ · próxima **v72** |
+| Projeto | **Em evolução ativa** (o "modo de manutenção" de 08/07 foi encerrado na v55) |
+| Regra de cálculo | Portaria SSP 621/2026 + **só horas inteiras por faixa** (decisão do gestor, v71). Suíte "Conformidade com o Anexo I" com 52 casos, 10 deles da planilha do gestor |
+| Última auditoria | [`relatorio_auditoria_producao_v67.md`](relatorio_auditoria_producao_v67.md) (BIH TECHS): 8,6/10. Itens P2-1…P2-4, P3-1, P3-3, P3-4 e P3-6 resolvidos entre a v68 e a v71 |
+| CI | Lint + 8 suítes unitárias + smoke (44 passos) + 2 mobile + Web Vitals (7 cenários) em todo PR; deploy só na `main` |
+| Proteção da `main` | PR obrigatório, check `test` obrigatório **também para admin**, merge commit (`--merge`) — ver sessão de 23/09 |
+| Monitor de uptime | UptimeRobot criado pelo gestor em 08/07/2026 (HTTP, 5 min). **Pendente do gestor:** confirmar que o alerta por e-mail está ativo |
+| Backlog | [`ESTUDO_ESTRATEGICO_v67.md`](ESTUDO_ESTRATEGICO_v67.md), seção *Backlog executável* |
+| Contexto para agentes | [`CLAUDE.md`](../CLAUDE.md) na raiz |
+
+---
+
+## Sessão de 23/09/2026 — auditoria BIH TECHS e v68–v71
+
+- **Estação:** notebook sincronizado com o GitHub (o `.git` estava numa subpasta e foi devolvido à raiz).
+- **Auditoria de produção v67** (BIH TECHS): nota 8,6/10, sem P0/P1. Relatório em [`relatorio_auditoria_producao_v67.md`](relatorio_auditoria_producao_v67.md).
+- **v68 (PR #64):** ganchos de teste só em `localhost`, rótulo de origem único (`labelOrigem`), deploy sem `artifacts/`.
+- **v69 (PR #65):** `force-update.js` removido: recarregava a página a cada versão sem perguntar. **Não reintroduzir.**
+- **v70 (PR #66):** `navigator.storage.persist()` após lançamento, data do último backup no Compartilhar, novidades só reabrem quando `data-conteudo` muda.
+- **v71 (PR #67):**
+  - **Decisão do gestor:** valor só por **horas inteiras de cada faixa**; fração de hora não é paga.
+  - Regras revistas contra a Portaria e contra a planilha do gestor: 10 escalas reais, iguais coluna a coluna.
+  - Lista mostra as 30 escalas mais recentes com "Mostrar anteriores".
+  - `Intl` cacheado; com 300 escalas, adicionar caiu de 2–4 s para 0,2–0,5 s.
+- **Governança (P2-4/P3-3):** documentos reconciliados (este bloco, escopo, checklist, backlog). A proteção da `main` passou a valer também para admin, com merge commit.
+- **Aprendizado:** nesta estação os testes de desempenho e animação oscilam quando a CPU está ocupada por outros programas. O CI (runner limpo) é o juiz. Compare sempre com a `main` nas mesmas condições antes de concluir que houve regressão.
+
+---
+
+## Marco histórico — encerramento do MVP em 08/07/2026 (v54)
+
+> *Histórico: o texto abaixo descreve o estado de 08/07/2026. O projeto voltou a evoluir a partir da v55; o estado vigente está no topo.*
 
 O escopo do MVP e todo o backlog de auditoria foram **concluídos**. O projeto entra em **modo de manutenção** (só correções sob demanda ou nova norma).
 
@@ -199,22 +237,22 @@ Em testes com celulares de colegas, o fluxo de "Agenda" no celular ficou **confu
    cd calculadora-ac4-pmgo.github.io
    gh auth login
    ```
-3. **Validar o ambiente** (deve ficar tudo verde):
+3. **Validar o ambiente** (deve ficar tudo verde; Node 22–24):
    ```sh
-   node tests/run-tests.mjs     # regras de cálculo + geração .ics
-   node tests/smoke.mjs         # fluxo E2E em Chrome headless (18 passos, inclui PDF); rode antes `npx --yes eslint@9 .`
-   node tests/mobile-check.mjs  # UX mobile (3 viewports + roteiro iOS)
+   npm ci --ignore-scripts
+   npm run verify   # lint + unit (inclui conformidade com o Anexo I) + smoke + mobile + mobile-v55 + Web Vitals
    ```
-   (Se o Chrome não for achado automaticamente, defina `CHROME_PATH`.)
+   (Se o Chrome não for achado automaticamente, defina `CHROME_PATH`. Com a CPU ocupada, os testes de desempenho podem oscilar; o CI é o juiz.)
 4. **Fluxo de trabalho do projeto**:
-   - Branch → commit → push → `gh pr create` → **aguardar o check `test` do PR** → `gh pr merge --merge --delete-branch` → CI da main testa de novo e faz o deploy.
+   - Branch → commit → push → `gh pr create` → **aguardar o check `test` do PR** → `gh pr merge --merge --delete-branch` → CI da main testa de novo e faz o deploy. A proteção da `main` exige o check `test` **inclusive para admin**; não há como mesclar com CI vermelho (rode de novo o job ou corrija).
    - Qualquer mudança em `index.html`/`css`/`js` exige bump de versão: `node tools/bump-version.mjs <n>` (versão atual e próxima: ver `CLAUDE.md` na raiz).
    - Smoke pode falhar esporadicamente no runner ("Chrome não expôs o DevTools em 60s") — é flake de infraestrutura; `gh run rerun <id> --failed` resolve. **Exceção**: se o job de *deploy* do Pages falhar, disparar run novo com `gh workflow run deploy.yml` (não usar rerun no deploy).
 5. **Ler antes de mexer em regra/valor**: [`portaria-ssp-621-2026.md`](portaria-ssp-621-2026.md) (base normativa) e [`relatorio_auditoria_producao_v46.md`](relatorio_auditoria_producao_v46.md) (riscos e backlog).
 
 ### Regras invioláveis do projeto (resumo)
 
-- `js/modules/calculo.mjs` e os valores da Portaria só mudam com **nova norma + decisão formal do gestor**.
+- `js/modules/calculo.mjs` e os valores da Portaria só mudam com **nova norma + decisão formal do gestor**. A suíte "Conformidade com o Anexo I" (`tests/run-tests.mjs`) precisa continuar verde.
+- Valor = **só horas inteiras por faixa** (AD/AN/VD/VN) — decisão do gestor em 23/09/2026 (v71).
 - Nunca coletar/armazenar dados pessoais (LGPD) — sem login, sem identificação.
 - Ações destrutivas na UI sempre via `dialogConfirmar()` (nunca `confirm()` — quebra em iOS PWA).
 - Dados novos no navegador sempre em `localStorage` com prefixo `pmgo*`.
