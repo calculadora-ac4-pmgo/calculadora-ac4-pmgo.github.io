@@ -36,6 +36,8 @@ majoritário em **celular**. Produção: <https://calculadora-ac4-pmgo.github.io
 - **Datas de teste** precisam estar na vigência da Portaria (≥ 01/07/2026); antes disso `validarTabelaAtual` recusa a escala.
 - **Toasts são enfileirados** (um por vez, ~3,8 s cada). Em testes, não espere um toast específico logo após outras ações; teste a regra pela função e o fluxo real com recarga da página.
 - **Ganchos de teste** só em localhost: `window.__ac4SimularAtualizacao`, `window.__ac4LembrarBackup`, `window.__ac4Testes*`.
+- **Proteção da `main` vale para admin** (desde 23/09/2026): PR obrigatório, check `test` obrigatório, branch atualizada com a `main` (`strict`), conversas resolvidas, merge commit permitido (sem exigência de histórico linear). Não há bypass: CI vermelho se resolve com correção ou `gh run rerun <id> --failed`. Para uma emergência real, o gestor desliga temporariamente em *Settings → Branches* e religa em seguida.
+- **Testes de desempenho oscilam em máquina carregada.** Antes de concluir que houve regressão, compare com a `main` nas mesmas condições (ex.: `git worktree add` da `main` e rodar os dois alternadamente). O CI em runner limpo é o juiz.
 - **Smoke no runner:** se falhar com "Chrome não expôs o DevTools", é infraestrutura: `gh run rerun <id> --failed`. Se o job de *deploy* do Pages falhar, usar `gh workflow run deploy.yml`.
 - **`window.print()`** bloqueia a thread até o diálogo fechar: chame via `aposProximoPaint` (senão o tempo no diálogo entra no INP).
 - **Documentos podem estar desatualizados.** Confirme no código antes de afirmar que um recurso existe (ex.: a importação `.ics` foi removida na v48, mas `ESCOPO_MVP.md` ainda a cita, item R7 do backlog).
