@@ -151,6 +151,8 @@ const validarAnexoI = () => {
   }
   // exemplo conferido pelo gestor em 23/09/2026: qui 24/09 18h → sex 05h = R$ 351,00
   casos.push(['qui 24/09/2026 18h→sex 05h (exemplo do gestor)', '2026-09-24T18:00', '2026-09-25T05:00', 35100]);
+  // planilha do gestor: seg 21/09 04h→06h = 1h noturno de domingo (R$ 45) + 1h diurno de segunda (R$ 30)
+  casos.push(['seg 21/09/2026 04h→06h (planilha do gestor)', '2026-09-21T04:00', '2026-09-21T06:00', 7500]);
   const falhas = casos
     .map(([nome, inicio, fim, esperado]) => [nome, esperado, calcularEscala({ inicio, fim }, TABELA_OFICIAL).valorCentavos])
     .filter(([, esperado, obtido]) => esperado !== obtido)
