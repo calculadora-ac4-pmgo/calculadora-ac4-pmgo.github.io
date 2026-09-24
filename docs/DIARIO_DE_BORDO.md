@@ -37,7 +37,7 @@ O GitHub está idêntico à estação que encerrou: nada ficou só no computador
 - **Não tem?** Siga *"Como retomar em outra estação de trabalho"* mais abaixo (`git clone`).
 - **Conferir:** `git log --oneline -1` deve mostrar o último merge da `main` no GitHub, e `sed -n 4p sw.js` deve mostrar `ac4-v72` (ou versão mais nova).
 - **Atenção (aprendido nesta sessão):** a pasta `.git` precisa estar na **raiz** do projeto. Em 23/09 ela estava numa subpasta `calculadora-ac4-pmgo.github.io/`, e a pasta principal parecia não ser um repositório.
-- **Próximos passos possíveis** (nada urgente): P3-5 (SRI/privacidade, depende de validação jurídica), backlog R2/R6/R4 do estudo estratégico, confirmar o alerta por e-mail do UptimeRobot. As 5 branches antigas no GitHub (`codex/v58…`, `codex/v59…`, `codex/v60…`, `feat/fase-55…`, `feat/v65…`) já estão mescladas e podem ser apagadas quando quiser.
+- **Próximos passos possíveis** (nada urgente): P3-5 (SRI/privacidade, depende de validação jurídica), backlog R2/R6/R4 do estudo estratégico, confirmar o alerta por e-mail do UptimeRobot. O GitHub tem só a branch `main`: as 5 branches antigas (`codex/v58…`, `codex/v59…`, `codex/v60…`, `feat/fase-55…`, `feat/v65…`), já mescladas, foram apagadas em 24/09/2026.
 
 ---
 
