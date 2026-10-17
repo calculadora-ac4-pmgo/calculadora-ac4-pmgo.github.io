@@ -11,6 +11,7 @@ majoritário em **celular**. Produção: <https://calculadora-ac4-pmgo.github.io
 2. **Regras invioláveis e onboarding:** fim de [`docs/DIARIO_DE_BORDO.md`](docs/DIARIO_DE_BORDO.md).
 3. **Base normativa (antes de mexer em cálculo):** [`docs/portaria-ssp-621-2026.md`](docs/portaria-ssp-621-2026.md).
 4. **Design system:** [`docs/DESIGN.md`](docs/DESIGN.md). **Histórico por versão:** [`CHANGELOG.md`](CHANGELOG.md).
+   A skill `frontend-design` (`.claude/skills/`) está instalada, mas o `docs/DESIGN.md` **sempre prevalece** sobre ela: não mude a identidade visual da v65/v67; use-a para textos de interface, acessibilidade e telas novas.
 
 ## Arquitetura em uma tela
 
