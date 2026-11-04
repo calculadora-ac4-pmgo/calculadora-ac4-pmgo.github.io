@@ -28,6 +28,8 @@ import {
 import { montarRelatorioImpressao, montarCSV, montarTextoResumo, baixarArquivo } from './modules/relatorio.mjs';
 import { criarPWA } from './modules/pwa.mjs';
 import { criarAvisos } from './modules/ui/avisos.mjs';
+import { criarObservabilidade } from './modules/ui/observabilidade.mjs';
+import { criarAparencia } from './modules/ui/aparencia.mjs';
 
 (() => {
   'use strict';
@@ -104,6 +106,10 @@ import { criarAvisos } from './modules/ui/avisos.mjs';
   /* Módulos de interface — criados nesta ordem; quem vem depois recebe o que
      os anteriores devolvem. Um módulo de UI nunca importa outro. */
   const { toast, dialogConfirmar, haptic } = criarAvisos({ $ });
+  const { registrarErro, initObservabilidade } = criarObservabilidade({ STORAGE, APP_VERSION, estado, toast });
+  const { aplicarTema, initTema, initNovidades } = criarAparencia({
+    $, on, STORAGE, lerLocal, APP_VERSION, estado, aposProximoPaint,
+  });
 
   function setDetalhesAvancados(aberto) {
     document.querySelectorAll('.advanced-field').forEach((el) => el.classList.toggle('hidden', !aberto));
@@ -403,115 +409,6 @@ import { criarAvisos } from './modules/ui/avisos.mjs';
     } catch {
       toast('Não foi possível salvar a meta neste navegador.', { erro: true });
       return false;
-    }
-  }
-
-  /* --------------------------------------------------------------- tema */
-  function aplicarTema(tema) {
-    document.documentElement.dataset.theme = tema;
-    try { localStorage.setItem(STORAGE.theme, tema); } catch { /* preferência não persistirá */ }
-    $('icon-sun')?.classList.toggle('hidden', tema !== 'dark');
-    $('icon-moon')?.classList.toggle('hidden', tema === 'dark');
-  }
-
-  function initTema() {
-    const salvo = lerLocal(STORAGE.theme);
-    aplicarTema(salvo || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
-      if (!lerLocal(STORAGE.theme)) aplicarTema(e.matches ? 'dark' : 'light');
-    });
-  }
-
-  /* ------------------------------------------------ observabilidade
-     Captura erros de JS não tratados e rejeições de Promise para (a) avisar o
-     usuário de forma discreta e (b) guardar um log anônimo local — máx. 20
-     entradas com horário, mensagem e origem do erro, SEM dados pessoais (não
-     registra conteúdo de campos). Ajuda a diagnosticar sem coletar nada em
-     servidor (LGPD por minimização). Inspecione com window.__ac4Erros() e
-     limpe com window.__ac4LimparErros(). */
-  const MAX_ERROS_LOG = 20;
-  let ultimoToastErroTs = 0;
-
-  function registrarErro(info) {
-    try {
-      const log = JSON.parse(localStorage.getItem(STORAGE.erros) || '[]');
-      /* v carimba a versão do app: um erro vindo de cache velho aparece com
-         versão antiga, distinguindo bug real de cliente desatualizado. */
-      log.push({ t: new Date().toISOString(), v: APP_VERSION, ...info });
-      while (log.length > MAX_ERROS_LOG) log.shift();
-      localStorage.setItem(STORAGE.erros, JSON.stringify(log));
-    } catch { /* localStorage cheio/indisponível — erro não pode gerar erro */ }
-    const agora = Date.now();
-    if (agora - ultimoToastErroTs > 10000) {
-      ultimoToastErroTs = agora;
-      try { toast('Ocorreu um erro inesperado. Se persistir, recarregue a página.', { erro: true }); } catch {}
-    }
-  }
-
-  function initObservabilidade() {
-    window.addEventListener('error', (ev) => {
-      registrarErro({
-        msg: String(ev.message || 'erro').slice(0, 200),
-        src: String(ev.filename || '').replace(location.origin, '').slice(0, 120),
-        ln: ev.lineno || 0, col: ev.colno || 0,
-      });
-    });
-    window.addEventListener('unhandledrejection', (ev) => {
-      const motivo = ev.reason;
-      registrarErro({
-        msg: String((motivo && (motivo.message || motivo)) || 'promise rejeitada').slice(0, 200),
-        src: 'unhandledrejection', ln: 0, col: 0,
-      });
-    });
-    window.__ac4Erros = () => { try { return JSON.parse(localStorage.getItem(STORAGE.erros) || '[]'); } catch { return []; } };
-    window.__ac4LimparErros = () => { localStorage.removeItem(STORAGE.erros); return 'log de erros limpo'; };
-    /* Métrica de versão anônima: expõe a versão em execução e registra a última
-       vista. Em suporte, `__ac4Version` no console revela cache preso; a
-       comparação com a versão anterior detecta se o SW acabou de atualizar. */
-    window.__ac4Version = APP_VERSION;
-    try {
-      versaoAnterior = localStorage.getItem(STORAGE.versao);
-      if (versaoAnterior !== APP_VERSION) {
-        localStorage.setItem(STORAGE.versao, APP_VERSION);
-        if (versaoAnterior) console.info(`Calculadora AC4 atualizada: v${versaoAnterior} → v${APP_VERSION}`);
-      }
-      /* Marca da limpeza forçada (force-update.js, v65–v68), aposentada na v69. */
-      localStorage.removeItem('pmgoForceUpdate');
-    } catch {}
-  }
-
-  /* ---------------------------------------- novidades da versão */
-  function marcarNovidadesVistas() {
-    try { localStorage.setItem(STORAGE.novidades, APP_VERSION); } catch { /* preferência não persistirá */ }
-  }
-
-  function abrirNovidades() {
-    const dlg = $('dialogNovidades');
-    if (dlg && !dlg.open) dlg.showModal();
-  }
-
-  function initNovidades() {
-    const dlg = $('dialogNovidades');
-    if (!dlg) return;
-
-    const fechar = () => {
-      marcarNovidadesVistas();
-      if (dlg.open) dlg.close();
-    };
-    on('footerNovidades', 'click', (ev) => { ev.preventDefault(); abrirNovidades(); });
-    on('novidadesFechar', 'click', fechar);
-    on('novidadesContinuar', 'click', fechar);
-    dlg.addEventListener('close', marcarNovidadesVistas);
-
-    /* Instalações novas começam direto no fluxo principal. O aviso automático
-       é reservado a quem realmente acabou de receber uma atualização. */
-    /* Só reabre se o CONTEÚDO do aviso mudou desde o último visto
-       (data-conteudo no #dialogNovidades); versões só técnicas não repetem
-       o mesmo aviso. */
-    const conteudo = Number(dlg.dataset.conteudo) || Number(APP_VERSION);
-    const vistoEm = Number(lerLocal(STORAGE.novidades)) || 0;
-    if (versaoAnterior && versaoAnterior !== APP_VERSION && vistoEm < conteudo) {
-      aposProximoPaint(abrirNovidades);
     }
   }
 

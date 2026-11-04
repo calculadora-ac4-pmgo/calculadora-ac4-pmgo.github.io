@@ -331,6 +331,8 @@ rodar('Fonte única da Portaria', validarFonteUnica);
    funções públicas saíram do app.js. */
 const MODULOS_UI = {
   avisos: ['toast', 'dialogConfirmar', 'haptic'],
+  observabilidade: ['registrarErro', 'initObservabilidade'],
+  aparencia: ['aplicarTema', 'initTema', 'initNovidades', 'abrirNovidades', 'marcarNovidadesVistas'],
 };
 const resultadoModulosUI = await (async () => {
   const app = readFileSync(join(raiz, 'js', 'app.js'), 'utf8');
@@ -346,6 +348,14 @@ const resultadoModulosUI = await (async () => {
     chaves.forEach((k) => { if (typeof api[k] !== 'function') falhas.push(`${nome}.${k} ausente`); });
     chaves.forEach((k) => { if (new RegExp(`function ${k}\\(|const ${k} = (async )?\\(`).test(app)) falhas.push(`${k} ainda definida no app.js`); });
   }
+  try {
+    const { criarObservabilidade } = await import(pathToFileURL(join(raiz, 'js', 'modules', 'ui', 'observabilidade.mjs')).href);
+    delete globalThis.__ac4Erros;
+    globalThis.addEventListener ??= () => {};
+    criarObservabilidade({ STORAGE: { erros: 'eqErros', versao: 'eqVersao' }, APP_VERSION: '0', estado: {} }).initObservabilidade();
+    if (typeof globalThis.__ac4Erros !== 'function') falhas.push('initObservabilidade não expõe __ac4Erros');
+  } catch (e) { falhas.push(`observabilidade: ${e.message}`); }
+  if (!/function init\(\) \{\s*initObservabilidade\(\);/.test(app)) falhas.push('initObservabilidade deixou de ser a primeira chamada do init()');
   if ((app.match(/criarAvisos\(/g) || []).length !== 1) falhas.push('criarAvisos deve ser instanciado uma única vez (fila de toasts única)');
   return falhas.length ? falhas : 'MÓDULOS DE INTERFACE OK';
 })();

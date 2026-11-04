@@ -19,6 +19,8 @@ const SHELL = [
   './js/modules/relatorio.mjs',
   './js/modules/pwa.mjs',
   './js/modules/ui/avisos.mjs',
+  './js/modules/ui/observabilidade.mjs',
+  './js/modules/ui/aparencia.mjs',
   './manifest.webmanifest',
   './assets/icon.svg',
   './assets/icon-maskable.svg',
