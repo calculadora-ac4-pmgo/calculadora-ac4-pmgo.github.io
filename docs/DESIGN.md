@@ -1,7 +1,9 @@
 # Design system — Calculadora AC4
 
 Referência única de decisões visuais a partir da v65. Todo valor abaixo existe
-como variável CSS em `css/styles.css` (`:root` e `[data-theme="dark"]`).
+como variável CSS em `css/src/00-base.css` (`:root` e `[data-theme="dark"]`).
+Desde a v76 os estilos ficam em `css/src/` (um arquivo por área), montados em
+`css/styles.css` por `node tools/montar-css.mjs`.
 Componentes novos devem usar os tokens, nunca valores soltos.
 
 ## Princípios
