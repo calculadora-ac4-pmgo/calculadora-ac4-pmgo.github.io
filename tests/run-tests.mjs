@@ -3,7 +3,7 @@
    O app.js só toca o DOM dentro de funções; no carregamento bastam stubs. */
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join } from 'node:path';
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { calcularEscala, regraNormativaParaData, TABELA_OFICIAL, tabelaParaData } from '../js/modules/calculo.mjs';
 import { NORMAS, normaParaData, normaAtual, citacaoNorma } from '../js/modules/portarias.mjs';
 import { aplicarNorma, desserializarEscalas, detectarConflitos, normalizarEscala, STORAGE_SCHEMA_VERSION } from '../js/modules/persistencia.mjs';
@@ -337,6 +337,12 @@ const MODULOS_UI = {
     'restaurarBackup', 'pedirArmazenamentoPersistente', 'textoStatusBackup', 'lembrarBackup', 'ehIOS', 'rodandoInstalado'],
   exportacoes: ['exportarCSV', 'imprimirRelatorio', 'agendarEscalas', 'baixarArquivoAgenda', 'agendarEscalaItem'],
   compartilhar: ['abrirShareSheet', 'copiarResumo', 'compartilharWhatsApp', 'compartilharNativo', 'gerarTextoResumo', 'initFeedback'],
+  formulario: ['isMobileViewport', 'setDetalhesAvancados', 'abrirPainelLancamentoMobile', 'fecharPainelLancamentoMobile',
+    'validarFormulario', 'submeterFormulario', 'editarEscala', 'cancelarEdicao', 'atualizarResumoLancamento',
+    'sincronizarTodosControlesDataHora', 'aplicarPartesDataHora', 'atualizarChipsDuracao', 'duplicarEscala',
+    'removerEscala', 'limparTudo', 'atualizarStatusEscala', 'ligarEventos'],
+  modelos: ['renderModelos', 'preencherConfiguracaoRapida', 'repetirUltimaEscala', 'abrirSalvarModelo', 'salvarModeloAtual', 'excluirModeloSelecionado', 'ligarEventos'],
+  planejamento: ['atualizarSelectMes', 'renderPlanejamento', 'renderHistorico', 'mesPainelAtual', 'abrirMetaMensal', 'salvarMetaMensal', 'removerMetaMensal', 'ligarEventos'],
 };
 const resultadoModulosUI = await (async () => {
   const app = readFileSync(join(raiz, 'js', 'app.js'), 'utf8');
@@ -354,12 +360,34 @@ const resultadoModulosUI = await (async () => {
   }
   try {
     const { criarObservabilidade } = await import(pathToFileURL(join(raiz, 'js', 'modules', 'ui', 'observabilidade.mjs')).href);
+    /* Guarda e restaura os globais que o teste altera (não vazam para outras suítes). */
+    const originais = { addEventListener: globalThis.addEventListener, erros: globalThis.__ac4Erros,
+      limpar: globalThis.__ac4LimparErros, versao: globalThis.__ac4Version };
     delete globalThis.__ac4Erros;
     globalThis.addEventListener ??= () => {};
-    criarObservabilidade({ STORAGE: { erros: 'eqErros', versao: 'eqVersao' }, APP_VERSION: '0', estado: {} }).initObservabilidade();
-    if (typeof globalThis.__ac4Erros !== 'function') falhas.push('initObservabilidade não expõe __ac4Erros');
+    try {
+      criarObservabilidade({ STORAGE: { erros: 'eqErros', versao: 'eqVersao' }, APP_VERSION: '0', estado: {} }).initObservabilidade();
+      if (typeof globalThis.__ac4Erros !== 'function') falhas.push('initObservabilidade não expõe __ac4Erros');
+    } finally {
+      globalThis.addEventListener = originais.addEventListener;
+      globalThis.__ac4Erros = originais.erros;
+      globalThis.__ac4LimparErros = originais.limpar;
+      globalThis.__ac4Version = originais.versao;
+    }
   } catch (e) { falhas.push(`observabilidade: ${e.message}`); }
   if (!/function init\(\) \{\s*initObservabilidade\(\);/.test(app)) falhas.push('initObservabilidade deixou de ser a primeira chamada do init()');
+  /* v75: estado só via `estado.` — nenhuma atribuição nua nos módulos de UI. */
+  readdirSync(join(raiz, 'js', 'modules', 'ui')).filter((f) => f.endsWith('.mjs')).forEach((f) => {
+    /* Por linha: instrução que começa com `nome = …` (ou `nome += …`). O ESLint
+       no-undef também acusa, mas esta mensagem diz o que fazer. */
+    const m = readFileSync(join(raiz, 'js', 'modules', 'ui', f), 'utf8').split('\n')
+      .map((l) => l.match(/^\s*(escalas|editandoId|ultimaExcluida|filtroMes|filtroOrigem|filtroBusca|filtroStatus|limiteLista|modelos|metasMensais|versaoAnterior|submetendo|sheetAberto)\s*[-+]?=(?!=)/))
+      .find(Boolean);
+    if (m) falhas.push(`${f}: atribuição nua a ${m[1]} (use estado.${m[1]})`);
+  });
+  const todosUI = readdirSync(join(raiz, 'js', 'modules', 'ui')).filter((f) => f.endsWith('.mjs'))
+    .map((f) => readFileSync(join(raiz, 'js', 'modules', 'ui', f), 'utf8')).join('\n') + app;
+  if ((todosUI.match(/document\.addEventListener\('keydown'/g) || []).length !== 1) falhas.push('listener keydown do documento deve existir exatamente uma vez');
   if ((app.match(/criarAvisos\(/g) || []).length !== 1) falhas.push('criarAvisos deve ser instanciado uma única vez (fila de toasts única)');
   return falhas.length ? falhas : 'MÓDULOS DE INTERFACE OK';
 })();
@@ -393,6 +421,7 @@ const resultadoRestaurar = await (async () => {
     const dados2 = criarDados({ estado: { escalas: [1, 2, 3], sheetAberto: false }, STORAGE, APP_VERSION: '0', lerLocal: () => null,
       toast: (m) => avisos.push(m), dialogConfirmar: async () => true, registrarErro: () => {}, render: () => {},
       renderModelos: () => {}, cancelarEdicao: () => {}, clonarEscalas: () => [] });
+    const querySelectorOriginal = globalThis.document.querySelector;
     globalThis.document.querySelector = () => null;
     dados2.lembrarBackup(Date.parse('2026-08-10T12:00:00Z'));
     if (avisos[0] !== 'Suas escalas ficam só neste aparelho. Salve uma cópia de segurança.') falhas.push(`lembrete sem backup alterado: ${avisos[0]}`);
@@ -402,9 +431,41 @@ const resultadoRestaurar = await (async () => {
       renderModelos: () => {}, cancelarEdicao: () => {}, clonarEscalas: () => [] });
     dados3.lembrarBackup(Date.parse('2026-08-10T12:00:00Z'));
     if (avisos[1] !== 'Último backup há 70 dias. Salve uma cópia das suas escalas.') falhas.push(`lembrete com backup antigo alterado: ${avisos[1]}`);
+    globalThis.document.querySelector = querySelectorOriginal;
     return falhas.length ? falhas : 'RESTAURAR GRAVA NO ESTADO OK';
   } catch (e) { return [`dados: ${e.message}`]; }
 })();
 rodar('Restaurar backup grava no estado (ui/dados)', () => resultadoRestaurar);
+
+/* Textos preservados em refatoração (v75): o multiconjunto de literais de
+   js/app.js + js/modules/ui/*.mjs precisa bater com tests/fixtures/literais.json.
+   `estado.` é ignorado só dentro de ${…} (troca legítima de referência); fora
+   disso, qualquer mudança de texto acusa — inclusive o incidente da v74
+   ("As estado.escalas…"). Mudança intencional: LITERAIS_ATUALIZAR=1. */
+const validarLiterais = () => {
+  const arquivos = [join(raiz, 'js', 'app.js'),
+    ...readdirSync(join(raiz, 'js', 'modules', 'ui')).filter((f) => f.endsWith('.mjs')).map((f) => join(raiz, 'js', 'modules', 'ui', f))];
+  const contagem = {};
+  arquivos.forEach((arq) => {
+    /* APP_VERSION muda a cada bump (tools/bump-version.mjs): fora da comparação. */
+    const fonte = readFileSync(arq, 'utf8').replace(/const APP_VERSION = '\d+';/, '').replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`])\/\/.*$/gm, '$1');
+    const literais = fonte.match(/'(?:[^'\\\n]|\\.)*'|"(?:[^"\\\n]|\\.)*"|`(?:[^`\\]|\\.)*`/g) || [];
+    literais
+      .filter((l) => !/^['"]\.{1,2}\//.test(l))
+      .map((l) => l.replace(/\$\{[^{}]*\}/g, (m) => m.replace(/\bestado\./g, '')))
+      .forEach((l) => { contagem[l] = (contagem[l] || 0) + 1; });
+  });
+  const arqRef = join(raiz, 'tests', 'fixtures', 'literais.json');
+  if (process.env.LITERAIS_ATUALIZAR === '1') {
+    writeFileSync(arqRef, `${JSON.stringify(Object.fromEntries(Object.entries(contagem).sort()), null, 1)}\n`);
+    return `REFERÊNCIA DE TEXTOS REGRAVADA (${Object.keys(contagem).length} literais)`;
+  }
+  const ref = JSON.parse(readFileSync(arqRef, 'utf8'));
+  const entraram = Object.keys(contagem).filter((k) => (contagem[k] || 0) > (ref[k] || 0));
+  const sairam = Object.keys(ref).filter((k) => (ref[k] || 0) > (contagem[k] || 0));
+  if (!entraram.length && !sairam.length) return `TEXTOS PRESERVADOS (${Object.keys(ref).length} literais)`;
+  return [...entraram.slice(0, 10).map((k) => `novo/alterado: ${k.slice(0, 160)}`), ...sairam.slice(0, 10).map((k) => `sumiu: ${k.slice(0, 160)}`)];
+};
+rodar('Textos preservados em refatoração', validarLiterais);
 
 process.exit(falhou ? 1 : 0);

@@ -147,7 +147,7 @@ export function criarDados(ctx) {
   }
 
   /* Lembrete de backup: os dados vivem só neste aparelho. Avisa quem tem
-     estado.escalas e nunca salvou cópia (ou salvou há mais de 30 dias), no máximo
+     escalas e nunca salvou cópia (ou salvou há mais de 30 dias), no máximo
      uma vez por semana e nunca por cima de um dialog ou do sheet aberto. */
   const DIA_MS = 24 * 60 * 60 * 1000;
   function lembrarBackup(agora = Date.now()) {
