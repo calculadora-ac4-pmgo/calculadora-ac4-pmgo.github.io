@@ -6,7 +6,7 @@
 import {
   fmtMoeda, fmtHoras, fmtData, fmtDiaSemana, fmtHora,
   parseDateTimeLocal, toInputLocal,
-  calcularTerminoPorDuracao, toInputMonth, fmtMesRef, escapeHTML,
+  toInputMonth, fmtMesRef, escapeHTML,
 } from './modules/formato.mjs';
 import {
   TABELA_OFICIAL, labelOrigem,
@@ -17,9 +17,7 @@ import {
   gerarLinkGoogleAgenda as gerarLinkGoogleAgendaBase,
   gerarLinkOutlookAgenda as gerarLinkOutlookAgendaBase,
 } from './modules/agenda.mjs';
-import {
-  gerarIdEscala, desserializarEscalas,
-} from './modules/persistencia.mjs';
+import { desserializarEscalas } from './modules/persistencia.mjs';
 import {
   statusEscala,
   botoesAcaoHTML, seletorStatusHTML, cardEscalaHTML,
@@ -33,6 +31,7 @@ import { criarExportacoes } from './modules/ui/exportacoes.mjs';
 import { criarCompartilhar } from './modules/ui/compartilhar.mjs';
 import { criarPlanejamento } from './modules/ui/planejamento.mjs';
 import { criarFormulario } from './modules/ui/formulario.mjs';
+import { criarModelos } from './modules/ui/modelos.mjs';
 
 (() => {
   'use strict';
@@ -145,8 +144,15 @@ import { criarFormulario } from './modules/ui/formulario.mjs';
   });
   const {
     isMobileViewport, setDetalhesAvancados, abrirPainelLancamentoMobile, cancelarEdicao,
-    atualizarResumoLancamento, sincronizarTodosControlesDataHora, atualizarResumoFim, atualizarChipsDuracao, lerQtdPm,
+    atualizarResumoLancamento, sincronizarTodosControlesDataHora,
   } = formulario;
+  const modelosFavoritos = criarModelos({
+    $, on, estado, toast, dialogConfirmar, salvarModelos, aposProximoPaint, isMobileViewport,
+    abrirPainelLancamentoMobile, setDetalhesAvancados, sincronizarTodosControlesDataHora, atualizarResumoLancamento,
+    atualizarResumoFim: formulario.atualizarResumoFim, atualizarChipsDuracao: formulario.atualizarChipsDuracao,
+    lerQtdPm: formulario.lerQtdPm,
+  });
+  const { renderModelos } = modelosFavoritos;
 
   /* -------------------------------------------- tabela de valores */
   /* Pontes para os módulos — injetam a tabela vigente lida do DOM,
@@ -188,105 +194,6 @@ import { criarFormulario } from './modules/ui/formulario.mjs';
         .normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR').includes(termo));
     }
     return lista;
-  }
-
-  function renderModelos() {
-    const select = $('templateSelect');
-    const wrap = $('templateSelectWrap');
-    if (!select || !wrap) return;
-    const selecionado = select.value;
-    select.innerHTML = '<option value="">Meus modelos</option>';
-    modelos.forEach((modelo) => {
-      const opt = document.createElement('option');
-      opt.value = modelo.id;
-      opt.textContent = modelo.nome;
-      select.appendChild(opt);
-    });
-    wrap.classList.toggle('hidden', modelos.length === 0);
-    if (modelos.some((m) => m.id === selecionado)) select.value = selecionado;
-    $('btnDeleteTemplate')?.classList.toggle('hidden', !select.value);
-  }
-
-  function preencherConfiguracaoRapida({ duracao, qtdPm = 1, descricao = '', origem = 'AC4' }, inicio = null) {
-    if (inicio) $('escalaInicio').value = inicio;
-    const horas = Number(duracao);
-    if ($('escalaDuracao')) $('escalaDuracao').value = [12, 14, 24].includes(horas) ? String(horas) : '';
-    const fim = calcularTerminoPorDuracao($('escalaInicio')?.value || '', horas);
-    if (fim) $('escalaFim').value = fim;
-    if ($('escalaQtdPm')) $('escalaQtdPm').value = String(Math.min(999, Math.max(1, Number(qtdPm) || 1)));
-    if ($('escalaDescricao')) $('escalaDescricao').value = descricao === 'Escala AC4' ? '' : (descricao || '');
-    if ($('escalaOrigem')) $('escalaOrigem').value = origem || 'AC4';
-    sincronizarTodosControlesDataHora();
-    atualizarResumoFim();
-    atualizarChipsDuracao();
-    atualizarResumoLancamento();
-    const temDetalhes = ![12, 14, 24].includes(horas) || !!descricao || (origem && origem !== 'AC4');
-    setDetalhesAvancados(temDetalhes);
-  }
-
-  function repetirUltimaEscala() {
-    const ultima = [...escalas].sort((a, b) => (parseDateTimeLocal(b.inicio) || new Date(b.inicio)) - (parseDateTimeLocal(a.inicio) || new Date(a.inicio)))[0];
-    if (!ultima) return;
-    const inicio = parseDateTimeLocal(ultima.inicio) || new Date(ultima.inicio);
-    const fim = parseDateTimeLocal(ultima.fim) || new Date(ultima.fim);
-    const duracao = (fim - inicio) / 3600000;
-    const proximoInicio = toInputLocal(new Date(inicio.getTime() + 24 * 3600000));
-    preencherConfiguracaoRapida({ ...ultima, duracao }, proximoInicio);
-    toast('Última escala preenchida para o dia seguinte. Confira e adicione.');
-  }
-
-  function abrirSalvarModelo() {
-    const inicio = parseDateTimeLocal($('escalaInicio')?.value || '');
-    const fim = parseDateTimeLocal($('escalaFim')?.value || '');
-    const duracao = inicio && fim ? (fim - inicio) / 3600000 : 0;
-    if (!(duracao > 0 && duracao <= 24)) {
-      toast('Informe o início e a duração antes de salvar um modelo.', { erro: true });
-      return;
-    }
-    $('templateName').value = '';
-    $('dialogTemplate')?.showModal();
-    aposProximoPaint(() => $('templateName')?.focus());
-  }
-
-  function salvarModeloAtual() {
-    const nome = ($('templateName')?.value || '').trim();
-    const inicio = parseDateTimeLocal($('escalaInicio')?.value || '');
-    const fim = parseDateTimeLocal($('escalaFim')?.value || '');
-    const duracao = inicio && fim ? (fim - inicio) / 3600000 : 0;
-    if (nome.length < 2 || !(duracao > 0 && duracao <= 24)) {
-      toast('Informe um nome e uma duração válida para o modelo.', { erro: true });
-      return false;
-    }
-    const existente = modelos.find((m) => m.nome.toLocaleLowerCase('pt-BR') === nome.toLocaleLowerCase('pt-BR'));
-    const modelo = {
-      id: existente?.id || gerarIdEscala(),
-      nome: nome.slice(0, 40),
-      duracao,
-      qtdPm: lerQtdPm(),
-      descricao: ($('escalaDescricao')?.value || '').trim(),
-      origem: $('escalaOrigem')?.value || 'AC4',
-    };
-    modelos = existente ? modelos.map((m) => m.id === existente.id ? modelo : m) : [...modelos, modelo].slice(-20);
-    if (!salvarModelos()) return false;
-    renderModelos();
-    $('templateSelect').value = modelo.id;
-    $('btnDeleteTemplate')?.classList.remove('hidden');
-    $('dialogTemplate')?.close();
-    toast(existente ? 'Modelo atualizado.' : 'Modelo salvo neste aparelho.');
-    return true;
-  }
-
-  async function excluirModeloSelecionado() {
-    const id = $('templateSelect')?.value || '';
-    const modelo = modelos.find((m) => m.id === id);
-    if (!modelo) return;
-    const ok = await dialogConfirmar(`Excluir o modelo “${modelo.nome}”?`);
-    if (!ok) return;
-    modelos = modelos.filter((m) => m.id !== id);
-    if (salvarModelos()) {
-      renderModelos();
-      toast('Modelo excluído.');
-    }
   }
 
   /* ----------------------------------------------------------- render */
@@ -422,22 +329,7 @@ import { criarFormulario } from './modules/ui/formulario.mjs';
     sincronizarTodosControlesDataHora();
 
     formulario.ligarEventos();
-    on('btnRepeatLast', 'click', () => {
-      repetirUltimaEscala();
-      if (isMobileViewport()) abrirPainelLancamentoMobile();
-    });
-    on('btnSaveTemplate', 'click', abrirSalvarModelo);
-    on('templateCancel', 'click', () => $('dialogTemplate')?.close());
-    on('templateForm', 'submit', (ev) => { ev.preventDefault(); salvarModeloAtual(); });
-    on('templateSelect', 'change', () => {
-      const id = $('templateSelect')?.value || '';
-      const modelo = modelos.find((m) => m.id === id);
-      $('btnDeleteTemplate')?.classList.toggle('hidden', !modelo);
-      if (!modelo) return;
-      preencherConfiguracaoRapida(modelo);
-      toast(`Modelo “${modelo.nome}” aplicado.`);
-    });
-    on('btnDeleteTemplate', 'click', excluirModeloSelecionado);
+    modelosFavoritos.ligarEventos();
     planejamento.ligarEventos();
 
     on('btnTheme', 'click', () =>

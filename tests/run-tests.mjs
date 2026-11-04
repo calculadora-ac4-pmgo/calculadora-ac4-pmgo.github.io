@@ -341,6 +341,7 @@ const MODULOS_UI = {
     'validarFormulario', 'submeterFormulario', 'editarEscala', 'cancelarEdicao', 'atualizarResumoLancamento',
     'sincronizarTodosControlesDataHora', 'aplicarPartesDataHora', 'atualizarChipsDuracao', 'duplicarEscala',
     'removerEscala', 'limparTudo', 'atualizarStatusEscala', 'ligarEventos'],
+  modelos: ['renderModelos', 'preencherConfiguracaoRapida', 'repetirUltimaEscala', 'abrirSalvarModelo', 'salvarModeloAtual', 'excluirModeloSelecionado', 'ligarEventos'],
   planejamento: ['atualizarSelectMes', 'renderPlanejamento', 'renderHistorico', 'mesPainelAtual', 'abrirMetaMensal', 'salvarMetaMensal', 'removerMetaMensal', 'ligarEventos'],
 };
 const resultadoModulosUI = await (async () => {
