@@ -197,7 +197,7 @@ button { color: inherit; }
   transition: top 0.15s;
 }
 .skip-link:focus { top: 12px; }
-.field-optional { font-weight: 400; font-size: 0.72rem; color: var(--text-faint); }
+.field-optional { font-weight: 400; font-size: var(--fs-rotulo); color: var(--text-faint); }
 
 :focus-visible {
   outline: none;
