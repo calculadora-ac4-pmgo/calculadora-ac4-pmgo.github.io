@@ -18,7 +18,7 @@ Desde a auditoria v46 (ontem), **todos os 10 itens do backlog foram executados**
 
 | # | Item (v46) | Status | Evidência |
 |---|---|---|---|
-| 1 | P1 — Validar Portaria e alinhar README × código | ✅ v47 | Portaria transcrita em [`portaria-ssp-621-2026.md`](portaria-ssp-621-2026.md); código estava correto; README reescrito |
+| 1 | P1 — Validar Portaria e alinhar README × código | ✅ v47 | Portaria transcrita em [`portaria-ssp-621-2026.md`](../portaria-ssp-621-2026.md); código estava correto; README reescrito |
 | 2 | P1 — Teto de duração | ✅ v47 | `DURACAO_MAX_HORAS = 192` em `formato.mjs`; 2 testes; typo de ano rejeitado |
 | 3 | P2 — CSV injection | ✅ v48 | `csvTextoSeguro` (`formato.mjs:144`) aplicado em `exportarCSV` |
 | 4 | P2 — CI em PR | ✅ v48 | `deploy.yml`: gatilho `pull_request`; deploy com `if: github.event_name != 'pull_request'` — verificado nos PRs #33–#36 |

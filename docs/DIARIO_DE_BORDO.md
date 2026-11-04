@@ -14,7 +14,7 @@
 | Versão em produção | **v72** — https://calculadora-ac4-pmgo.github.io/ · próxima **v73** |
 | Projeto | **Em evolução ativa** (o "modo de manutenção" de 08/07 foi encerrado na v55) |
 | Regra de cálculo | Portaria SSP 621/2026 + **só horas inteiras por faixa** (decisão do gestor, v71). Suíte "Conformidade com o Anexo I" com 52 casos, 10 deles da planilha do gestor |
-| Última auditoria | [`relatorio_auditoria_producao_v67.md`](relatorio_auditoria_producao_v67.md) (BIH TECHS): 8,6/10. Itens P2-1…P2-4, P3-1…P3-4 e P3-6 resolvidos entre a v68 e a v72; aberto só o P3-5 (SRI/privacidade) |
+| Última auditoria | [`relatorio_auditoria_producao_v67.md`](historico/relatorio_auditoria_producao_v67.md) (BIH TECHS): 8,6/10. Itens P2-1…P2-4, P3-1…P3-4 e P3-6 resolvidos entre a v68 e a v72; aberto só o P3-5 (SRI/privacidade) |
 | CI | Lint + 10 suítes unitárias + smoke (44 passos) + 2 mobile + Web Vitals (7 cenários) em todo PR; deploy só na `main` |
 | Repositório | Sem PR aberto, sem trabalho pendente em branch. Dependências: ESLint 10.11.0 (única, só de desenvolvimento) |
 | Proteção da `main` | PR obrigatório, check `test` obrigatório **também para admin**, merge commit (`--merge`) — ver sessão de 23/09 |
@@ -44,7 +44,7 @@ O GitHub está idêntico à estação que encerrou: nada ficou só no computador
 ## Sessão de 23/09/2026 — auditoria BIH TECHS e v68–v72
 
 - **Estação:** notebook sincronizado com o GitHub (o `.git` estava numa subpasta e foi devolvido à raiz).
-- **Auditoria de produção v67** (BIH TECHS): nota 8,6/10, sem P0/P1. Relatório em [`relatorio_auditoria_producao_v67.md`](relatorio_auditoria_producao_v67.md).
+- **Auditoria de produção v67** (BIH TECHS): nota 8,6/10, sem P0/P1. Relatório em [`relatorio_auditoria_producao_v67.md`](historico/relatorio_auditoria_producao_v67.md).
 - **v68 (PR #64):** ganchos de teste só em `localhost`, rótulo de origem único (`labelOrigem`), deploy sem `artifacts/`.
 - **v69 (PR #65):** `force-update.js` removido: recarregava a página a cada versão sem perguntar. **Não reintroduzir.**
 - **v70 (PR #66):** `navigator.storage.persist()` após lançamento, data do último backup no Compartilhar, novidades só reabrem quando `data-conteudo` muda.
@@ -105,13 +105,13 @@ Executados os itens P3/P4 do backlog residual da reauditoria. **Próxima versão
 - **Suíte `__ac4TestesExtras`**: 8 casos de `csvTextoSeguro` + invariantes de cálculo sobre 50 escalas aleatórias (soma de categorias, diurno+noturno, vermelha≤mins, valor inteiro, total=Σ). No CI e no console.
 - **Smoke 16 → 18 passos**: "Exportar CSV não lança erro" + "localStorage corrompido carrega vazio sem quebrar".
 - **Métrica anônima de versão**: `APP_VERSION` carimba o log de erros (`v`), `window.__ac4Version` para suporte, `pmgoVersion` detecta cliente preso em cache. Local, sem dado pessoal. `bump-version.mjs` sincroniza `APP_VERSION`.
-- Cobertura fecha as 3 lacunas da matriz v46. Relatório atualizado em [`relatorio_auditoria_producao_v53.md`](relatorio_auditoria_producao_v53.md) (adendo v54).
+- Cobertura fecha as 3 lacunas da matriz v46. Relatório atualizado em [`relatorio_auditoria_producao_v53.md`](historico/relatorio_auditoria_producao_v53.md) (adendo v54).
 
 ---
 
 ## Sessão de 08/07/2026 — reauditoria de produção (v53): nota 9,2/10
 
-- Reauditoria completa executada sobre a v53, com evidência re-coletada (testes locais, inspeção dos 8 `innerHTML`, verificação HTTP da produção ao vivo, workflow, SW). Relatório: [`relatorio_auditoria_producao_v53.md`](relatorio_auditoria_producao_v53.md).
+- Reauditoria completa executada sobre a v53, com evidência re-coletada (testes locais, inspeção dos 8 `innerHTML`, verificação HTTP da produção ao vivo, workflow, SW). Relatório: [`relatorio_auditoria_producao_v53.md`](historico/relatorio_auditoria_producao_v53.md).
 - **Resultado: 9,2/10 (era 8,0)** — sem P0/P1/P2 abertos; backlog da v46 concluído 10/10; produção confirmada com `docs/`/`tests/` em 404 e HSTS.
 - Backlog residual (P3/P4): 3 testes da matriz v46 (`csvTextoSeguro` unitário, propriedade do total, smoke de storage corrompido, ~1h); ESLint no CI; modularização futura de `app.js`; métrica anônima de versão.
 - Risco nº 1 registrado: **bus factor = 1** — compensado por diário, testes como portão de deploy e regras documentadas.
@@ -133,7 +133,7 @@ Os dois residuais menores de acessibilidade documentados na v52 foram **aprovado
 - **`--text-faint` (tema claro):** `#93a4b7` (2,55:1) → **`#64707c`** — passa o AA em todas as superfícies claras (≥4,53:1). As dicas ("(opcional)", `.table-note`, `.fim-hint`) ficaram mais legíveis, mantendo a hierarquia.
 - **Duplo `<h1>`:** o título do relatório de impressão virou `<p class="pr-title">` (estilo idêntico no PDF via `.pr-header .pr-title`). Agora há **um único `<h1>`** na página.
 
-Auditoria re-executada: **0 falhas de contraste** (15 pares) e `h1=1`. Relatório atualizado em [`relatorio_acessibilidade_v52.md`](relatorio_acessibilidade_v52.md). Smoke (16 passos), run-tests e verificação visual desktop verdes. **A partir da v53 não há residuais de a11y abertos.**
+Auditoria re-executada: **0 falhas de contraste** (15 pares) e `h1=1`. Relatório atualizado em [`relatorio_acessibilidade_v52.md`](historico/relatorio_acessibilidade_v52.md). Smoke (16 passos), run-tests e verificação visual desktop verdes. **A partir da v53 não há residuais de a11y abertos.**
 
 ---
 
@@ -145,7 +145,7 @@ Fechadas as pendências acionáveis do diário. Resta só a **P2 (uptime)**, que
 
 - **P3 — Otimização do ícone (RESOLVIDO):** `assets/icon-512.png` **121KB → 14KB (−88%)** e `icon-192.png` **20KB → 5,6KB (−73%)**, sem perda visual. Como a estação não tem pngquant/ImageMagick/sharp, criei `tools/optimize-icons.mjs`: rasteriza `assets/icon.svg` no Chrome headless, extrai os pixels e **codifica um PNG indexado (paleta ≤256 cores) usando só o `zlib` nativo do Node** — mesma técnica do pngquant, zero dependências. Reexecutável quando o SVG mudar.
 - **P3 — Testes de fronteira:** já concluído na v50 (5 casos em `__ac4Testes`).
-- **P3 — Acessibilidade documentada (RESOLVIDO):** auditoria de contraste WCAG 2.1 AA (15 pares) + checagem de DOM via Chrome, registrada em [`relatorio_acessibilidade_v52.md`](relatorio_acessibilidade_v52.md). Corrigidos os 2 contrastes falhos mais críticos com ajustes **imperceptíveis**: `--text-muted` claro `#66778c→#627286` (4,23→4,54:1) e `--text-faint` escuro `#71829a→#73859d` (4,42→4,59:1); `#dialogConfirm` ganhou `aria-label`. DOM: `lang`, `alt`, nomes de botões, rótulos de formulário, skip-link e live regions — tudo aprovado.
+- **P3 — Acessibilidade documentada (RESOLVIDO):** auditoria de contraste WCAG 2.1 AA (15 pares) + checagem de DOM via Chrome, registrada em [`relatorio_acessibilidade_v52.md`](historico/relatorio_acessibilidade_v52.md). Corrigidos os 2 contrastes falhos mais críticos com ajustes **imperceptíveis**: `--text-muted` claro `#66778c→#627286` (4,23→4,54:1) e `--text-faint` escuro `#71829a→#73859d` (4,42→4,59:1); `#dialogConfirm` ganhou `aria-label`. DOM: `lang`, `alt`, nomes de botões, rótulos de formulário, skip-link e live regions — tudo aprovado.
 - **P4 — `window.onerror` anônimo (RESOLVIDO):** handler global (`error` + `unhandledrejection`) em `app.js` (`initObservabilidade`) que avisa o usuário com toast discreto (throttle de 10s) e guarda um **log anônimo local** (`pmgoErros`, máx. 20 entradas: horário/mensagem/origem, **sem dados pessoais** — o origin é removido). Inspeção via `window.__ac4Erros()`, limpeza via `window.__ac4LimparErros()`. Coberto por 1 passo novo de smoke.
 - **P4 — JSDoc (RESOLVIDO):** adicionado às funções de contrato não óbvio dos módulos puros (`calculo.mjs` com `@typedef` de Escala/Tabela/ResultadoEscala; `formato.mjs` e `agenda.mjs` nos exports principais).
 - **Smoke: 16 passos** (novos: 3 de agenda na v51, 1 de observabilidade). `run-tests` e `mobile-check` verdes. Verificação visual desktop (tema claro) sem regressão.
@@ -218,7 +218,7 @@ Em testes com celulares de colegas, o fluxo de "Agenda" no celular ficou **confu
 ### O que foi feito hoje (sequência completa)
 
 1. **PR #27 (v46)** — Agendamento inteligente por plataforma: no celular, "Agenda" abre o app de agenda **padrão do aparelho** (via `.ics`); no desktop, dialog `#dialogAgenda` com Google Agenda / Outlook pessoal / Outlook corporativo (sem gerar arquivo); com N escalas, lista um link por escala. Botão "Adicionar à agenda" removido da topbar.
-2. **PR #28** — Auditoria completa de produção documentada em [`relatorio_auditoria_producao_v46.md`](relatorio_auditoria_producao_v46.md) (15 seções, matriz de riscos, backlog de 10 itens).
+2. **PR #28** — Auditoria completa de produção documentada em [`relatorio_auditoria_producao_v46.md`](historico/relatorio_auditoria_producao_v46.md) (15 seções, matriz de riscos, backlog de 10 itens).
 3. **PR #29 (v47) — Fase 1 da auditoria:**
    - **P1-A resolvido**: o gestor forneceu o PDF da **Portaria SSP nº 621/2026** — o Anexo I confirma que a tarifa é **por dia da semana em que a hora é trabalhada** (minuto a minuto), exatamente como `calculo.mjs` sempre fez. O README estava errado e foi reescrito. Portaria transcrita em [`portaria-ssp-621-2026.md`](portaria-ssp-621-2026.md). **`calculo.mjs` não foi alterado.**
    - **P1-B resolvido**: teto de duração de **192h** (limite de horas que o policial pode fazer — valor definido pelo gestor) em `validarIntervaloEscala` (`formato.mjs`, `DURACAO_MAX_HORAS`). Elimina o travamento por typo de ano.
@@ -268,7 +268,7 @@ Em testes com celulares de colegas, o fluxo de "Agenda" no celular ficou **confu
    - Branch → commit → push → `gh pr create` → **aguardar o check `test` do PR** → `gh pr merge --merge --delete-branch` → CI da main testa de novo e faz o deploy. A proteção da `main` exige o check `test` **inclusive para admin**; não há como mesclar com CI vermelho (rode de novo o job ou corrija).
    - Qualquer mudança em `index.html`/`css`/`js` exige bump de versão: `node tools/bump-version.mjs <n>` (versão atual e próxima: ver `CLAUDE.md` na raiz).
    - Smoke pode falhar esporadicamente no runner ("Chrome não expôs o DevTools em 60s") — é flake de infraestrutura; `gh run rerun <id> --failed` resolve. **Exceção**: se o job de *deploy* do Pages falhar, disparar run novo com `gh workflow run deploy.yml` (não usar rerun no deploy).
-5. **Ler antes de mexer em regra/valor**: [`portaria-ssp-621-2026.md`](portaria-ssp-621-2026.md) (base normativa) e [`relatorio_auditoria_producao_v46.md`](relatorio_auditoria_producao_v46.md) (riscos e backlog).
+5. **Ler antes de mexer em regra/valor**: [`portaria-ssp-621-2026.md`](portaria-ssp-621-2026.md) (base normativa) e [`relatorio_auditoria_producao_v46.md`](historico/relatorio_auditoria_producao_v46.md) (riscos e backlog).
 
 ### Regras invioláveis do projeto (resumo)
 
@@ -298,4 +298,4 @@ Em testes com celulares de colegas, o fluxo de "Agenda" no celular ficou **confu
 
 ---
 
-*Histórico anterior a esta sessão: ver `relatorio_auditoria_producao_v46.md`, `ESCOPO_MVP.md`, `CHECKLIST.md` e o log de PRs (#13–#31) no GitHub.*
+*Histórico anterior a esta sessão: ver `historico/relatorio_auditoria_producao_v46.md`, `historico/ESCOPO_MVP.md`, `historico/CHECKLIST.md` e o log de PRs (#13–#31) no GitHub.*

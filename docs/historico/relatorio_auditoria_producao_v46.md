@@ -209,7 +209,7 @@ Recomendações (sem identificar usuários):
 
 ## Adendo — Resolução da Fase 1 (07/07/2026, mesma data)
 
-O gestor forneceu o texto integral da **Portaria SSP nº 621, de 15/06/2026** (DO/GO nº 24.801, de 17/06/2026), agora transcrito em [`docs/portaria-ssp-621-2026.md`](portaria-ssp-621-2026.md).
+O gestor forneceu o texto integral da **Portaria SSP nº 621, de 15/06/2026** (DO/GO nº 24.801, de 17/06/2026), agora transcrito em [`docs/portaria-ssp-621-2026.md`](../portaria-ssp-621-2026.md).
 
 **P1-A — RESOLVIDO (código estava correto; README estava errado).** O Anexo I da Portaria define os valores **por dia da semana em que a hora é trabalhada** (colunas Domingo…Sábado), sem qualquer menção a "dia de início da escala". O parágrafo único do Art. 1º define o noturno como "22h de um dia até 5h do dia seguinte", confirmando a regra do dia operacional aplicada em `calculo.mjs` (madrugada pertence ao noturno iniciado no dia anterior). O caso de teste `qui 20h→sex 6h = R$ 331,00` está aderente à norma (2h×30 + 7h×33 + 1h×40). Ação executada: README §Regras de cálculo reescrito para descrever a regra real, com exemplos e link para a transcrição da Portaria. `calculo.mjs` não foi alterado.
 

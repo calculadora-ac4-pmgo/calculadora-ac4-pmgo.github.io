@@ -1,167 +1,111 @@
 # Calculadora AC4
 
-## Descrição
+[![Testes e deploy](https://github.com/calculadora-ac4-pmgo/calculadora-ac4-pmgo.github.io/actions/workflows/deploy.yml/badge.svg)](https://github.com/calculadora-ac4-pmgo/calculadora-ac4-pmgo.github.io/actions/workflows/deploy.yml)
 
-A Calculadora AC4 é uma aplicação web estática, instalável como PWA, voltada ao apoio no cálculo de escalas AC4.
+Ferramenta gratuita para policiais militares e servidores da administração de Goiás simularem
+as horas e o valor do **Serviço Extraordinário AC4** (Portaria SSP nº 621/2026), direto no celular,
+sem cadastro e sem enviar nenhum dado para servidor.
 
-A ferramenta permite a simulação e a conferência administrativa preliminar de horas e valores a partir dos horários informados pelo usuário. O resultado apresentado é estimativo, não possui efeito financeiro oficial e não substitui conferência administrativa, folha oficial, ordem de serviço, ato administrativo ou validação pela seção competente.
+**Acesse:** <https://calculadora-ac4-pmgo.github.io/>. No celular, use "Adicionar à tela inicial" para
+instalar como aplicativo; depois do primeiro acesso, funciona também sem internet.
 
-A interface utiliza identidade visual neutra e institucional, sem exibição de brasão específico na tela principal ou nos relatórios gerados.
+> Resultado **estimativo**, para simulação e conferência preliminar. Não tem efeito financeiro
+> oficial e não substitui a conferência administrativa nem a validação pela seção competente.
 
-## Acesso
+## O que faz
 
-A aplicação está publicada no GitHub Pages da organização:
+- **Lança escalas** com início e duração (12h, 14h, 24h ou término livre) e mostra na hora as horas
+  diurnas, noturnas e o valor estimado.
+- **Lança em outros dias:** ao salvar a primeira escala do mês, abre um calendário. Basta tocar nos
+  dias, e cada dia pode ter seu próprio horário. Dias que já têm escala no horário são avisados, e
+  tudo pode ser desfeito.
+- **Planeja o mês:** totais, comparação com o mês anterior, histórico de 6 meses e metas de valor e
+  horas.
+- **Acompanha a situação** de cada escala (planejada, realizada, conferida, recebida).
+- **Exporta e compartilha:** relatório em PDF, planilha CSV, eventos de agenda (aplicativo do celular,
+  Google Agenda ou Outlook) e resumo para WhatsApp.
+- **Backup** das escalas num arquivo, com lembrete periódico, e restauração no mesmo ou em outro aparelho.
+- **Modelos** para repetir configurações comuns e **repetir a última escala**.
+- Tema claro e escuro, letras de no mínimo 12/14 px e alvos de toque de 44 px.
 
-[https://calculadora-ac4-pmgo.github.io/](https://calculadora-ac4-pmgo.github.io/)
+## Regra de cálculo
 
-Em dispositivos móveis, é possível usar a opção do navegador para adicionar a aplicação à tela inicial, quando disponível.
-
-## Funcionalidades
-
-- Lançamento de escalas com data e horário de início e término.
-- Cálculo de horas diurnas, horas noturnas e valor estimado por escala.
-- Consolidação de total de horas, quantidade de escalas e valor estimado.
-- Filtro por mês quando houver escalas em períodos diferentes.
-- Edição, duplicação e exclusão de escalas lançadas.
-- Atalho para repetir a última escala no dia seguinte, com conferência antes de salvar.
-- Modelos favoritos locais para reaplicar duração, quantidade, unidade e origem.
-- Busca por unidade e filtros por mês e origem.
-- Painel mensal com valor estimado, total de horas, comparação com o mês anterior e distribuição dia/noite.
-- Metas mensais opcionais de valor e horas, armazenadas somente no navegador.
-- Acompanhamento das escalas pelos estados Planejada, Realizada, Conferida e Recebida.
-- Filtro por situação e aviso de escalas passadas ainda não atualizadas.
-- Apresentação das novidades após cada atualização, com acesso permanente pelo rodapé.
-- Aviso de atualização da PWA com aplicação em um toque, sem interromper lançamentos em andamento.
-- Adição de escalas à agenda: no celular abre o aplicativo de agenda padrão do aparelho (via `.ics`); no computador abre a agenda web escolhida (Google Agenda ou Outlook).
-- Exportação de planilha em `.csv`.
-- Geração de relatório em PDF pela função de impressão do navegador.
-- Tema claro/escuro com persistência da preferência do usuário.
-- Funcionamento como PWA, com suporte offline após o primeiro carregamento em navegadores compatíveis.
-- Refinamento Premium Mobile-First: formulário progressivo, destaque do resultado automático, cards compactos, botão contextual, acessibilidade e melhorias para uso com uma mão.
-- Promoção de instalação PWA após sinais de interesse, mantendo a primeira jornada livre de interrupções.
-
-## Regras de cálculo
-
-Base normativa: Portaria SSP nº 621, de 15 de junho de 2026 (DO/GO nº 24.801, de 17/06/2026), com efeitos a partir de 01/07/2026. Transcrição dos dispositivos relevantes em [docs/portaria-ssp-621-2026.md](docs/portaria-ssp-621-2026.md).
-
-Valores por hora, conforme o Anexo I da Portaria:
+Base normativa: Portaria SSP nº 621, de 15/06/2026 (DO/GO nº 24.801, de 17/06/2026), com efeitos
+a partir de 01/07/2026. Transcrição e leitura das regras em
+[docs/portaria-ssp-621-2026.md](docs/portaria-ssp-621-2026.md).
 
 | Faixa | Dias | Valor |
 | --- | --- | ---: |
-| Azul diurna | segunda a quinta | R$ 30,00/h |
-| Azul noturna | segunda a quinta | R$ 33,00/h |
-| Vermelha diurna | sexta, sábado e domingo | R$ 40,00/h |
-| Vermelha noturna | sexta, sábado e domingo | R$ 45,00/h |
+| Azul diurna (AD) | segunda a quinta | R$ 30,00/h |
+| Azul noturna (AN) | segunda a quinta | R$ 33,00/h |
+| Vermelha diurna (VD) | sexta, sábado e domingo | R$ 40,00/h |
+| Vermelha noturna (VN) | sexta, sábado e domingo | R$ 45,00/h |
 
-O período noturno vai das 22h de um dia até as 5h do dia seguinte; o restante é diurno.
+- O período noturno vai das 22h às 5h. A madrugada pertence ao dia em que o noturno começou.
+- A faixa é definida pelo dia em que **cada hora é trabalhada**, não pelo dia de início da escala;
+  uma escala que vira o dia pode misturar faixas azuis e vermelhas.
+- **Só horas inteiras de cada faixa são pagas**; a fração de hora não entra (decisão do gestor, v71).
+  Ex.: sexta 08:00 → 18:20 paga 10h VD = R$ 400,00.
+- Cada escala guarda a tabela da Portaria vigente na sua data. Quando sair uma Portaria nova, as
+  escalas antigas continuam com os valores da época.
 
-A tarifa é definida **pelo dia da semana em que cada hora é efetivamente trabalhada**, apurada minuto a minuto — não pelo dia de início da escala. Uma escala que atravessa a virada do dia pode combinar faixas azuis e vermelhas. O período noturno pertence ao dia em que começou: a madrugada até as 4h59 é remunerada pela tarifa noturna do dia anterior.
+## Privacidade (LGPD)
 
-Exemplos:
+- Não pede nem guarda nome, RG, CPF, matrícula ou qualquer dado pessoal.
+- As escalas, metas e modelos ficam **somente no aparelho** (`localStorage`) e nunca são enviados.
+- O site usa Cloudflare Web Analytics (sem cookies, sem rastreamento individual) só para contagem
+  agregada de acessos. Nenhum valor ou escala digitada chega a ele.
+- Limpar os dados do navegador apaga as escalas. Para não perder nada, use o backup.
 
-- Escala de quinta-feira 20h até sexta-feira 6h: 2h azuis diurnas (qui 20h–22h) + 7h azuis noturnas (noturno iniciado na quinta, 22h–5h) + 1h vermelha diurna (sex 5h–6h).
-- Escala de sexta-feira 18h até sábado 8h: integralmente vermelha (todas as horas caem em sexta/sábado).
+## Qualidade
 
-## Privacidade e armazenamento
+Toda mudança passa por pull request, testes automáticos e revisão antes de ir para o ar. A `main` é
+protegida, inclusive para administradores. Os testes cobrem:
 
-Os dados das escalas são armazenados somente no navegador do usuário.
+- a regra da Portaria, com casos gerados do Anexo I e escalas reais conferidas;
+- o fluxo completo num navegador de verdade (lançar, editar, exportar, PDF, backup, atualização);
+- a tela no celular de 320 a 393 px (toque, rolagem, tamanho de letra, agenda de lote);
+- uma fotografia da interface que só muda de propósito, além de estabilidade de layout e tempo de resposta.
 
-- As escalas lançadas, as configurações e a preferência de tema ficam em `localStorage` e **persistem** após fechar a aba ou o aplicativo.
-- A aplicação **não solicita nem armazena dados pessoais** (nome, RG, CPF, matrícula ou similares), em conformidade com a LGPD.
-- Nenhuma escala, valor ou configuração é enviada para servidor.
-- O site utiliza **Cloudflare Web Analytics**, sem cookies e sem rastreamento individual, para estatísticas agregadas de acesso. A ferramenta não recebe escalas, valores ou configurações digitadas na calculadora.
-- Os dados locais podem ser perdidos ao limpar os dados do navegador ou ao usar modo anônimo/privado.
+Detalhes em [docs/ARQUITETURA.md](docs/ARQUITETURA.md#como-a-qualidade-é-garantida).
 
-## Estrutura do projeto
+## Como está montado
+
+Página estática, sem build, sem framework e sem dependências em produção. Publicada no GitHub Pages.
 
 ```txt
-index.html            página única da aplicação
-404.html              página de erro para URLs inexistentes
-css/styles.css        estilos, temas, componentes e regras de impressão
-js/app.js             estado, interface, PWA e exportações
-js/modules/           regras puras: cálculo, datas, agenda e persistência defensiva
-js/theme.js           aplicação do tema antes do primeiro paint
-sw.js                 service worker para funcionamento offline
-manifest.webmanifest  manifesto PWA
-assets/               ícones (SVG e PNG) e fontes self-hosted (Inter)
-tests/                testes de regressão executados no CI
-tools/                utilitários de manutenção (bump de versão)
-docs/                 documentos auxiliares e relatórios do projeto
-.github/workflows/    CI: testes de regressão + deploy no GitHub Pages
+index.html            página única e janelas
+css/src/              estilos por área (montados em css/styles.css por tools/montar-css.mjs)
+js/app.js             estado, ligação entre áreas, render() e init()
+js/modules/           regras puras: cálculo, Portarias, lote, persistência, formatos, relatórios
+js/modules/ui/        um módulo por área da tela (formulário, agenda de lote, planejamento…)
+sw.js                 service worker (funcionamento offline, atualização com confirmação)
+tests/                testes automáticos (rodam no CI a cada pull request)
+tools/                versão, montagem do CSS, piso de fonte
+docs/                 documentação (comece pelo índice: docs/README.md)
 ```
 
-## Projeto estático
+Diagrama e "onde mexer para…": [docs/ARQUITETURA.md](docs/ARQUITETURA.md). Índice dos documentos:
+[docs/README.md](docs/README.md). Histórico de versões: [CHANGELOG.md](CHANGELOG.md).
 
-O projeto é composto por arquivos estáticos e não depende de backend, banco de dados, servidor próprio ou autenticação.
-
-A publicação pode ser feita diretamente por um serviço de hospedagem estática, como GitHub Pages. O processamento ocorre no navegador do usuário.
-
-## Como usar
-
-1. Acesse o endereço oficial da aplicação.
-2. Informe a data e o horário de início da escala.
-3. Informe a data e o horário de término da escala.
-4. Confira o detalhamento de horas diurnas, horas noturnas e valor estimado.
-5. Use as opções de edição, duplicação, exclusão ou exportação conforme necessário.
-6. Em caso de uso administrativo, realize a conferência pelos documentos e fluxos oficiais aplicáveis.
-
-## Exportações
-
-A aplicação oferece recursos de exportação para apoiar conferência e organização individual:
-
-- `.ics`: arquivo de calendário compatível com aplicações como Google Calendar, Outlook e similares.
-- `.csv`: planilha simples para abertura em Excel, Google Sheets ou ferramentas equivalentes.
-- PDF: relatório gerado pela função de impressão ou salvamento em PDF do navegador, com layout otimizado para A4.
-- JSON: backup versionado para restauração das escalas, modelos e metas no próprio navegador.
-
-As exportações refletem os dados informados e calculados no navegador, mantendo o caráter de simulação e conferência preliminar.
-
-## Testes de regressão
-
-Os testes de regressão e o lint são executados **automaticamente no CI** em cada push na `main` e em cada pull request — o deploy só ocorre se todos passarem. Para rodar localmente:
+## Rodar os testes
 
 ```sh
-npm ci                    # instala exatamente as versões do package-lock.json
-npm run lint              # lint
-node tests/run-tests.mjs  # regras de cálculo + CSV/invariantes + geração .ics
-node tests/smoke.mjs      # fluxo E2E em Chrome headless (18 passos, inclui PDF real)
-node tests/mobile-check.mjs
-node tests/mobile-v55-check.mjs
-node tests/web-vitals-check.mjs
+npm ci            # instala as versões exatas do package-lock.json (só ferramentas de teste)
+npm run verify    # lint + todas as suítes (unit, smoke, equivalência, mobile, vitals)
 ```
 
-As suítes puras também estão disponíveis no console do navegador:
-
-```js
-__ac4Testes()             // regras de cálculo AC4
-__ac4TestesExtras()       // CSV injection + invariantes do cálculo
-__ac4TestesAgendamento()  // geração de arquivo .ics
-```
-
-Essa rotina valida cenários de cálculo por categoria de hora e valor total, incluindo casos de escalas azuis, vermelhas, diurnas, noturnas e escalas que atravessam a virada de dia.
-
-A exportação `.ics` também pode ser validada no console pela função:
-
-```js
-__ac4ValidarICS()
-```
-
-Essa validação confere a estrutura básica iCalendar, campos obrigatórios dos eventos, uso de CRLF, limite de linhas dobradas e ordem entre `DTSTART` e `DTEND`.
+As suítes de navegador usam o Chrome instalado na máquina. Como contribuir: [CONTRIBUTING.md](CONTRIBUTING.md).
+Segurança: [SECURITY.md](SECURITY.md).
 
 ## Aviso institucional
 
-Esta ferramenta é um recurso de apoio para simulação e conferência administrativa preliminar. Ela não possui efeito financeiro oficial e não substitui escala validada, folha oficial, ordem de serviço, ato administrativo, conferência administrativa ou validação pela seção competente.
+Ferramenta de apoio para simulação e conferência administrativa preliminar. Não substitui escala
+validada, folha oficial, ordem de serviço, ato administrativo ou validação pela seção competente.
+Confira valores e base normativa com os atos vigentes antes de qualquer uso formal.
 
-A base normativa e os valores apresentados devem ser conferidos com os atos vigentes e com os procedimentos administrativos aplicáveis antes de qualquer uso formal.
+## Licença
 
-## Status do projeto
-
-Projeto em uso como aplicação web estática/PWA, publicado via GitHub Pages da organização `calculadora-ac4-pmgo`.
-
-Alterações em regras de cálculo, valores, base normativa ou fluxos administrativos devem ser tratadas com revisão específica e conferência de regressão.
-
-## Licença e uso
-
-Os termos de uso estão declarados formalmente no arquivo [LICENSE.md](LICENSE.md).
-
-Em resumo: todos os direitos reservados ao autor. O uso da aplicação publicada é livre para fins de simulação e conferência preliminar; redistribuição ou adaptação do código dependem de autorização do responsável pelo repositório.
+Todos os direitos reservados ao autor. O uso da aplicação publicada é livre para simulação e
+conferência preliminar; redistribuição ou adaptação do código dependem de autorização. Termos em
+[LICENSE.md](LICENSE.md).
