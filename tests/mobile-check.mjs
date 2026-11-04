@@ -382,6 +382,25 @@ const ROTEIRO_MOBILE = `(async () => {
   await espera(80);
   ok('Chip 24h fica ativo ao tocar', chip24.classList.contains('is-active') && document.getElementById('escalaDuracao').value === '24');
   ok('Chip 24h recalcula término', document.getElementById('escalaFim').value === '2026-07-11T18:00', document.getElementById('escalaFim').value);
+  // 11b. tocar de novo no chip ativo desmarca: volta a "Personalizada", mantém o
+  // término calculado e mostra o campo Término para o ajuste manual (v78).
+  if (!document.getElementById('fieldFim').classList.contains('hidden')) document.getElementById('toggleAdvanced').click();
+  ok('Campo Término oculto antes de desmarcar', document.getElementById('fieldFim').classList.contains('hidden'));
+  chip24.click();
+  await espera(80);
+  ok('Tocar de novo no chip ativo desmarca',
+     !chip24.classList.contains('is-active') && chip24.getAttribute('aria-pressed') === 'false' &&
+     document.getElementById('escalaDuracao').value === '',
+     [chip24.className, chip24.getAttribute('aria-pressed'), JSON.stringify(document.getElementById('escalaDuracao').value)].join(' / '));
+  ok('Desmarcar chip mantém o término e abre o campo Término',
+     document.getElementById('escalaFim').value === '2026-07-11T18:00' &&
+     !document.getElementById('fieldFim').classList.contains('hidden'),
+     document.getElementById('escalaFim').value + ' / fieldFim ' + document.getElementById('fieldFim').className);
+  chip24.click();
+  await espera(80);
+  ok('Chip pode ser marcado de novo após desmarcar',
+     chip24.classList.contains('is-active') && document.getElementById('escalaDuracao').value === '24' &&
+     document.getElementById('escalaFim').value === '2026-07-11T18:00');
   const submitResult = document.getElementById('btnSubmitResult');
   ok('CTA mantém área estável para o resultado',
      !!submitResult && !submitResult.classList.contains('hidden') && submitResult.getAttribute('aria-hidden') === 'false');

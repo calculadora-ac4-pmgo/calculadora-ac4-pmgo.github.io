@@ -485,9 +485,15 @@ export function criarFormulario(ctx) {
     on('escalaOrigem', 'input', atualizarResumoLancamento);
     on('escalaOrigem', 'change', atualizarResumoLancamento);
 
-    /* Chips de duração rápida (mobile) — escrevem no mesmo #escalaDuracao. */
+    /* Chips de duração rápida (mobile) — escrevem no mesmo #escalaDuracao.
+       Tocar de novo no chip ativo desmarca: volta a "Personalizada", mantém o
+       término já calculado e abre o campo Término para o ajuste manual (v78). */
     document.querySelectorAll('#durChips .dur-chip').forEach((chip) => {
       chip.addEventListener('click', () => {
+        if ($('escalaDuracao')?.value === chip.dataset.horas) {
+          marcarDuracaoPersonalizada();
+          return;
+        }
         if ($('escalaDuracao')) $('escalaDuracao').value = chip.dataset.horas;
         atualizarChipsDuracao();
         aposProximoPaint(() => {

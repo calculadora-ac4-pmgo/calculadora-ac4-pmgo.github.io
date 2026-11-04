@@ -1,5 +1,12 @@
 # Changelog
 
+## v78 — Desmarcar a duração rápida
+
+Correção pedida pelo usuário: no celular, depois de tocar num chip de duração rápida (12h, 14h, 24h) não havia como desmarcá-lo.
+- **Tocar de novo no chip ativo desmarca:** a duração volta a "Personalizada", o término já calculado é mantido e o campo Término aparece para o ajuste manual (o mesmo caminho de quando se edita o término à mão). Tocar de novo marca outra vez.
+- **`tests/mobile-check.mjs`:** três verificações novas (desmarca, mantém o término e abre o campo, marca de novo).
+- Sem aviso de novidades (`data-conteudo` continua "77"). Equivalência e textos preservados idênticos.
+
 ## v77 — Letras maiores (piso de fonte, R6)
 
 Mudança visível: nenhum texto de tela fica menor que **12 px** (rótulos) e os textos de leitura (dicas, avisos, mensagens, informações dos cards) têm no mínimo **14 px**. O layout é o mesmo.
