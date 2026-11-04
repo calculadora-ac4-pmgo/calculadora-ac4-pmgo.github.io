@@ -326,4 +326,29 @@ const validarFonteUnica = () => {
 };
 rodar('Fonte única da Portaria', validarFonteUnica);
 
+/* Módulos de interface (v74): cada js/modules/ui/<nome>.mjs exporta criar<Nome>(ctx);
+   a fábrica não toca o DOM ao ser criada (chamada aqui com um ctx "vazio") e as
+   funções públicas saíram do app.js. */
+const MODULOS_UI = {
+  avisos: ['toast', 'dialogConfirmar', 'haptic'],
+};
+const resultadoModulosUI = await (async () => {
+  const app = readFileSync(join(raiz, 'js', 'app.js'), 'utf8');
+  const falhas = [];
+  const ctxVazio = new Proxy({}, { get: () => () => {} });
+  for (const [nome, chaves] of Object.entries(MODULOS_UI)) {
+    let mod;
+    try { mod = await import(pathToFileURL(join(raiz, 'js', 'modules', 'ui', `${nome}.mjs`)).href); } catch { falhas.push(`${nome}: módulo ausente`); continue; }
+    const fabrica = mod[`criar${nome[0].toUpperCase()}${nome.slice(1)}`];
+    if (typeof fabrica !== 'function') { falhas.push(`${nome}: fábrica ausente`); continue; }
+    let api;
+    try { api = fabrica(ctxVazio); } catch (e) { falhas.push(`${nome}: fábrica falhou ao ser criada (${e.message})`); continue; }
+    chaves.forEach((k) => { if (typeof api[k] !== 'function') falhas.push(`${nome}.${k} ausente`); });
+    chaves.forEach((k) => { if (new RegExp(`function ${k}\\(|const ${k} = (async )?\\(`).test(app)) falhas.push(`${k} ainda definida no app.js`); });
+  }
+  if ((app.match(/criarAvisos\(/g) || []).length !== 1) falhas.push('criarAvisos deve ser instanciado uma única vez (fila de toasts única)');
+  return falhas.length ? falhas : 'MÓDULOS DE INTERFACE OK';
+})();
+rodar('Módulos de interface (js/modules/ui)', () => resultadoModulosUI);
+
 process.exit(falhou ? 1 : 0);

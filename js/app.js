@@ -27,6 +27,7 @@ import {
 } from './modules/templates.mjs';
 import { montarRelatorioImpressao, montarCSV, montarTextoResumo, baixarArquivo } from './modules/relatorio.mjs';
 import { criarPWA } from './modules/pwa.mjs';
+import { criarAvisos } from './modules/ui/avisos.mjs';
 
 (() => {
   'use strict';
@@ -81,6 +82,28 @@ import { criarPWA } from './modules/pwa.mjs';
   /* Ganchos de teste (window.__ac4Testes*, simulações) só existem em ambiente
      local; em produção ficam só os de suporte (__ac4Erros, __ac4Version). */
   const ambienteDeTeste = ['localhost', '127.0.0.1'].includes(location.hostname);
+
+  /* Acesso ao estado para os módulos de interface (js/modules/ui/) e para as
+     suítes de teste: módulos leem e gravam só por aqui (v74). */
+  const estado = {
+    get escalas() { return escalas; }, set escalas(v) { escalas = v; },
+    get editandoId() { return editandoId; }, set editandoId(v) { editandoId = v; },
+    get ultimaExcluida() { return ultimaExcluida; }, set ultimaExcluida(v) { ultimaExcluida = v; },
+    get filtroMes() { return filtroMes; }, set filtroMes(v) { filtroMes = v; },
+    get filtroOrigem() { return filtroOrigem; }, set filtroOrigem(v) { filtroOrigem = v; },
+    get filtroBusca() { return filtroBusca; }, set filtroBusca(v) { filtroBusca = v; },
+    get filtroStatus() { return filtroStatus; }, set filtroStatus(v) { filtroStatus = v; },
+    get limiteLista() { return limiteLista; }, set limiteLista(v) { limiteLista = v; },
+    get modelos() { return modelos; }, set modelos(v) { modelos = v; },
+    get metasMensais() { return metasMensais; }, set metasMensais(v) { metasMensais = v; },
+    get versaoAnterior() { return versaoAnterior; }, set versaoAnterior(v) { versaoAnterior = v; },
+    get submetendo() { return submetendo; }, set submetendo(v) { submetendo = v; },
+    get sheetAberto() { return sheetAberto; }, set sheetAberto(v) { sheetAberto = v; },
+  };
+
+  /* Módulos de interface — criados nesta ordem; quem vem depois recebe o que
+     os anteriores devolvem. Um módulo de UI nunca importa outro. */
+  const { toast, dialogConfirmar, haptic } = criarAvisos({ $ });
 
   function setDetalhesAvancados(aberto) {
     document.querySelectorAll('.advanced-field').forEach((el) => el.classList.toggle('hidden', !aberto));
@@ -399,49 +422,6 @@ import { criarPWA } from './modules/pwa.mjs';
     });
   }
 
-  /* --------------------------------------------------------------- toast */
-  const filaToasts = [];
-  let toastAtivo = null;
-
-  function exibirProximoToast() {
-    if (toastAtivo || !filaToasts.length) return;
-    const { msg, erro, acao } = filaToasts.shift();
-    const region = $('toastRegion');
-    if (!region) return;
-    const el = document.createElement('div');
-    el.className = 'toast' + (erro ? ' error' : '');
-    el.setAttribute('role', 'status');
-    el.innerHTML = `<span>${escapeHTML(msg)}</span>`;
-    let encerrado = false;
-    let timer = null;
-    const encerrar = () => {
-      if (encerrado) return;
-      encerrado = true;
-      clearTimeout(timer);
-      el.classList.add('is-hiding');
-      setTimeout(() => {
-        el.remove();
-        toastAtivo = null;
-        exibirProximoToast();
-      }, 320);
-    };
-    if (acao) {
-      const btn = document.createElement('button');
-      btn.className = 'toast-action';
-      btn.textContent = acao.rotulo;
-      btn.addEventListener('click', () => { acao.fn(); encerrar(); });
-      el.appendChild(btn);
-    }
-    region.replaceChildren(el);
-    toastAtivo = el;
-    timer = setTimeout(encerrar, acao ? 6000 : 3500);
-  }
-
-  function toast(msg, { erro = false, acao = null } = {}) {
-    filaToasts.push({ msg, erro, acao });
-    exibirProximoToast();
-  }
-
   /* ------------------------------------------------ observabilidade
      Captura erros de JS não tratados e rejeições de Promise para (a) avisar o
      usuário de forma discreta e (b) guardar um log anônimo local — máx. 20
@@ -534,42 +514,6 @@ import { criarPWA } from './modules/pwa.mjs';
       aposProximoPaint(abrirNovidades);
     }
   }
-
-  /* ---------------------------------------- dialog de confirmação */
-  function dialogConfirmar(mensagem, { textoOk = 'Confirmar', perigoso = true } = {}) {
-    return new Promise((resolve) => {
-      const dlg = $('dialogConfirm');
-      if (!dlg) { resolve(window.confirm(mensagem)); return; }
-      $('dialogMsg').textContent = mensagem;
-      $('dialogOk').textContent = textoOk;
-      $('dialogOk').className = `btn ${perigoso ? 'btn-danger-soft' : 'btn-primary'}`;
-      dlg.showModal();
-
-      let resolvido = false;
-      function finalizar(valor) {
-        if (resolvido) return;
-        resolvido = true;
-        $('dialogOk').removeEventListener('click', onOk);
-        $('dialogCancel').removeEventListener('click', onCancel);
-        dlg.removeEventListener('click', onBackdrop);
-        dlg.removeEventListener('close', onClose);
-        if (dlg.open) dlg.close();
-        resolve(valor);
-      }
-      function onOk()     { finalizar(true); }
-      function onCancel() { finalizar(false); }
-      function onBackdrop(e) { if (e.target === dlg) finalizar(false); }
-      /* Esc fecha o <dialog> nativamente sem passar pelos botões —
-         sem este handler a Promise ficaria pendente e os listeners vazariam. */
-      function onClose()  { finalizar(false); }
-      $('dialogOk').addEventListener('click', onOk);
-      $('dialogCancel').addEventListener('click', onCancel);
-      dlg.addEventListener('click', onBackdrop);
-      dlg.addEventListener('close', onClose);
-    });
-  }
-
-  const haptic = (p = 10) => { try { navigator.vibrate?.(p); } catch {} };
 
   function escalasOrdenadas() {
     let lista = escalas
@@ -1809,12 +1753,7 @@ import { criarPWA } from './modules/pwa.mjs';
     window.__ac4TestesProntos = import('./modules/testes.mjs').then(({ instalarTestes }) => instalarTestes({
       calcularEscala, escalasOrdenadas, montarICS,
       gerarLinkOutlookAgenda, salvar, render, $, STORAGE,
-      estado: {
-        get escalas() { return escalas; },
-        set escalas(v) { escalas = v; },
-        get filtroMes() { return filtroMes; },
-        set filtroMes(v) { filtroMes = v; },
-      },
+      estado,
     }));
   }
 })();
