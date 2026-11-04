@@ -335,6 +335,7 @@ const MODULOS_UI = {
   aparencia: ['aplicarTema', 'initTema', 'initNovidades', 'abrirNovidades', 'marcarNovidadesVistas'],
   dados: ['salvar', 'carregar', 'salvarModelos', 'salvarMetas', 'normalizarModelos', 'normalizarMetas', 'exportarBackup',
     'restaurarBackup', 'pedirArmazenamentoPersistente', 'textoStatusBackup', 'lembrarBackup', 'ehIOS', 'rodandoInstalado'],
+  exportacoes: ['exportarCSV', 'imprimirRelatorio', 'agendarEscalas', 'baixarArquivoAgenda', 'agendarEscalaItem'],
 };
 const resultadoModulosUI = await (async () => {
   const app = readFileSync(join(raiz, 'js', 'app.js'), 'utf8');
@@ -385,6 +386,21 @@ const resultadoRestaurar = await (async () => {
     if (!(escalas.length === 1 && escalas[0].id === 'b1')) falhas.push('estado.escalas não atualizado pelo restaurarBackup');
     if (!metasMensais['2026-08']) falhas.push('estado.metasMensais não atualizado');
     if (!renderizou) falhas.push('render não chamado após restaurar');
+    /* Textos do backup (o código foi movido; as mensagens não podem mudar). */
+    if (dados.textoStatusBackup() !== 'Você ainda não fez backup. As escalas ficam só neste aparelho.') falhas.push(`status do backup alterado: ${dados.textoStatusBackup()}`);
+    const avisos = [];
+    const dados2 = criarDados({ estado: { escalas: [1, 2, 3], sheetAberto: false }, STORAGE, APP_VERSION: '0', lerLocal: () => null,
+      toast: (m) => avisos.push(m), dialogConfirmar: async () => true, registrarErro: () => {}, render: () => {},
+      renderModelos: () => {}, cancelarEdicao: () => {}, clonarEscalas: () => [] });
+    globalThis.document.querySelector = () => null;
+    dados2.lembrarBackup(Date.parse('2026-08-10T12:00:00Z'));
+    if (avisos[0] !== 'Suas escalas ficam só neste aparelho. Salve uma cópia de segurança.') falhas.push(`lembrete sem backup alterado: ${avisos[0]}`);
+    localStorage.removeItem('eqLembrete');
+    const dados3 = criarDados({ estado: { escalas: [1, 2, 3], sheetAberto: false }, STORAGE, APP_VERSION: '0', lerLocal: (k) => (k === 'eqBackup' ? String(Date.parse('2026-06-01T12:00:00Z')) : null),
+      toast: (m) => avisos.push(m), dialogConfirmar: async () => true, registrarErro: () => {}, render: () => {},
+      renderModelos: () => {}, cancelarEdicao: () => {}, clonarEscalas: () => [] });
+    dados3.lembrarBackup(Date.parse('2026-08-10T12:00:00Z'));
+    if (avisos[1] !== 'Último backup há 70 dias. Salve uma cópia das suas escalas.') falhas.push(`lembrete com backup antigo alterado: ${avisos[1]}`);
     return falhas.length ? falhas : 'RESTAURAR GRAVA NO ESTADO OK';
   } catch (e) { return [`dados: ${e.message}`]; }
 })();

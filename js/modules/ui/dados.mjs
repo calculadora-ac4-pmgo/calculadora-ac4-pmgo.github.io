@@ -134,7 +134,7 @@ export function criarDados(ctx) {
   function textoStatusBackup(agora = Date.now()) {
     const ultimo = Number(lerLocal(STORAGE.ultimoBackup)) || 0;
     let texto;
-    if (!ultimo) texto = 'Você ainda não fez backup. As estado.escalas ficam só neste aparelho.';
+    if (!ultimo) texto = 'Você ainda não fez backup. As escalas ficam só neste aparelho.';
     else {
       const dias = Math.max(0, Math.floor((agora - ultimo) / DIA_MS));
       const quando = dias === 0 ? 'hoje' : dias === 1 ? 'ontem' : `há ${dias} dias`;
@@ -159,8 +159,8 @@ export function criarDados(ctx) {
     try { localStorage.setItem(STORAGE.lembreteBackup, String(agora)); } catch { return false; }
     const dias = Math.floor((agora - ultimo) / DIA_MS);
     toast(ultimo
-      ? `Último backup há ${dias} dias. Salve uma cópia das suas estado.escalas.`
-      : 'Suas estado.escalas ficam só neste aparelho. Salve uma cópia de segurança.',
+      ? `Último backup há ${dias} dias. Salve uma cópia das suas escalas.`
+      : 'Suas escalas ficam só neste aparelho. Salve uma cópia de segurança.',
     { acao: { rotulo: 'Fazer backup', fn: exportarBackup } });
     return true;
   }
