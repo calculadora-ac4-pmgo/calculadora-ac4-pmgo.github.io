@@ -1,5 +1,16 @@
 # Changelog
 
+## v73 — Tabela da Portaria como dado versionado (R5)
+
+Sem mudança visível na tela; o cálculo é o mesmo.
+- **Fonte única:** valores da hora, número da norma, DOE (nº 24.801, 17/06/2026, p. 58-59, protocolo 630514) e vigência ficam só em `js/modules/portarias.mjs`. `calculo.mjs` deriva `TABELA_OFICIAL` dele. Portaria nova = nova entrada no fim da lista, sem editar a anterior.
+- **Escalas salvas seguem a Portaria:** ao abrir o app e ao restaurar backup, escalas a partir de 01/07/2026 recebem a tabela oficial. Se algum valor mudar (escala gravada por versão antiga ou backup adulterado), aparece um aviso único. Escalas anteriores à vigência ficam como estão (decisão do gestor, 03/11/2026).
+- **Edição de data** reaplica a tabela da norma da nova data (antes mantinha a tabela antiga).
+- **Campos ocultos removidos:** `valAD`/`valAN`/`valVD`/`valVN` e a chave `pmgoConfig` do `localStorage` (apagada na abertura).
+- **PDF e texto compartilhado** citam a norma a partir dos dados: "Base normativa: Portaria SSP nº 621/2026 (DOE nº 24.801, 17/06/2026)".
+- **Equivalência:** os 52 casos do Anexo I e as 10 escalas reais da planilha passam sem alteração.
+- **Novos testes:** integridade das normas (vigências, valores, congelamento), `aplicarNorma` (inclusive aviso que não se repete), fonte única (nenhum literal da Portaria fora de `portarias.mjs`; faixa do `index.html` confere com os dados), citação no PDF e no texto compartilhado.
+
 ## v72 — `app.js` dividido em módulos (auditoria v67, P3-2)
 
 Refatoração sem mudança de comportamento: `js/app.js` passou de 2.489 para ~1.860 linhas.

@@ -15,6 +15,7 @@ majoritário em **celular**. Produção: <https://calculadora-ac4-pmgo.github.io
 ## Arquitetura em uma tela
 
 - Sem build, sem framework, **sem dependências em produção**. `index.html` + `css/styles.css` + `js/app.js` (IIFE: estado, eventos e orquestração da UI) + `js/modules/*.mjs`:
+  - dados: `portarias` (fonte única das normas: valores, DOE, vigência);
   - funções puras: `calculo` (regra da Portaria), `formato`, `agenda` (.ics/links), `persistencia`, `templates` (HTML da lista), `relatorio` (PDF/CSV/texto compartilhado);
   - `pwa` (fábrica `criarPWA(ctx)`: atualização e instalação);
   - `testes` (suítes de regressão, **import dinâmico só em localhost**; testes aguardam `window.__ac4TestesProntos`).
@@ -27,7 +28,7 @@ majoritário em **celular**. Produção: <https://calculadora-ac4-pmgo.github.io
 ## Fluxo de trabalho obrigatório
 
 1. Branch → commits → `npm run verify` (lint + unit + smoke + mobile + mobile-v55 + vitals) → PR → CI verde → `gh pr merge --merge --delete-branch` → acompanhar o deploy da `main` → **conferir o site publicado** (ex.: `curl -s https://calculadora-ac4-pmgo.github.io/sw.js | sed -n 4,5p`). Não declarar concluído só com o workflow verde.
-2. Mudou `index.html`, `css/` ou `js/`? **Bump de versão:** `node tools/bump-version.mjs <n>` (atualiza index, sw, app.js, styles.css e package.json). Versão atual: **v72** → próxima **v73**.
+2. Mudou `index.html`, `css/` ou `js/`? **Bump de versão:** `node tools/bump-version.mjs <n>` (atualiza index, sw, app.js, styles.css e package.json). Versão atual: **v73** → próxima **v74**.
 3. Todo bump exige **entrada nova no topo do `CHANGELOG.md`** com a mesma versão (o teste "Release" falha se não houver) e, se houver novidade para o usuário, o conteúdo do `#dialogNovidades` em `index.html` (**exatamente 3 itens** na lista; o smoke confere) **e o atributo `data-conteudo` com a versão atual** — é ele que decide se o aviso reabre sozinho (sem novidade, mantenha o valor antigo para não repetir o aviso).
 4. Os testes regeneram PNGs em `artifacts/v55/`. Não commitar isso por acidente: `git checkout -- artifacts/` antes do `git add`.
 5. Mensagens de commit e PR em português, no estilo do histórico (`feat(v66): …`, `fix: …`, `ci: …`).
@@ -37,7 +38,8 @@ majoritário em **celular**. Produção: <https://calculadora-ac4-pmgo.github.io
 - **Incidente v65:** o PR #58 colocou o redesign numa pasta `ac4-v65-files/` e o commit seguinte a apagou em vez de mover. O CI passou porque testava o código antigo. Hoje o teste "Release" bloqueia pastas `ac4-vNN-files/` na raiz. Arquivos novos vão **direto no lugar final**.
 - **Testes com número de versão fixo quebram o deploy** a cada bump. Leia a versão de `APP_VERSION` (`js/app.js`) ou de `window.__ac4Version` no navegador.
 - **Valor = só horas inteiras por faixa** (AD/AN/VD/VN), decisão do gestor na v71: fração de hora não é paga. Não voltar ao pagamento proporcional por minuto.
-- **Datas de teste** precisam estar na vigência da Portaria (≥ 01/07/2026); antes disso `validarTabelaAtual` recusa a escala.
+- **Portaria nova:** acrescentar entrada no fim de `js/modules/portarias.mjs` (nunca editar uma publicada), pôr `vigenciaFim` na anterior e atualizar a faixa `.tariff-strip` do `index.html` e a transcrição em `docs/`. O teste "Fonte única da Portaria" confere.
+- **Datas de teste** precisam estar na vigência da Portaria (≥ 01/07/2026); antes disso o formulário (`validarFormulario`, via `regraNormativaParaData`) recusa a escala.
 - **Toasts são enfileirados** (um por vez, ~3,8 s cada). Em testes, não espere um toast específico logo após outras ações; teste a regra pela função e o fluxo real com recarga da página.
 - **Ganchos de teste** só em localhost: `window.__ac4SimularAtualizacao`, `window.__ac4LembrarBackup`, `window.__ac4Testes*`.
 - **Proteção da `main` vale para admin** (desde 23/09/2026): PR obrigatório, check `test` obrigatório, branch atualizada com a `main` (`strict`), conversas resolvidas, merge commit permitido (sem exigência de histórico linear). Não há bypass: CI vermelho se resolve com correção ou `gh run rerun <id> --failed`. Para uma emergência real, o gestor desliga temporariamente em *Settings → Branches* e religa em seguida.

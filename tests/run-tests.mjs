@@ -4,8 +4,9 @@
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join } from 'node:path';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
-import { calcularEscala, regraNormativaParaData, TABELA_OFICIAL } from '../js/modules/calculo.mjs';
-import { desserializarEscalas, detectarConflitos, normalizarEscala, STORAGE_SCHEMA_VERSION } from '../js/modules/persistencia.mjs';
+import { calcularEscala, regraNormativaParaData, TABELA_OFICIAL, tabelaParaData } from '../js/modules/calculo.mjs';
+import { NORMAS, normaParaData, normaAtual, citacaoNorma } from '../js/modules/portarias.mjs';
+import { aplicarNorma, desserializarEscalas, detectarConflitos, normalizarEscala, STORAGE_SCHEMA_VERSION } from '../js/modules/persistencia.mjs';
 
 const raiz = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -235,6 +236,9 @@ const validarModulosExtraidos = () => {
     [linhasCsv[3].endsWith(';1440,00'), 'CSV: total = 2 PMs × R$ 480 + R$ 480'],
     [!tabelaHTML.includes('<b>') && tabelaHTML.includes('&lt;b&gt;'), 'PDF escapa a unidade'],
     [resumoHTML.includes('R$') && resumoHTML.includes('960,00'), 'PDF: resumo com o valor total'],
+    [montarRelatorioImpressao([{ e, r }]).normaTexto === 'Portaria SSP nº 621/2026 (DOE nº 24.801, 17/06/2026)', 'PDF cita norma e DOE'],
+    [montarRelatorioImpressao([{ e, r: { ...r, tabela: { id: 'desconhecida', portaria: 'X', valores: r.tabela.valores } } }]).normaTexto.startsWith('Portaria SSP nº 621/2026'), 'PDF sem norma conhecida cai na atual'],
+    [montarTextoResumo([{ e, r }]).includes(`_${normaAtual().norma} · Valor simulado_`), 'texto compartilhado usa a norma dos dados'],
     (() => {
       const pref = { ...e, origem: 'PREFEITURAS' };
       const txt = montarTextoResumo([{ e: pref, r }, { e: { ...pref, qtdPm: 1 }, r }]);
@@ -246,5 +250,73 @@ const validarModulosExtraidos = () => {
   return falhas.length ? falhas : 'TEMPLATES E EXPORTAÇÕES OK';
 };
 rodar('Templates e exportações (módulos extraídos)', validarModulosExtraidos);
+
+const validarNormas = () => {
+  const ids = new Set(NORMAS.map((n) => n.id));
+  const iso = /^\d{4}-\d{2}-\d{2}$/;
+  const checks = [
+    [NORMAS.length >= 1 && ids.size === NORMAS.length, 'ids únicos'],
+    [NORMAS.every((n) => n.norma && n.doe?.numero && iso.test(n.doe?.data) && iso.test(n.vigenciaInicio)), 'campos obrigatórios'],
+    [NORMAS.every((n) => ['AD', 'AN', 'VD', 'VN'].every((k) => Number.isInteger(n.valores[k]) && n.valores[k] > 0)), 'valores inteiros positivos'],
+    [NORMAS.every((n, i) => i === 0 || (NORMAS[i - 1].vigenciaFim && NORMAS[i - 1].vigenciaFim < n.vigenciaInicio)), 'vigências em ordem e sem sobreposição'],
+    [NORMAS.slice(0, -1).every((n) => n.vigenciaFim), 'só a última sem vigenciaFim'],
+    [Object.isFrozen(NORMAS) && NORMAS.every((n) => Object.isFrozen(n) && Object.isFrozen(n.valores) && Object.isFrozen(n.doe)), 'congeladas'],
+    [normaParaData('2026-06-30') === null, '30/06/2026 sem norma'],
+    [normaParaData('2026-07-01T00:00')?.id === 'ssp-621-2026-07-01', '01/07/2026 → 621'],
+    [normaParaData('lixo') === null, 'data inválida → null'],
+    [citacaoNorma(normaAtual()) === 'Portaria SSP nº 621/2026 (DOE nº 24.801, 17/06/2026)', 'citação padrão'],
+    [tabelaParaData('2026-08-10')?.valores.VN === 4500 && tabelaParaData('2026-08-10')?.portaria === 'Portaria SSP nº 621/2026', 'tabelaParaData → tabela oficial'],
+    [tabelaParaData('2026-06-01') === null, 'tabelaParaData antes da vigência → null'],
+    [TABELA_OFICIAL.id === normaAtual().id && TABELA_OFICIAL.valores.AD === normaAtual().valores.AD, 'TABELA_OFICIAL derivada'],
+  ];
+  const falhas = checks.filter(([ok]) => !ok).map(([, nome]) => nome);
+  return falhas.length ? falhas : 'NORMAS OK';
+};
+rodar('Normas da Portaria (dados versionados)', validarNormas);
+
+const validarAplicarNorma = () => {
+  const base = { id: 'x', inicio: '2026-08-07T08:00', fim: '2026-08-07T18:00', descricao: 'Escala AC4', origem: 'AC4', qtdPm: 1, status: 'planejada' };
+  const antiga = { ...base, tabela: { id: 'ssp-550-2024', portaria: 'Portaria nº 550/2024', valores: { AD: 2647, AN: 2980, VD: 3641, VN: 4138 } } };
+  const oficial = { ...base, tabela: TABELA_OFICIAL };
+  const junho = { ...base, inicio: '2026-06-05T08:00', fim: '2026-06-05T18:00' };
+  const r1 = aplicarNorma(antiga), r2 = aplicarNorma(oficial), r3 = aplicarNorma(base), r4 = aplicarNorma(junho);
+  const lote = desserializarEscalas(JSON.stringify([antiga, oficial, base, junho]));
+  const releitura = desserializarEscalas(JSON.stringify(lote.escalas));
+  const checks = [
+    [r1.valorMudou && r1.escala.tabela.valores.VD === 4000, 'tabela antiga → oficial'],
+    [!r2.alterada && !r2.valorMudou, 'escala já oficial não muda'],
+    [r3.alterada && !r3.valorMudou && r3.escala.tabela.id === 'ssp-621-2026-07-01', 'sem tabela recebe a oficial sem contar como recálculo'],
+    [r4.escala === junho && !r4.alterada, 'antes de 01/07/2026: devolvida sem alteração'],
+    [calcularEscala(r4.escala, TABELA_OFICIAL).valorCentavos > 0, 'junho sem tabela ainda calcula pelo fallback'],
+    [lote.recalculadas === 1 && lote.escalas.length === 4, 'desserializar conta só valores alterados'],
+    [releitura.recalculadas === 0, 'releitura não recalcula de novo (aviso não se repete)'],
+  ];
+  const falhas = checks.filter(([ok]) => !ok).map(([, nome]) => nome);
+  return falhas.length ? falhas : 'APLICAR NORMA OK';
+};
+rodar('Escalas salvas seguem a Portaria vigente', validarAplicarNorma);
+
+const validarFonteUnica = () => {
+  const dir = join(raiz, 'js'), arquivos = [];
+  const varrer = (d) => readdirSync(d, { withFileTypes: true }).forEach((f) =>
+    f.isDirectory() ? varrer(join(d, f.name)) : /\.m?js$/.test(f.name) && arquivos.push(join(d, f.name)));
+  varrer(dir);
+  const fora = arquivos.filter((a) => !/portarias\.mjs$|testes\.mjs$/.test(a));
+  const html = readFileSync(join(raiz, 'index.html'), 'utf8');
+  const faixa = html.match(/<div class="tariff-strip"[\s\S]*?<\/div>\s*<\/div>/)?.[0] || '';
+  const n = normaAtual();
+  const reais = (c) => `R$&nbsp;${c / 100}/h`;
+  const checks = [
+    [!fora.some((a) => /621\/2026/.test(readFileSync(a, 'utf8').replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, ''))), '621/2026 só em portarias.mjs'],
+    [!fora.some((a) => /AD:\s*3000/.test(readFileSync(a, 'utf8'))), 'valores só em portarias.mjs'],
+    [!/id="val(AD|AN|VD|VN)"/.test(html), 'campos ocultos removidos'],
+    [!/VALORES_OFICIAIS/.test(readFileSync(join(dir, 'modules', 'calculo.mjs'), 'utf8')), 'VALORES_OFICIAIS removido'],
+    [faixa.includes(n.norma) && ['AD', 'AN', 'VD', 'VN'].every((k) => faixa.includes(reais(n.valores[k]))), 'faixa fixa confere com normaAtual()'],
+    [!/valAD|pmgoConfig.*setItem|salvarConfig/.test(readFileSync(join(dir, 'app.js'), 'utf8')), 'app.js sem campos ocultos'],
+  ];
+  const falhas = checks.filter(([ok]) => !ok).map(([, nome]) => nome);
+  return falhas.length ? falhas : 'FONTE ÚNICA OK';
+};
+rodar('Fonte única da Portaria', validarFonteUnica);
 
 process.exit(falhou ? 1 : 0);
