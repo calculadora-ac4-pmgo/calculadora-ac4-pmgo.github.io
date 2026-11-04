@@ -15,6 +15,7 @@ const SHELL = [
   './js/modules/portarias.mjs',
   './js/modules/agenda.mjs',
   './js/modules/persistencia.mjs',
+  './js/modules/lote.mjs',
   './js/modules/templates.mjs',
   './js/modules/relatorio.mjs',
   './js/modules/pwa.mjs',

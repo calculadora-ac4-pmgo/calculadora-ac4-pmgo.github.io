@@ -544,4 +544,60 @@ const resultadoPisoBorda = await (async () => {
 })();
 rodar('Piso de fonte: casos de borda do verificador', () => resultadoPisoBorda);
 
+/* v79: lançar em outros dias — regra pura do lote (js/modules/lote.mjs). */
+const resultadoLote = await (async () => {
+  let lote;
+  try { lote = await import(pathToFileURL(join(raiz, 'js', 'modules', 'lote.mjs')).href); }
+  catch (e) { return [`lote.mjs: ${e.message}`]; }
+  const { LIMITE_LOTE, duracaoMinutos, escalaDoDia, situacaoDoDia, validarLote, gerarEscalasLote } = lote;
+  const erros = [];
+  const ok = (nome, cond, info = '') => { if (!cond) erros.push(`${nome}${info ? ` (${info})` : ''}`); };
+  const base = {
+    id: 'b1', inicio: '2026-07-10T18:00', fim: '2026-07-11T08:00', descricao: 'Unidade X',
+    origem: 'AC4', qtdPm: 2, status: 'realizada', tabela: tabelaParaData('2026-07-10T18:00'),
+  };
+  ok('LIMITE_LOTE = 31', LIMITE_LOTE === 31);
+  const d15 = escalaDoDia(base, '2026-07-15');
+  ok('escalaDoDia usa hora e duração da base', d15.inicio === '2026-07-15T18:00' && d15.fim === '2026-07-16T08:00', JSON.stringify(d15));
+  const d15b = escalaDoDia(base, '2026-07-15', { hora: '07:00', duracaoMin: 720 });
+  ok('escalaDoDia com horário trocado', d15b.inicio === '2026-07-15T07:00' && d15b.fim === '2026-07-15T19:00', JSON.stringify(d15b));
+  const baseMeia = { ...base, inicio: '2026-07-10T18:30' };
+  ok('duração não inteira preservada (810 min)', duracaoMinutos(baseMeia) === 810 &&
+     escalaDoDia(baseMeia, '2026-07-20').fim === '2026-07-21T08:00', String(duracaoMinutos(baseMeia)));
+  ok('dia da base reconhecido', situacaoDoDia([base], base, '2026-07-10').estado === 'base');
+  const madrugada = { id: 'x1', inicio: '2026-07-16T06:00', fim: '2026-07-16T12:00' };
+  const sObre = situacaoDoDia([base, madrugada], base, '2026-07-15');
+  ok('conflito com escala da manhã seguinte (vira a noite)', sObre.estado === 'ocupado' && sObre.conflitos.length === 1 &&
+     sObre.motivo === 'Já existe escala neste horário.', JSON.stringify(sObre.estado));
+  const igual = { id: 'x2', inicio: '2026-07-15T18:00', fim: '2026-07-16T08:00' };
+  ok('duplicada conta como ocupado', situacaoDoDia([base, igual], base, '2026-07-15').estado === 'ocupado');
+  const fora = situacaoDoDia([base], base, '2026-06-20');
+  ok('fora da vigência', fora.estado === 'fora-vigencia' && fora.motivo === 'Data fora da vigência da Portaria.');
+  const livre = situacaoDoDia([base], base, '2026-07-20');
+  ok('dia livre', livre.estado === 'livre' && livre.motivo === '' && livre.conflitos.length === 0);
+  const temMotivo = (r, m) => r.problemas.some((p) => p.motivo === m);
+  const vazio = validarLote([base], base, []);
+  ok('lote vazio recusado', !vazio.ok && temMotivo(vazio, 'Nenhum dia marcado.'));
+  const muitos = Array.from({ length: 32 }, (_, i) => ({ data: `2026-08-${String((i % 31) + 1).padStart(2, '0')}` }));
+  ok('limite de 31 dias', temMotivo(validarLote([base], base, muitos), 'Limite de 31 dias por lote.'));
+  ok('dia repetido', temMotivo(validarLote([base], base, [{ data: '2026-07-20' }, { data: '2026-07-20' }]), 'Dia repetido.'));
+  const sobreposto = validarLote([base], base, [
+    { data: '2026-07-20', horario: { hora: '18:00', duracaoMin: 1500 } }, { data: '2026-07-21' }]);
+  ok('dias do lote sobrepostos entre si', !sobreposto.ok && temMotivo(sobreposto, 'Sobrepõe outro dia deste lote.'));
+  ok('lote válido passa', validarLote([base], base, [{ data: '2026-07-20' }, { data: '2026-07-22' }]).ok);
+  ok('lote com dia ocupado falha', !validarLote([base, madrugada], base, [{ data: '2026-07-15' }]).ok);
+  const geradas = gerarEscalasLote(base, [{ data: '2026-07-20' }, { data: '2026-07-22' }]);
+  ok('gera 2 escalas', geradas.length === 2);
+  ok('ids únicos e diferentes da base', geradas[0].id !== geradas[1].id && geradas.every((g) => g.id && g.id !== 'b1'));
+  ok('copia descrição, origem e Qtd. PM; status planejada', geradas.every((g) =>
+    g.descricao === 'Unidade X' && g.origem === 'AC4' && g.qtdPm === 2 && g.status === 'planejada'));
+  ok('norma da data de cada escala', geradas[0].tabela && geradas[0].tabela.id === tabelaParaData('2026-07-20T18:00').id);
+  ok('intervalo gerado', geradas[1].inicio === '2026-07-22T18:00' && geradas[1].fim === '2026-07-23T08:00');
+  let lancou = false;
+  try { gerarEscalasLote(base, [{ data: '2026-06-20' }]); } catch { lancou = true; }
+  ok('gerar fora da vigência lança erro', lancou);
+  return erros.length ? erros : 'LOTE OK';
+})();
+rodar('Lançamento em lote', () => resultadoLote);
+
 process.exit(falhou ? 1 : 0);
