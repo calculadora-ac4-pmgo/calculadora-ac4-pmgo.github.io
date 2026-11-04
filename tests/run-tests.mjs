@@ -639,4 +639,28 @@ const resultadoLinksDocs = (() => {
 })();
 rodar('Links dos documentos', () => resultadoLinksDocs);
 
+/* v82: cada evento do .ics leva um lembrete 2 h antes (VALARM), e o validador confere. */
+const resultadoLembreteICS = await (async () => {
+  const { montarICS, validarICS, desdobrarLinhasICS } = await import(pathToFileURL(join(raiz, 'js', 'modules', 'agenda.mjs')).href);
+  const lista = [
+    { id: 'a1', inicio: '2026-11-10T18:00', fim: '2026-11-11T08:00', descricao: 'Unidade X', origem: 'AC4', qtdPm: 1 },
+    { id: 'a2', inicio: '2026-11-12T07:00', fim: '2026-11-12T19:00', descricao: 'Escala AC4', origem: 'AC4', qtdPm: 1 },
+  ];
+  const linhas = desdobrarLinhasICS(montarICS(lista).conteudo);
+  const erros = [];
+  const blocos = linhas.join('\n').split('BEGIN:VEVENT').slice(1);
+  if (blocos.length !== 2) erros.push(`esperava 2 eventos, veio ${blocos.length}`);
+  blocos.forEach((b, i) => {
+    const alarme = /BEGIN:VALARM\n([\s\S]*?)\nEND:VALARM/.exec(b);
+    if (!alarme) { erros.push(`evento ${i + 1} sem VALARM`); return; }
+    ['ACTION:DISPLAY', 'TRIGGER:-PT2H'].forEach((l) => { if (!alarme[1].split('\n').includes(l)) erros.push(`evento ${i + 1}: falta ${l}`); });
+    if (!/^DESCRIPTION:.+/m.test(alarme[1])) erros.push(`evento ${i + 1}: VALARM sem DESCRIPTION`);
+    if (b.indexOf('BEGIN:VALARM') > b.indexOf('END:VEVENT')) erros.push(`evento ${i + 1}: VALARM fora do VEVENT`);
+  });
+  const v = validarICS(lista);
+  if (!v.ok) erros.push(...v.falhas);
+  return erros.length ? erros : 'LEMBRETE 2 H NO .ICS OK';
+})();
+rodar('Lembrete na agenda (.ics)', () => resultadoLembreteICS);
+
 process.exit(falhou ? 1 : 0);

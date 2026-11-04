@@ -62,6 +62,9 @@ export const escalaAgendaValida = (e) => {
  * @returns {{conteudo:string, eventos:number, ignoradas:number}}
  *   `conteudo` é o `.ics` pronto; `ignoradas` conta escalas inválidas puladas.
  */
+/** Antecedência do lembrete dos eventos (RFC 5545, duração negativa = antes do início). */
+export const LEMBRETE_ICS = '-PT2H';
+
 export function montarICS(lista, tabelaVigente = TABELA_OFICIAL) {
   const dtstamp = dataICS(new Date());
   const linhas = ['BEGIN:VCALENDAR', 'VERSION:2.0', `PRODID:${ICS_PRODID}`, 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH'];
@@ -84,7 +87,11 @@ export function montarICS(lista, tabelaVigente = TABELA_OFICIAL) {
       `DTSTART:${dataICS(e.inicio)}`, `DTEND:${dataICS(e.fim)}`,
       `SUMMARY:${escaparTextoICS(e.descricao || 'Escala AC4')}`,
       `DESCRIPTION:${escaparTextoICS(descricao)}`,
-      'TRANSP:OPAQUE', 'STATUS:CONFIRMED', 'END:VEVENT');
+      'TRANSP:OPAQUE', 'STATUS:CONFIRMED',
+      /* v82: lembrete 2 h antes do início (Calendário do iPhone, Samsung, Google via arquivo). */
+      'BEGIN:VALARM', 'ACTION:DISPLAY', `DESCRIPTION:${escaparTextoICS(`Escala em 2 h: ${e.descricao || 'Escala AC4'}`)}`,
+      `TRIGGER:${LEMBRETE_ICS}`, 'END:VALARM',
+      'END:VEVENT');
     eventos++;
   });
   linhas.push('END:VCALENDAR');
@@ -136,6 +143,7 @@ export function validarICS(lista, tabelaVigente = TABELA_OFICIAL) {
     const ini = parseDataICS((obter('DTSTART') || '').slice('DTSTART:'.length));
     const fim = parseDataICS((obter('DTEND') || '').slice('DTEND:'.length));
     if (ini && fim && fim <= ini) falhas.push(`VEVENT ${i+1}: DTEND ≤ DTSTART.`);
+    if (!ev.includes('BEGIN:VALARM') || !ev.includes(`TRIGGER:${LEMBRETE_ICS}`) || !ev.includes('END:VALARM')) falhas.push(`VEVENT ${i+1} sem lembrete (VALARM).`);
   });
   return { ok: falhas.length === 0, eventos: eventos.length, ignoradas: arquivo.ignoradas, falhas };
 }
