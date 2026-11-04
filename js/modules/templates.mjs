@@ -41,6 +41,9 @@ export const botoesAcaoHTML = (idBruto) => {
       <button class="btn-icon" data-acao="duplicar" data-id="${id}" title="Duplicar para o dia seguinte" aria-label="Duplicar">
         <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
       </button>
+      <button class="btn-icon" data-acao="lote" data-id="${id}" title="Lançar em outros dias" aria-label="Lançar em outros dias">
+        <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4M8 14h2M14 14h2M8 18h2"/></svg>
+      </button>
       <button class="btn-icon" data-acao="editar" data-id="${id}" title="Editar" aria-label="Editar">
         <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
       </button>
@@ -77,6 +80,7 @@ export const botoesCardMobileHTML = (idBruto, statusHTML = '') => {
         <div class="ec-more-menu">
           <button data-acao="agenda" data-id="${id}" type="button">Adicionar à agenda</button>
           <button data-acao="duplicar" data-id="${id}" type="button">Duplicar para amanhã</button>
+          <button data-acao="lote" data-id="${id}" type="button">Lançar em outros dias</button>
           <button class="delete" data-acao="remover" data-id="${id}" type="button">Excluir escala</button>
         </div>
       </details>

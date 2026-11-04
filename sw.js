@@ -28,6 +28,7 @@ const SHELL = [
   './js/modules/ui/planejamento.mjs',
   './js/modules/ui/formulario.mjs',
   './js/modules/ui/modelos.mjs',
+  './js/modules/ui/agenda-dias.mjs',
   './manifest.webmanifest',
   './assets/icon.svg',
   './assets/icon-maskable.svg',

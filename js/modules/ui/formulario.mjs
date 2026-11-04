@@ -18,13 +18,13 @@ import { STATUS_INFO, statusEscala, rotuloQuantidadePm } from '../templates.mjs'
  * Cria o formulário de lançamento e as ações da lista.
  * @param {Object} ctx Dependências de app.js: $, on, estado, toast, dialogConfirmar, haptic,
  *   salvar, render, calcularEscala, clonarEscalas, aposProximoPaint, esperarProximoPaint,
- *   pedirArmazenamentoPersistente, mostrarInstalacaoAposConversao, agendarEscalaItem, PASSO_LISTA.
+ *   pedirArmazenamentoPersistente, mostrarInstalacaoAposConversao, agendarEscalaItem, abrirLote, PASSO_LISTA.
  * @returns {Object} Funções públicas da área, incluindo ligarEventos().
  */
 export function criarFormulario(ctx) {
   const { $, on, estado, toast, dialogConfirmar, haptic, salvar, render, calcularEscala, clonarEscalas,
     aposProximoPaint, esperarProximoPaint, pedirArmazenamentoPersistente, mostrarInstalacaoAposConversao,
-    agendarEscalaItem, PASSO_LISTA } = ctx;
+    agendarEscalaItem, abrirLote, PASSO_LISTA } = ctx;
 
   let fundoInerte = [];
 
@@ -535,6 +535,7 @@ export function criarFormulario(ctx) {
       else if (btn.dataset.acao === 'editar')    editarEscala(id);
       else if (btn.dataset.acao === 'duplicar')  duplicarEscala(id);
       else if (btn.dataset.acao === 'agenda')    agendarEscalaItem(id);
+      else if (btn.dataset.acao === 'lote')      abrirLote(id);
       btn.closest('details')?.removeAttribute('open');
     });
     on('listaEscalas', 'change', (ev) => {

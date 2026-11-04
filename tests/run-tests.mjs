@@ -342,6 +342,7 @@ const MODULOS_UI = {
     'sincronizarTodosControlesDataHora', 'aplicarPartesDataHora', 'atualizarChipsDuracao', 'duplicarEscala',
     'removerEscala', 'limparTudo', 'atualizarStatusEscala', 'ligarEventos'],
   modelos: ['renderModelos', 'preencherConfiguracaoRapida', 'repetirUltimaEscala', 'abrirSalvarModelo', 'salvarModeloAtual', 'excluirModeloSelecionado', 'ligarEventos'],
+  'agenda-dias': ['abrir', 'ligarEventos'],
   planejamento: ['atualizarSelectMes', 'renderPlanejamento', 'renderHistorico', 'mesPainelAtual', 'abrirMetaMensal', 'salvarMetaMensal', 'removerMetaMensal', 'ligarEventos'],
 };
 const resultadoModulosUI = await (async () => {
@@ -351,7 +352,7 @@ const resultadoModulosUI = await (async () => {
   for (const [nome, chaves] of Object.entries(MODULOS_UI)) {
     let mod;
     try { mod = await import(pathToFileURL(join(raiz, 'js', 'modules', 'ui', `${nome}.mjs`)).href); } catch { falhas.push(`${nome}: módulo ausente`); continue; }
-    const fabrica = mod[`criar${nome[0].toUpperCase()}${nome.slice(1)}`];
+    const fabrica = mod[`criar${nome.split('-').map((p) => p[0].toUpperCase() + p.slice(1)).join('')}`];
     if (typeof fabrica !== 'function') { falhas.push(`${nome}: fábrica ausente`); continue; }
     let api;
     try { api = fabrica(ctxVazio); } catch (e) { falhas.push(`${nome}: fábrica falhou ao ser criada (${e.message})`); continue; }

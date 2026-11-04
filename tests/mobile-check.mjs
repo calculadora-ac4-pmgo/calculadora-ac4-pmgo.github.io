@@ -96,6 +96,24 @@ const conectarCDP = (wsUrl) => new Promise((resolve, reject) => {
 });
 
 /* Medições feitas dentro da página em viewport mobile (393×852). */
+/* v77/v79: medida de herança de fonte, compartilhada pelos roteiros. */
+const FN_MENORES_QUE_12 = `const menoresQue12 = () => {
+    const achados = new Set();
+    const andador = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    while (andador.nextNode()) {
+      const no = andador.currentNode;
+      if (!no.nodeValue.trim()) continue;
+      const el = no.parentElement;
+      if (!el || /^(SCRIPT|STYLE|NOSCRIPT|OPTION)$/.test(el.tagName)) continue;
+      const r = el.getBoundingClientRect();
+      const cs = getComputedStyle(el);
+      if (r.width < 2 || r.height < 2 || cs.visibility === 'hidden' || cs.display === 'none') continue;
+      const px = parseFloat(cs.fontSize);
+      if (px > 0 && px < 11.99) achados.add(el.tagName.toLowerCase() + (el.className && typeof el.className === 'string' ? '.' + el.className.trim().split(/\\s+/).join('.') : '') + ' ' + px + 'px');
+    }
+    return [...achados];
+  };`;
+
 const ROTEIRO_MOBILE = `(async () => {
   const passos = [];
   const ok = (nome, cond, detalhe = '') => passos.push({ nome, ok: !!cond, detalhe: String(detalhe) });
@@ -119,22 +137,7 @@ const ROTEIRO_MOBILE = `(async () => {
   /* v77 (R6): herança. O verificador de CSS olha regras, não elementos: um texto
      sem font-size próprio pode herdar de um pai pequeno. Mede no navegador o
      tamanho calculado de todo texto visível; o piso é 12 px. */
-  const menoresQue12 = () => {
-    const achados = new Set();
-    const andador = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-    while (andador.nextNode()) {
-      const no = andador.currentNode;
-      if (!no.nodeValue.trim()) continue;
-      const el = no.parentElement;
-      if (!el || /^(SCRIPT|STYLE|NOSCRIPT|OPTION)$/.test(el.tagName)) continue;
-      const r = el.getBoundingClientRect();
-      const cs = getComputedStyle(el);
-      if (r.width < 2 || r.height < 2 || cs.visibility === 'hidden' || cs.display === 'none') continue;
-      const px = parseFloat(cs.fontSize);
-      if (px > 0 && px < 11.99) achados.add(el.tagName.toLowerCase() + (el.className && typeof el.className === 'string' ? '.' + el.className.trim().split(/\\s+/).join('.') : '') + ' ' + px + 'px');
-    }
-    return [...achados];
-  };
+  ${FN_MENORES_QUE_12}
 
   // 1. barra fixa mobile visível e com ações ≥ 44px
   ok('Barra fixa mobile visível', visivel('.mobile-bar'));
@@ -265,8 +268,8 @@ const ROTEIRO_MOBILE = `(async () => {
      }).join(' | '));
   document.querySelector('.escala-card .ec-more > summary').click();
   const menuAcoes = [...document.querySelectorAll('.escala-card .ec-more-menu button')];
-  ok('Menu contém agenda, duplicação e exclusão',
-     menuAcoes.length === 3 && menuAcoes.every((b) => b.getBoundingClientRect().height >= 44),
+  ok('Menu contém agenda, duplicação, lançar em outros dias e exclusão',
+     menuAcoes.length === 4 && menuAcoes.every((b) => b.getBoundingClientRect().height >= 44),
      menuAcoes.map((b) => b.textContent.trim()).join(' | '));
   document.querySelector('.escala-card .ec-more').removeAttribute('open');
 
@@ -549,6 +552,84 @@ const roteiroHistorico = (textos) => `(async () => {
   return JSON.stringify(passos);
 })()`;
 
+/* v79: lançar em outros dias — calendário do lote (abrir, grade, marcar, bloqueio). */
+const ROTEIRO_LOTE = `(async () => {
+  const passos = [];
+  const ok = (nome, cond, detalhe = '') => passos.push({ nome, ok: !!cond, detalhe: String(detalhe) });
+  const espera = (ms) => new Promise((r) => setTimeout(r, ms));
+  const $ = (id) => document.getElementById(id);
+  ${FN_MENORES_QUE_12}
+  for (let i = 0; i < 50 && !$('formEscala'); i++) await espera(100);
+  localStorage.removeItem('pmgoEscalas');
+  const lancar = async (inicio, { duracao = '', fim = '' } = {}) => {
+    $('escalaInicio').value = inicio;
+    $('escalaInicio').dispatchEvent(new Event('change', { bubbles: true }));
+    if (duracao) { $('escalaDuracao').value = duracao; $('escalaDuracao').dispatchEvent(new Event('change', { bubbles: true })); }
+    if (fim) { $('escalaFim').value = fim; $('escalaFim').dispatchEvent(new Event('change', { bubbles: true })); }
+    $('btnSubmit').click();
+    await espera(400);
+  };
+  await lancar('2026-11-10T18:00', { duracao: '14' });
+  await lancar('2026-11-15T07:00', { fim: '2026-11-15T12:00' });
+  const salvas = JSON.parse(localStorage.getItem('pmgoEscalas') || '[]');
+  const lista = Array.isArray(salvas) ? salvas : (salvas.escalas || []);
+  const base = lista.find((e) => e.inicio === '2026-11-10T18:00');
+  const outra = lista.find((e) => e.inicio === '2026-11-15T07:00');
+  ok('duas escalas de partida salvas', base && outra, lista.length);
+
+  // editar a outra escala antes de abrir a agenda: a edição não pode mudar (Review Focus 5)
+  document.querySelector('[data-acao="editar"][data-id="' + outra.id + '"]').click();
+  await espera(200);
+  const inicioEdicao = $('escalaInicio').value;
+
+  const btnLote = document.querySelector('.ec-more-menu [data-acao="lote"][data-id="' + base.id + '"]');
+  ok('menu da escala tem "Lançar em outros dias"', btnLote && btnLote.textContent.trim() === 'Lançar em outros dias',
+     btnLote && btnLote.textContent);
+  btnLote?.click();
+  await espera(200);
+  const dlg = $('dialogLote');
+  ok('janela do lote aberta', dlg && dlg.open);
+  ok('mês da base no título', $('loteMes')?.textContent.trim() === 'novembro de 2026', $('loteMes')?.textContent);
+  const grade = $('loteGrade');
+  const filhos = grade ? [...grade.children] : [];
+  const dia = (n) => grade?.querySelector('.lote-dia[data-data="2026-11-' + String(n).padStart(2, '0') + '"]');
+  ok('mês que começa no domingo: dia 1 na 7ª coluna', filhos.length >= 7 && filhos[6] === dia(1) &&
+     filhos.slice(0, 6).every((f) => f.classList.contains('lote-vazio')), filhos.slice(0, 7).map((f) => f.className).join(','));
+  ok('dia da base bloqueado', dia(10)?.getAttribute('aria-disabled') === 'true', dia(10)?.title);
+  ok('dia 14 bloqueado (sobrepõe 15/11 07:00)', dia(14)?.getAttribute('aria-disabled') === 'true' &&
+     dia(14)?.title === 'Já existe escala neste horário.', dia(14)?.title);
+  ok('dia 15 livre', dia(15) && dia(15).getAttribute('aria-disabled') !== 'true');
+  for (const n of [15, 17, 19]) { dia(n)?.click(); await espera(30); }
+  ok('marcar 3 dias', [15, 17, 19].every((n) => dia(n)?.getAttribute('aria-pressed') === 'true') &&
+     $('loteContador')?.textContent.trim() === '3 dias marcados', $('loteContador')?.textContent);
+  dia(19)?.click(); await espera(30);
+  ok('segundo toque desmarca', dia(19)?.getAttribute('aria-pressed') === 'false' &&
+     $('loteContador')?.textContent.trim() === '2 dias marcados', $('loteContador')?.textContent);
+  dia(14)?.click(); await espera(30);
+  ok('dia bloqueado não marca', dia(14)?.getAttribute('aria-pressed') !== 'true' &&
+     $('loteContador')?.textContent.trim() === '2 dias marcados');
+  ok('"Revisar" ativo com dias marcados', $('loteRevisar') && !$('loteRevisar').disabled);
+  const alvos = [...(grade?.querySelectorAll('.lote-dia') || [])].map((b) => b.getBoundingClientRect());
+  ok('dias com alvo de toque ≥ 44 px', alvos.length >= 28 && alvos.every((r) => r.width >= 44 && r.height >= 44),
+     alvos.slice(0, 3).map((r) => Math.round(r.width) + 'x' + Math.round(r.height)).join(' '));
+  ok('janela sem rolagem horizontal', document.documentElement.scrollWidth <= window.innerWidth + 1 &&
+     !!dlg && dlg.scrollWidth <= dlg.clientWidth + 1, dlg && (dlg.scrollWidth + '/' + dlg.clientWidth));
+  const pequenos = menoresQue12();
+  ok('nenhum texto abaixo de 12 px com a janela aberta', pequenos.length === 0, pequenos.join(' | '));
+  for (let i = 0; i < 3; i++) { $('loteNext')?.click(); await espera(30); }
+  ok('navega até 3 meses à frente e para', $('loteMes')?.textContent.trim() === 'fevereiro de 2027' && $('loteNext')?.disabled,
+     $('loteMes')?.textContent);
+  ok('dias marcados mantidos ao navegar', $('loteContador')?.textContent.trim() === '2 dias marcados');
+  $('loteFechar')?.click();
+  await espera(100);
+  ok('fechar a janela', !!dlg && !dlg.open);
+  ok('edição em curso intacta', $('escalaInicio').value === inicioEdicao && !$('btnCancelEdit').classList.contains('hidden'),
+     $('escalaInicio').value + ' vs ' + inicioEdicao);
+  $('btnCancelEdit').click();
+  localStorage.removeItem('pmgoEscalas');
+  return JSON.stringify(passos);
+})()`;
+
 const servidor = await iniciarServidor();
 const porta = servidor.address().port;
 const perfil = await mkdtemp(join(tmpdir(), 'ac4-mob-'));
@@ -587,6 +668,7 @@ try {
   await rodarViewport(cdp, sessionId, porta, 360, 640, roteiroHistorico(['8,8 mil', '12,5 mil']), 'Histórico 360 px');
   await rodarViewport(cdp, sessionId, porta, 375, 667, roteiroHistorico(['12,5 mil', '125,3 mil']), 'Histórico 375 px');
   await rodarViewport(cdp, sessionId, porta, 393, 852, roteiroHistorico(['12,5 mil', '125,3 mil']), 'Histórico 393 px');
+  await rodarViewport(cdp, sessionId, porta, 390, 844, ROTEIRO_LOTE, 'Lançar em outros dias — calendário (390 px)');
 
   /* iPhone: força o User-Agent de iOS para validar o fluxo de instalação do Safari. */
   await cdp.enviar('Emulation.setUserAgentOverride', {
