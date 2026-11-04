@@ -9,7 +9,7 @@
    Funções puras, sem acesso ao DOM.
    ========================================================================== */
 import { parseDateTimeLocal } from './formato.mjs';
-import { NORMAS, normaParaData, normaAtual } from './portarias.mjs';
+import { NORMAS, normaParaData } from './portarias.mjs';
 
 /**
  * Converte uma norma de portarias.mjs no formato de tabela gravado nas escalas.
@@ -33,10 +33,6 @@ export const REGRAS_NORMATIVAS = Object.freeze(NORMAS.map(tabelaDaNorma));
 export const TABELA_OFICIAL = REGRAS_NORMATIVAS[REGRAS_NORMATIVAS.length - 1];
 export const PORTARIA_ATUAL = TABELA_OFICIAL.portaria;
 export const REGRA_NORMATIVA_ATUAL_ID = TABELA_OFICIAL.id;
-/* Valores em texto (R$) — usados só até a remoção dos campos ocultos (v73, tarefa 4). */
-export const VALORES_OFICIAIS = Object.freeze(Object.fromEntries(
-  ['AD', 'AN', 'VD', 'VN'].map((k) => [`val${k}`, String(normaAtual().valores[k] / 100)])));
-
 /**
  * Tabela oficial vigente na data (início da escala).
  * @param {string} valor Data ISO, com ou sem hora.

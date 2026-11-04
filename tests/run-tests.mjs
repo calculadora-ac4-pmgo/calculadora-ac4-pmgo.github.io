@@ -310,6 +310,7 @@ const validarFonteUnica = () => {
     [!fora.some((a) => /621\/2026/.test(readFileSync(a, 'utf8').replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, ''))), '621/2026 só em portarias.mjs'],
     [!fora.some((a) => /AD:\s*3000/.test(readFileSync(a, 'utf8'))), 'valores só em portarias.mjs'],
     [!/id="val(AD|AN|VD|VN)"/.test(html), 'campos ocultos removidos'],
+    [!/VALORES_OFICIAIS/.test(readFileSync(join(dir, 'modules', 'calculo.mjs'), 'utf8')), 'VALORES_OFICIAIS removido'],
     [faixa.includes(n.norma) && ['AD', 'AN', 'VD', 'VN'].every((k) => faixa.includes(reais(n.valores[k]))), 'faixa fixa confere com normaAtual()'],
     [!/valAD|pmgoConfig.*setItem|salvarConfig/.test(readFileSync(join(dir, 'app.js'), 'utf8')), 'app.js sem campos ocultos'],
   ];
