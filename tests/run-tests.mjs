@@ -337,6 +337,7 @@ const MODULOS_UI = {
     'restaurarBackup', 'pedirArmazenamentoPersistente', 'textoStatusBackup', 'lembrarBackup', 'ehIOS', 'rodandoInstalado'],
   exportacoes: ['exportarCSV', 'imprimirRelatorio', 'agendarEscalas', 'baixarArquivoAgenda', 'agendarEscalaItem'],
   compartilhar: ['abrirShareSheet', 'copiarResumo', 'compartilharWhatsApp', 'compartilharNativo', 'gerarTextoResumo', 'initFeedback'],
+  planejamento: ['atualizarSelectMes', 'renderPlanejamento', 'renderHistorico', 'mesPainelAtual', 'abrirMetaMensal', 'salvarMetaMensal', 'removerMetaMensal', 'ligarEventos'],
 };
 const resultadoModulosUI = await (async () => {
   const app = readFileSync(join(raiz, 'js', 'app.js'), 'utf8');
@@ -360,6 +361,15 @@ const resultadoModulosUI = await (async () => {
     if (typeof globalThis.__ac4Erros !== 'function') falhas.push('initObservabilidade não expõe __ac4Erros');
   } catch (e) { falhas.push(`observabilidade: ${e.message}`); }
   if (!/function init\(\) \{\s*initObservabilidade\(\);/.test(app)) falhas.push('initObservabilidade deixou de ser a primeira chamada do init()');
+  /* v75: estado só via `estado.` — nenhuma atribuição nua nos módulos de UI. */
+  readdirSync(join(raiz, 'js', 'modules', 'ui')).filter((f) => f.endsWith('.mjs')).forEach((f) => {
+    /* Por linha: instrução que começa com `nome = …` (ou `nome += …`). O ESLint
+       no-undef também acusa, mas esta mensagem diz o que fazer. */
+    const m = readFileSync(join(raiz, 'js', 'modules', 'ui', f), 'utf8').split('\n')
+      .map((l) => l.match(/^\s*(escalas|editandoId|ultimaExcluida|filtroMes|filtroOrigem|filtroBusca|filtroStatus|limiteLista|modelos|metasMensais|versaoAnterior|submetendo|sheetAberto|fundoInerte)\s*[-+]?=(?!=)/))
+      .find(Boolean);
+    if (m) falhas.push(`${f}: atribuição nua a ${m[1]} (use estado.${m[1]})`);
+  });
   if ((app.match(/criarAvisos\(/g) || []).length !== 1) falhas.push('criarAvisos deve ser instanciado uma única vez (fila de toasts única)');
   return falhas.length ? falhas : 'MÓDULOS DE INTERFACE OK';
 })();
