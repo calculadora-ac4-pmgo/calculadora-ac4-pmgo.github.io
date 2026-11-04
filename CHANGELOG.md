@@ -1,5 +1,15 @@
 # Changelog
 
+## v81 — Agenda direta: abre sozinha e troca o horário no próprio dia
+
+Ajuste pedido pelo usuário depois de usar a v79 ("ficou confuso"): o policial tem várias escalas no mês com horários de início diferentes.
+- **Abre sozinha** quando a escala salva é a **primeira do mês** (regra `primeiraDoMes` em `js/modules/lote.mjs`). Nas outras, continua o atalho no aviso e no menu. Editar não abre; falha ao gravar não abre.
+- **Sem etapa de revisão:** cada dia marcado mostra a hora de início ("18h", "06h30"). Abaixo do calendário, o painel do dia tocado mostra "Qua 18/11 · 18:00 → 08:00" com **Alterar** (início, 12/14/24 h, término) ali mesmo. Tocar de novo no dia selecionado desmarca; tocar em outro dia marcado só seleciona.
+- **Dia ocupado no horário da base** não fica mais travado: mostra "Já existe escala às 18:00 neste dia." e "Escolher outro horário"; um horário livre marca o dia. Dia de origem e fora da vigência continuam bloqueados.
+- Dia com problema (sobreposição) fica com borda vermelha e bloqueia "Lançar N escalas", que agora fica sempre no rodapé fixo da janela.
+- Testes: roteiro do lote reescrito para o fluxo novo; `primeiraDoMes` na suíte "Lançamento em lote"; smoke e roteiro mobile fecham a agenda que abre sozinha na 1ª escala.
+- Aviso de novidades reaberto (`data-conteudo="81"`) com o jeito novo.
+
 ## v80 — Janelas centralizadas e ajustes do lote
 
 Correções, sem novidade no aviso (`data-conteudo` continua "79").

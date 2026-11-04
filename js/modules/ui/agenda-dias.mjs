@@ -1,8 +1,10 @@
 /* ==========================================================================
-   Calculadora AC4 — lançar em outros dias (v79)
+   Calculadora AC4 — lançar em outros dias (v79; fluxo direto na v81)
    Janela com calendário: a partir de uma escala salva (a base), o usuário toca
-   nos dias e revisa antes de lançar. A regra (conflito, vigência, geração)
-   fica em ../lote.mjs; aqui só a interface. Estado só via `estado`.
+   nos dias. Cada dia marcado mostra a hora de início; o painel abaixo do
+   calendário mostra o dia tocado e permite trocar o horário ali mesmo. A regra
+   (conflito, vigência, geração) fica em ../lote.mjs; aqui só a interface.
+   Estado só via `estado`.
    ========================================================================== */
 import { LIMITE_LOTE, duracaoMinutos, escalaDoDia, gerarEscalasLote, situacaoDoDia, validarLote } from '../lote.mjs';
 import { parseDateTimeLocal } from '../formato.mjs';
@@ -16,6 +18,8 @@ const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const doisDigitos = (n) => String(n).padStart(2, '0');
 const chaveData = (a, m, d) => `${a}-${doisDigitos(m + 1)}-${doisDigitos(d)}`;
 const indiceMes = (a, m) => a * 12 + m;
+/** "18:00" → "18h"; "06:30" → "06h30". */
+const horaCurta = (hhmm) => (hhmm.slice(3) === '00' ? `${hhmm.slice(0, 2)}h` : `${hhmm.slice(0, 2)}h${hhmm.slice(3)}`);
 
 /**
  * Cria a janela "Lançar em outros dias".
@@ -27,27 +31,38 @@ export function criarAgendaDias(ctx) {
   const { $, on, estado, toast, salvar, render, haptic, clonarEscalas, cancelarEdicao } = ctx;
 
   let base = null;
-  let mesBase = 0;      // índice ano*12+mês do mês da base
-  let mesAtual = 0;     // índice do mês exibido
+  let mesBase = 0;            // índice ano*12+mês do mês da base
+  let mesAtual = 0;           // índice do mês exibido
   const marcados = new Map(); // data → horário trocado (ou null = horário da base)
-  let editando = null;        // data cujo horário está sendo trocado
+  let selecionado = null;     // dia mostrado no painel
+  let editando = false;       // painel com os campos de horário abertos
 
   const textoEscalas = (n) => `${n} ${n === 1 ? 'escala' : 'escalas'}`;
+  const textoContador = (n) => `${n} ${n === 1 ? 'dia marcado' : 'dias marcados'}`;
   const setAviso = (msg = '') => { if ($('loteAviso')) $('loteAviso').textContent = msg; };
   const diasDoLote = () => [...marcados.keys()].sort().map((data) => ({ data, ...(marcados.get(data) ? { horario: marcados.get(data) } : {}) }));
   const rotuloDia = (data) => {
     const [a, m, d] = data.split('-').map(Number);
     return `${DIAS_SEMANA[new Date(a, m - 1, d).getDay()]} ${doisDigitos(d)}/${doisDigitos(m)}`;
   };
+  const horarioDe = (data) => marcados.get(data) || undefined;
+  const horarioAtual = (data) => marcados.get(data) || { hora: base.inicio.slice(11, 16), duracaoMin: duracaoMinutos(base) };
 
-  const textoContador = (n) => `${n} ${n === 1 ? 'dia marcado' : 'dias marcados'}`;
-
-  function atualizarContador() {
-    if ($('loteContador')) $('loteContador').textContent = textoContador(marcados.size);
-    if ($('loteRevisar')) $('loteRevisar').disabled = marcados.size === 0;
+  /** Problemas do lote por data (validarLote) — recalculado a cada mudança. */
+  function problemasPorData() {
+    const { ok, problemas } = validarLote(estado.escalas, base, diasDoLote());
+    return { ok, mapa: new Map(problemas.filter((p) => p.data).map((p) => [p.data, p.motivo])) };
   }
 
-  function renderGrade() {
+  function textoIntervalo(data) {
+    const { inicio, fim } = escalaDoDia(base, data, horarioDe(data));
+    /* Término a partir de 2 dias depois ganha a data, para não parecer no mesmo dia. */
+    const dias = Math.round((parseDateTimeLocal(fim.slice(0, 10) + 'T00:00') - parseDateTimeLocal(data + 'T00:00')) / 86400000);
+    const fimTexto = dias >= 2 ? `${fim.slice(8, 10)}/${fim.slice(5, 7)} ${fim.slice(11, 16)}` : fim.slice(11, 16);
+    return `${rotuloDia(data)} · ${inicio.slice(11, 16)} → ${fimTexto}`;
+  }
+
+  function renderGrade(mapa) {
     const grade = $('loteGrade');
     if (!grade || !base) return;
     const ano = Math.floor(mesAtual / 12);
@@ -68,129 +83,118 @@ export function criarAgendaDias(ctx) {
     const diasNoMes = new Date(ano, mes + 1, 0).getDate();
     for (let d = 1; d <= diasNoMes; d++) {
       const data = chaveData(ano, mes, d);
+      const marcado = marcados.has(data);
       const s = situacaoDoDia(estado.escalas, base, data);
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'lote-dia';
       btn.dataset.data = data;
-      btn.textContent = String(d);
-      btn.setAttribute('aria-pressed', marcados.has(data) ? 'true' : 'false');
-      if (s.estado !== 'livre') {
+      const num = document.createElement('span');
+      num.className = 'lote-dia-num';
+      num.textContent = String(d);
+      btn.appendChild(num);
+      btn.setAttribute('aria-pressed', marcado ? 'true' : 'false');
+      if (marcado) {
+        const hora = document.createElement('span');
+        hora.className = 'lote-dia-hora';
+        hora.textContent = horaCurta(horarioAtual(data).hora);
+        btn.appendChild(hora);
+        if (mapa.has(data)) btn.classList.add('is-problema');
+      } else if (s.estado === 'base' || s.estado === 'fora-vigencia') {
         btn.setAttribute('aria-disabled', 'true');
         btn.title = s.motivo;
         btn.classList.add(s.estado === 'base' ? 'is-base' : 'is-bloqueado');
+      } else if (s.estado === 'ocupado') {
+        btn.title = s.motivo;
+        btn.classList.add('is-ocupado');
       }
+      if (data === selecionado) btn.classList.add('is-selecionado');
       if (data === chaveHoje) btn.classList.add('is-hoje');
       fragmento.appendChild(btn);
     }
     grade.replaceChildren(fragmento);
   }
 
-  function alternarDia(btn) {
+  function renderPainel(mapa) {
+    const painel = $('loteDiaPainel');
+    if (!painel) return;
+    painel.classList.toggle('hidden', !selecionado);
+    if (!selecionado) { editando = false; $('loteEditar')?.classList.add('hidden'); return; }
+    const marcado = marcados.has(selecionado);
+    $('loteDiaTexto').textContent = textoIntervalo(selecionado);
+    let problema = marcado ? (mapa.get(selecionado) || '') : '';
+    if (!marcado) problema = `Já existe escala às ${base.inicio.slice(11, 16)} neste dia.`;
+    $('loteDiaProblema').textContent = problema;
+    $('loteAlterar').textContent = marcado ? 'Alterar' : 'Escolher outro horário';
+    $('loteAlterar').classList.toggle('hidden', editando);
+    $('loteEditar').classList.toggle('hidden', !editando);
+    if (editando) {
+      const { inicio, fim } = escalaDoDia(base, selecionado, horarioDe(selecionado));
+      $('loteHora').value = inicio.slice(11, 16);
+      $('loteFim').value = fim;
+    }
+  }
+
+  function renderTudo() {
+    if (!base) return;
+    const { ok, mapa } = problemasPorData();
+    renderGrade(mapa);
+    renderPainel(mapa);
+    if ($('loteContador')) $('loteContador').textContent = textoContador(marcados.size);
+    const lancar = $('loteLancar');
+    if (lancar) {
+      lancar.textContent = marcados.size ? `Lançar ${textoEscalas(marcados.size)}` : 'Lançar';
+      lancar.disabled = !ok;
+    }
+  }
+
+  function tocarDia(btn) {
     const data = btn.dataset.data;
     if (btn.getAttribute('aria-disabled') === 'true') { setAviso(btn.title); return; }
     setAviso();
+    editando = false;
     if (marcados.has(data)) {
-      marcados.delete(data);
+      if (selecionado === data) { marcados.delete(data); selecionado = null; } else { selecionado = data; }
+    } else if (situacaoDoDia(estado.escalas, base, data).estado === 'ocupado') {
+      selecionado = data; // não marca: o painel oferece outro horário
     } else {
       if (marcados.size >= LIMITE_LOTE) { setAviso(`Limite de ${LIMITE_LOTE} dias por lote.`); return; }
       marcados.set(data, null);
+      selecionado = data;
     }
     haptic(8);
-    btn.setAttribute('aria-pressed', marcados.has(data) ? 'true' : 'false');
-    atualizarContador();
+    renderTudo();
   }
 
   function mudarMes(delta) {
     const alvo = mesAtual + delta;
     if (alvo < mesBase - MESES_NAVEGACAO || alvo > mesBase + MESES_NAVEGACAO) return;
     mesAtual = alvo;
-    renderGrade();
+    renderTudo();
   }
 
-  /* ------------------------------------------------ revisão e lançamento */
-  function mostrarEtapa(revisao) {
-    $('loteCalendario')?.classList.toggle('hidden', revisao);
-    $('loteRevisao')?.classList.toggle('hidden', !revisao);
-    if (!revisao) { editando = null; $('loteEditar')?.classList.add('hidden'); renderGrade(); atualizarContador(); }
-  }
-
-  function renderRevisao() {
-    const lista = $('loteLista');
-    if (!lista || !base) return;
-    const dias = diasDoLote();
-    const { ok, problemas } = validarLote(estado.escalas, base, dias);
-    const problemaPorData = new Map(problemas.filter((p) => p.data).map((p) => [p.data, p.motivo]));
-    const fragmento = document.createDocumentFragment();
-    dias.forEach(({ data, horario }) => {
-      const { inicio, fim } = escalaDoDia(base, data, horario);
-      const li = document.createElement('li');
-      li.dataset.data = data;
-      if (data === editando) li.classList.add('is-editando');
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'lote-item';
-      btn.setAttribute('aria-label', `Trocar horário de ${rotuloDia(data)}`);
-      const texto = document.createElement('span');
-      texto.className = 'lote-item-texto';
-      /* Término a partir de 2 dias depois ganha a data, para não parecer no mesmo dia. */
-      const dias = Math.round((parseDateTimeLocal(fim.slice(0, 10) + 'T00:00') - parseDateTimeLocal(data + 'T00:00')) / 86400000);
-      const fimTexto = dias >= 2 ? `${fim.slice(8, 10)}/${fim.slice(5, 7)} ${fim.slice(11, 16)}` : fim.slice(11, 16);
-      texto.textContent = `${rotuloDia(data)} · ${inicio.slice(11, 16)} → ${fimTexto}`;
-      btn.appendChild(texto);
-      if (problemaPorData.has(data)) {
-        const prob = document.createElement('span');
-        prob.className = 'lote-problema';
-        prob.textContent = problemaPorData.get(data);
-        btn.appendChild(prob);
-      }
-      li.appendChild(btn);
-      fragmento.appendChild(li);
-    });
-    lista.replaceChildren(fragmento);
-    const lancar = $('loteLancar');
-    if (lancar) {
-      lancar.textContent = `Lançar ${textoEscalas(dias.length)}`;
-      lancar.disabled = !ok;
-    }
-  }
-
-  function intervaloEditado() {
-    return escalaDoDia(base, editando, marcados.get(editando) || undefined);
-  }
-
-  function editarDia(data) {
-    editando = data;
-    const { inicio, fim } = intervaloEditado();
-    $('loteEditarTitulo').textContent = `Horário de ${rotuloDia(data)}`;
-    $('loteHora').value = inicio.slice(11, 16);
-    $('loteFim').value = fim;
-    $('loteEditar').classList.remove('hidden');
-    renderRevisao();
-  }
-
+  /* ------------------------------------------------ troca de horário do dia */
   function trocarHorario({ hora, duracaoMin }) {
-    if (!editando) return;
-    const atual = marcados.get(editando) || { hora: base.inicio.slice(11, 16), duracaoMin: duracaoMinutos(base) };
-    /* Campo Início apagado = sem mudança; repõe o valor no campo (v80, M2). */
-    const novaHora = hora || atual.hora;
-    marcados.set(editando, { hora: novaHora, duracaoMin: duracaoMin ?? atual.duracaoMin });
-    $('loteHora').value = novaHora;
-    $('loteFim').value = intervaloEditado().fim;
+    if (!selecionado) return;
+    if (!marcados.has(selecionado) && marcados.size >= LIMITE_LOTE) { setAviso(`Limite de ${LIMITE_LOTE} dias por lote.`); return; }
+    const atual = horarioAtual(selecionado);
+    /* Campo Início apagado = sem mudança (v80, M2). */
+    marcados.set(selecionado, { hora: hora || atual.hora, duracaoMin: duracaoMin ?? atual.duracaoMin });
     setAviso();
-    renderRevisao();
+    renderTudo();
   }
 
   function trocarTermino(valor) {
-    if (!editando) return;
-    const hora = $('loteHora').value || base.inicio.slice(11, 16);
-    const inicio = parseDateTimeLocal(`${editando}T${hora}`);
+    if (!selecionado) return;
+    const hora = $('loteHora').value || horarioAtual(selecionado).hora;
+    const inicio = parseDateTimeLocal(`${selecionado}T${hora}`);
     const fim = parseDateTimeLocal(valor);
     const duracaoMin = inicio && fim ? Math.round((fim - inicio) / 60000) : 0;
     if (duracaoMin <= 0) { setAviso('O término precisa ser depois do início.'); return; }
     trocarHorario({ hora, duracaoMin });
   }
 
+  /* ------------------------------------------------------------ lançamento */
   function lancar() {
     const dlg = $('dialogLote');
     const btn = $('loteLancar');
@@ -199,19 +203,21 @@ export function criarAgendaDias(ctx) {
     const ocupados = diasDoLote().filter(({ data, horario }) => situacaoDoDia(estado.escalas, base, data, horario).estado !== 'livre');
     if (ocupados.length) {
       ocupados.forEach(({ data }) => marcados.delete(data));
+      if (ocupados.some(({ data }) => data === selecionado)) selecionado = null;
       setAviso(`${ocupados.length === 1 ? '1 dia saiu' : `${ocupados.length} dias saíram`} do lote porque já tem escala no horário. Confira e toque em Lançar de novo.`);
-      renderRevisao();
+      renderTudo();
       return;
     }
     const dias = diasDoLote();
-    if (!validarLote(estado.escalas, base, dias).ok) { renderRevisao(); return; }
+    if (!validarLote(estado.escalas, base, dias).ok) { renderTudo(); return; }
     const novas = gerarEscalasLote(base, dias);
     const antes = clonarEscalas();
     estado.escalas.push(...novas);
-    if (!salvar()) { estado.escalas = antes; render(); renderRevisao(); return; }
+    if (!salvar()) { estado.escalas = antes; render(); renderTudo(); return; }
     const ids = new Set(novas.map((e) => e.id));
     base = null;
     marcados.clear();
+    selecionado = null;
     dlg.close();
     haptic([10, 30, 10]);
     render();
@@ -235,15 +241,16 @@ export function criarAgendaDias(ctx) {
     if (!escala || !dlg) return;
     base = escala;
     marcados.clear();
-    editando = null;
+    selecionado = null;
+    editando = false;
     setAviso();
     const ini = parseDateTimeLocal(base.inicio);
     mesBase = indiceMes(ini.getFullYear(), ini.getMonth());
     mesAtual = mesBase;
     if ($('loteBase')) {
-      $('loteBase').textContent = `Base: ${fmtDiaBase.format(ini).replace('.', '')} · ${base.inicio.slice(11, 16)} → ${base.fim.slice(11, 16)}. Toque nos dias para lançar a mesma escala.`;
+      $('loteBase').textContent = `Base: ${fmtDiaBase.format(ini).replace('.', '')} · ${base.inicio.slice(11, 16)} → ${base.fim.slice(11, 16)}. Toque nos dias; para outro horário, use “Alterar”.`;
     }
-    mostrarEtapa(false);
+    renderTudo();
     if (!dlg.open) dlg.showModal();
   }
 
@@ -257,20 +264,15 @@ export function criarAgendaDias(ctx) {
     on('loteNext', 'click', () => mudarMes(1));
     on('loteGrade', 'click', (ev) => {
       const btn = ev.target.closest('.lote-dia');
-      if (btn) alternarDia(btn);
+      if (btn) tocarDia(btn);
     });
-    on('loteRevisar', 'click', () => { setAviso(); mostrarEtapa(true); renderRevisao(); });
-    on('loteVoltar', 'click', () => { setAviso(); mostrarEtapa(false); });
-    on('loteLista', 'click', (ev) => {
-      const li = ev.target.closest('li[data-data]');
-      if (li) editarDia(li.dataset.data);
-    });
+    on('loteAlterar', 'click', () => { editando = true; renderTudo(); });
+    on('loteEditarOk', 'click', () => { editando = false; renderTudo(); });
     on('loteHora', 'change', () => trocarHorario({ hora: $('loteHora').value }));
     on('loteFim', 'change', () => trocarTermino($('loteFim').value));
     document.querySelectorAll('#loteEditar .lote-dur').forEach((chip) => {
       chip.addEventListener('click', () => trocarHorario({ hora: $('loteHora').value, duracaoMin: Number(chip.dataset.horas) * 60 }));
     });
-    on('loteEditarOk', 'click', () => { editando = null; $('loteEditar').classList.add('hidden'); renderRevisao(); });
     on('loteLancar', 'click', lancar);
   }
 

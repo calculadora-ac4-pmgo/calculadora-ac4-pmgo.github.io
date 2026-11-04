@@ -44,10 +44,9 @@
     ".lote-dia",
     ".lote-contador",
     ".lote-aviso",
-    ".lote-item-texto",
     ".lote-problema",
-    ".lote-editar-titulo",
-    ".lote-dur"
+    ".lote-dur",
+    ".lote-dia-texto"
   ],
   "naoAvaliaveisAceitos": []
 }

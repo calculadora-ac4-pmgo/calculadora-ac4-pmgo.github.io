@@ -13,6 +13,7 @@ import {
 import { TABELA_OFICIAL, regraNormativaParaData, tabelaParaData } from '../calculo.mjs';
 import { STATUS_ESCALA, gerarIdEscala, detectarConflitos, aplicarNorma } from '../persistencia.mjs';
 import { STATUS_INFO, statusEscala, rotuloQuantidadePm } from '../templates.mjs';
+import { primeiraDoMes } from '../lote.mjs';
 
 /**
  * Cria o formulário de lançamento e as ações da lista.
@@ -191,6 +192,11 @@ export function criarFormulario(ctx) {
       /* O aviso só sai depois de gravar de verdade (v80). */
       aviso();
       render();
+      /* v81: a 1ª escala do mês abre a agenda para marcar os outros dias. */
+      if (novoRegistro && primeiraDoMes(estado.escalas, estado.escalas[estado.escalas.length - 1])) {
+        const idLote = estado.escalas[estado.escalas.length - 1].id;
+        aposProximoPaint(() => abrirLote(idLote));
+      }
       if (novoRegistro) { mostrarInstalacaoAposConversao(); pedirArmazenamentoPersistente(); }
       /* No mobile, salvar com sucesso fecha o bottom sheet. */
       if (isMobileViewport()) fecharPainelLancamentoMobile();

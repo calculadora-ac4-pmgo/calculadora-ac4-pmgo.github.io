@@ -150,6 +150,11 @@ const ROTEIRO = `(async () => {
   // 2. submeter e conferir tabela + totais (14h azul diurna = R$ 420,00)
   document.getElementById('btnSubmit').click();
   await espera(400);
+  /* v81: 1ª escala do mês abre a agenda de lote; o usuário fecha e segue. */
+  for (let i = 0; i < 60 && !document.getElementById('dialogLote')?.open; i++) await espera(50);
+  ok('1ª escala do mês abre a agenda de lote', document.getElementById('dialogLote')?.open);
+  document.getElementById('loteFechar')?.click();
+  await espera(50);
   ok('Escala aparece na tabela', document.querySelectorAll('#listaEscalas tbody tr').length === 1);
   ok('Total de horas = 14h', document.getElementById('totHoras').textContent === '14h',
      document.getElementById('totHoras').textContent);
@@ -247,6 +252,9 @@ const ROTEIRO = `(async () => {
     dur.dispatchEvent(new Event('change', { bubbles: true }));
     document.getElementById('btnSubmit').click();
     await espera(400);
+    for (let i = 0; i < 60 && !document.getElementById('dialogLote')?.open; i++) await espera(50);
+    document.getElementById('loteFechar')?.click(); // v81: agenda abre sozinha na 1ª do mês
+    await espera(50);
   };
   const historico = document.getElementById('planningHistory');
   ok('Histórico: oculto com um único mês', historico.classList.contains('hidden'));
