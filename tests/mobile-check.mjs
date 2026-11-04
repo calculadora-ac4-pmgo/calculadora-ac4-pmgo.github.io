@@ -691,11 +691,22 @@ const ROTEIRO_LOTE = `(async () => {
     if (!botaoDesfazer) await espera(100);
   }
   ok('toast "3 escalas lançadas." com Desfazer', !!botaoDesfazer);
+  // edita e salva uma das lançadas (mantém o id) e deixa outra em edição antes do Desfazer (v80, M1)
+  document.querySelector('[data-acao="editar"][data-id="' + lancadas[0]?.id + '"]')?.click();
+  await espera(150);
+  $('escalaDescricao').value = 'Editada';
+  $('btnSubmit').click();
+  await espera(300);
+  ok('escala lançada editada e salva', JSON.parse(localStorage.getItem('pmgoEscalas') || '[]').some((e) => e.id === lancadas[0]?.id && e.descricao === 'Editada'));
+  document.querySelector('[data-acao="editar"][data-id="' + lancadas[1]?.id + '"]')?.click();
+  await espera(150);
+  ok('outra lançada em edição antes do Desfazer', !$('btnCancelEdit').classList.contains('hidden'));
   botaoDesfazer?.click();
   await espera(200);
   const restantes = JSON.parse(localStorage.getItem('pmgoEscalas') || '[]');
-  ok('Desfazer remove só as 3 do lote', cards() === 2 && restantes.length === 2 &&
+  ok('Desfazer remove só as 3 do lote (inclusive a editada)', cards() === 2 && restantes.length === 2 &&
      restantes.some((e) => e.id === base.id) && restantes.some((e) => e.id === outra.id), restantes.map((e) => e.inicio).join(','));
+  ok('Desfazer cancela a edição de uma escala removida', $('btnCancelEdit').classList.contains('hidden'));
 
   // revalidação: escala nova ocupa o dia 19 com a janela aberta
   document.querySelector('.ec-more-menu [data-acao="lote"][data-id="' + base.id + '"]').click();

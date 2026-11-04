@@ -20,11 +20,11 @@ const indiceMes = (a, m) => a * 12 + m;
 /**
  * Cria a janela "Lançar em outros dias".
  * @param {Object} ctx Dependências de app.js: $, on, estado, toast, salvar, render, haptic,
- *   clonarEscalas, aposProximoPaint.
+ *   clonarEscalas, aposProximoPaint, cancelarEdicao.
  * @returns {{abrir:Function, ligarEventos:Function}}
  */
 export function criarAgendaDias(ctx) {
-  const { $, on, estado, toast, salvar, render, haptic, clonarEscalas } = ctx;
+  const { $, on, estado, toast, salvar, render, haptic, clonarEscalas, cancelarEdicao } = ctx;
 
   let base = null;
   let mesBase = 0;      // índice ano*12+mês do mês da base
@@ -218,7 +218,9 @@ export function criarAgendaDias(ctx) {
         if (restantes.length === estado.escalas.length) return;
         const antesDesfazer = clonarEscalas();
         estado.escalas = restantes;
-        if (!salvar()) { estado.escalas = antesDesfazer; }
+        if (!salvar()) { estado.escalas = antesDesfazer; render(); return; }
+        /* Escala removida não pode continuar em edição (v80, M1). */
+        if (estado.editandoId !== null && ids.has(estado.editandoId)) cancelarEdicao();
         render();
       } },
     });

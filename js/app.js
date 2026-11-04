@@ -156,7 +156,7 @@ import { criarAgendaDias } from './modules/ui/agenda-dias.mjs';
   });
   const { renderModelos } = modelosFavoritos;
   const agendaDias = criarAgendaDias({
-    $, on, estado, toast, salvar, haptic, clonarEscalas, aposProximoPaint, render: () => render(),
+    $, on, estado, toast, salvar, haptic, clonarEscalas, aposProximoPaint, cancelarEdicao, render: () => render(),
   });
 
   /* -------------------------------------------- tabela de valores */
