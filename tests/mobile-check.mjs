@@ -715,7 +715,17 @@ const ROTEIRO_LOTE = `(async () => {
   $('loteLancar')?.click(); $('loteLancar')?.click();
   await espera(300);
   ok('toque duplo lança exatamente 4', cards() === 6, cards());
-  ok('janela fecha após lançar', !dlg.open);
+  // v82: a janela mostra o resultado com Adicionar à agenda / Desfazer / Concluir
+  ok('janela mostra "4 escalas lançadas."', dlg.open && !$('loteResultado')?.classList.contains('hidden') &&
+     $('loteResultadoTexto')?.textContent.trim() === '4 escalas lançadas.' && $('loteCalendario')?.classList.contains('hidden'),
+     $('loteResultadoTexto')?.textContent);
+  $('loteAddAgenda')?.click();
+  await espera(200);
+  ok('"Adicionar à agenda" abre a agenda só com as escalas lançadas', !dlg.open && $('dialogAgenda')?.open &&
+     $('agendaSub')?.textContent.trim() === '4 escalas selecionadas', $('agendaSub')?.textContent);
+  ok('agenda oferece o arquivo com lembrete', document.querySelector('#agendaBody [data-prov="ics"]')?.textContent.includes('lembrete 2 h antes'));
+  $('agendaCancelar')?.click();
+  await espera(100);
   const salvasDepois = JSON.parse(localStorage.getItem('pmgoEscalas') || '[]');
   const lancadas = salvasDepois.filter((e) => ['2026-11-14T13:00', '2026-11-15T18:00', '2026-11-17T06:00', '2026-11-19T18:00'].includes(e.inicio));
   ok('escalas lançadas com dados da base', lancadas.length === 4 && lancadas.every((e) => e.status === 'planejada' && e.qtdPm === base.qtdPm),
@@ -762,7 +772,17 @@ const ROTEIRO_LOTE = `(async () => {
      dia(19)?.getAttribute('aria-pressed') !== 'true' && dia(15)?.getAttribute('aria-pressed') === 'true' && $('loteAviso')?.textContent.trim() !== '',
      cards() + ' / ' + $('loteAviso')?.textContent);
   $('loteLancar')?.click(); await espera(200);
-  ok('novo toque lança o restante', cards() === antesReval + 1 && !dlg.open, cards());
+  ok('novo toque lança o restante', cards() === antesReval + 1 && $('loteResultadoTexto')?.textContent.trim() === '1 escala lançada.', cards());
+  $('loteDesfazer')?.click(); await espera(200);
+  ok('"Desfazer" na janela remove o lote e fecha', cards() === antesReval && !dlg.open, cards());
+  document.querySelector('.ec-more-menu [data-acao="lote"][data-id="' + base.id + '"]').click();
+  await espera(200);
+  ok('reabrir depois do resultado volta ao calendário', dlg.open && !$('loteCalendario')?.classList.contains('hidden') &&
+     $('loteResultado')?.classList.contains('hidden'));
+  dia(15)?.click(); await espera(30);
+  $('loteLancar')?.click(); await espera(200);
+  $('loteConcluir')?.click(); await espera(100);
+  ok('"Concluir" fecha a janela mantendo o lançamento', !dlg.open && cards() === antesReval + 1, cards());
 
   // atalho no aviso de escala adicionada (fora da 1ª do mês)
   for (let i = 0; i < 300 && document.querySelector('#toastRegion .toast'); i++) await espera(100);

@@ -24,11 +24,11 @@ const horaCurta = (hhmm) => (hhmm.slice(3) === '00' ? `${hhmm.slice(0, 2)}h` : `
 /**
  * Cria a janela "Lançar em outros dias".
  * @param {Object} ctx Dependências de app.js: $, on, estado, toast, salvar, render, haptic,
- *   clonarEscalas, aposProximoPaint, cancelarEdicao.
+ *   clonarEscalas, aposProximoPaint, cancelarEdicao, agendarEscalas.
  * @returns {{abrir:Function, fechar:Function, ligarEventos:Function}}
  */
 export function criarAgendaDias(ctx) {
-  const { $, on, estado, toast, salvar, render, haptic, clonarEscalas, cancelarEdicao } = ctx;
+  const { $, on, estado, toast, salvar, render, haptic, clonarEscalas, cancelarEdicao, agendarEscalas } = ctx;
 
   let base = null;
   let mesBase = 0;            // índice ano*12+mês do mês da base
@@ -36,6 +36,7 @@ export function criarAgendaDias(ctx) {
   const marcados = new Map(); // data → horário trocado (ou null = horário da base)
   let selecionado = null;     // dia mostrado no painel
   let editando = false;       // painel com os campos de horário abertos
+  let resultado = null;       // v82: { escalas, desfazer } depois de lançar
 
   const textoEscalas = (n) => `${n} ${n === 1 ? 'escala' : 'escalas'}`;
   const textoContador = (n) => `${n} ${n === 1 ? 'dia marcado' : 'dias marcados'}`;
@@ -135,6 +136,12 @@ export function criarAgendaDias(ctx) {
     }
   }
 
+  /* v82: depois de lançar, a janela mostra o resultado (agenda / desfazer / concluir). */
+  function mostrarEtapaResultado(ativo) {
+    ['loteBase', 'loteCalendario', 'loteDiaPainel', 'loteRodape', 'loteAviso'].forEach((id) => $(id)?.classList.toggle('hidden', ativo));
+    $('loteResultado')?.classList.toggle('hidden', !ativo);
+  }
+
   function renderTudo() {
     if (!base) return;
     const { ok, mapa } = problemasPorData();
@@ -218,21 +225,23 @@ export function criarAgendaDias(ctx) {
     base = null;
     marcados.clear();
     selecionado = null;
-    dlg.close();
     haptic([10, 30, 10]);
     render();
-    toast(`${textoEscalas(novas.length)} ${novas.length === 1 ? 'lançada' : 'lançadas'}.`, {
-      acao: { rotulo: 'Desfazer', fn: () => {
-        const restantes = estado.escalas.filter((e) => !ids.has(e.id));
-        if (restantes.length === estado.escalas.length) return;
-        const antesDesfazer = clonarEscalas();
-        estado.escalas = restantes;
-        if (!salvar()) { estado.escalas = antesDesfazer; render(); return; }
-        /* Escala removida não pode continuar em edição (v80, M1). */
-        if (estado.editandoId !== null && ids.has(estado.editandoId)) cancelarEdicao();
-        render();
-      } },
-    });
+    const desfazer = () => {
+      const restantes = estado.escalas.filter((e) => !ids.has(e.id));
+      if (restantes.length === estado.escalas.length) return;
+      const antesDesfazer = clonarEscalas();
+      estado.escalas = restantes;
+      if (!salvar()) { estado.escalas = antesDesfazer; render(); return; }
+      /* Escala removida não pode continuar em edição (v80, M1). */
+      if (estado.editandoId !== null && ids.has(estado.editandoId)) cancelarEdicao();
+      render();
+    };
+    const texto = `${textoEscalas(novas.length)} ${novas.length === 1 ? 'lançada' : 'lançadas'}.`;
+    resultado = { escalas: novas, desfazer };
+    $('loteResultadoTexto').textContent = texto;
+    mostrarEtapaResultado(true);
+    toast(texto, { acao: { rotulo: 'Desfazer', fn: desfazer } });
   }
 
   function abrir(idBase) {
@@ -243,6 +252,8 @@ export function criarAgendaDias(ctx) {
     marcados.clear();
     selecionado = null;
     editando = false;
+    resultado = null;
+    mostrarEtapaResultado(false);
     setAviso();
     const ini = parseDateTimeLocal(base.inicio);
     mesBase = indiceMes(ini.getFullYear(), ini.getMonth());
@@ -274,6 +285,13 @@ export function criarAgendaDias(ctx) {
       chip.addEventListener('click', () => trocarHorario({ hora: $('loteHora').value, duracaoMin: Number(chip.dataset.horas) * 60 }));
     });
     on('loteLancar', 'click', lancar);
+    on('loteAddAgenda', 'click', () => {
+      const escalas = resultado?.escalas.filter((n) => estado.escalas.some((e) => e.id === n.id)) || [];
+      fechar();
+      if (escalas.length) agendarEscalas(escalas);
+    });
+    on('loteDesfazer', 'click', () => { resultado?.desfazer(); resultado = null; fechar(); });
+    on('loteConcluir', 'click', () => { resultado = null; fechar(); });
   }
 
   return { abrir, fechar, ligarEventos };

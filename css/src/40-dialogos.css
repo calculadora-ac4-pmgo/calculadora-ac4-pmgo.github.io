@@ -373,3 +373,7 @@
 .lote-problema:empty { display: none; }
 .lote-problema { display: block; margin-top: 4px; color: var(--danger); font-size: var(--fs-leitura); font-weight: 650; }
 .lote-dia-painel .lote-editar { margin-top: 10px; padding: 0; border: 0; background: transparent; }
+.lote-resultado { padding: 8px 0 4px; }
+.lote-resultado-texto { margin: 0 0 6px; font-size: 1.05rem; font-weight: 800; }
+.lote-resultado-acoes { display: grid; gap: 8px; margin-top: 12px; }
+.lote-resultado-acoes .btn { min-height: 48px; width: 100%; }
