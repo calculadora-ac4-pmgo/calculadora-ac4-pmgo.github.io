@@ -293,4 +293,26 @@ const validarAplicarNorma = () => {
 };
 rodar('Escalas salvas seguem a Portaria vigente', validarAplicarNorma);
 
+const validarFonteUnica = () => {
+  const dir = join(raiz, 'js'), arquivos = [];
+  const varrer = (d) => readdirSync(d, { withFileTypes: true }).forEach((f) =>
+    f.isDirectory() ? varrer(join(d, f.name)) : /\.m?js$/.test(f.name) && arquivos.push(join(d, f.name)));
+  varrer(dir);
+  const fora = arquivos.filter((a) => !/portarias\.mjs$|testes\.mjs$/.test(a));
+  const html = readFileSync(join(raiz, 'index.html'), 'utf8');
+  const faixa = html.match(/<div class="tariff-strip"[\s\S]*?<\/div>\s*<\/div>/)?.[0] || '';
+  const n = normaAtual();
+  const reais = (c) => `R$&nbsp;${c / 100}/h`;
+  const checks = [
+    [!fora.some((a) => /621\/2026/.test(readFileSync(a, 'utf8').replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, ''))), '621/2026 só em portarias.mjs'],
+    [!fora.some((a) => /AD:\s*3000/.test(readFileSync(a, 'utf8'))), 'valores só em portarias.mjs'],
+    [!/id="val(AD|AN|VD|VN)"/.test(html), 'campos ocultos removidos'],
+    [faixa.includes(n.norma) && ['AD', 'AN', 'VD', 'VN'].every((k) => faixa.includes(reais(n.valores[k]))), 'faixa fixa confere com normaAtual()'],
+    [!/valAD|pmgoConfig.*setItem|salvarConfig/.test(readFileSync(join(dir, 'app.js'), 'utf8')), 'app.js sem campos ocultos'],
+  ];
+  const falhas = checks.filter(([ok]) => !ok).map(([, nome]) => nome);
+  return falhas.length ? falhas : 'FONTE ÚNICA OK';
+};
+rodar('Fonte única da Portaria', validarFonteUnica);
+
 process.exit(falhou ? 1 : 0);

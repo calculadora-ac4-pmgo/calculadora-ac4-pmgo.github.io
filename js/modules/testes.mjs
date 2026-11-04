@@ -9,18 +9,19 @@ import {
   fmtMoeda, combinarDataHoraLocal, formatarDataHoraInput, calcularTerminoPorDuracao,
   validarIntervaloEscala, csvTextoSeguro,
 } from './formato.mjs';
-import { PORTARIA_ATUAL, calcularEscala as calcularEscalaBase } from './calculo.mjs';
+import { PORTARIA_ATUAL, TABELA_OFICIAL, calcularEscala as calcularEscalaBase } from './calculo.mjs';
+import { aplicarNorma } from './persistencia.mjs';
 import { ICS_DOMAIN, dataICS, desdobrarLinhasICS, validarICS as validarICSBase } from './agenda.mjs';
 
 /**
  * Instala as suítes em `window`.
  * @param {Object} ctx Pontes para o estado interno de app.js:
- *   calcularEscala, lerTabelaAtual, tabelaParaCalculo, escalasOrdenadas, montarICS,
+ *   calcularEscala, escalasOrdenadas, montarICS,
  *   gerarLinkOutlookAgenda, salvar, render, $, STORAGE e `estado` (getters/setters
  *   de `escalas` e `filtroMes`).
  */
 export function instalarTestes(ctx) {
-  const { calcularEscala, lerTabelaAtual, tabelaParaCalculo, escalasOrdenadas, montarICS,
+  const { calcularEscala, escalasOrdenadas, montarICS,
     gerarLinkOutlookAgenda, salvar, render, $, STORAGE, estado } = ctx;
 
   window.__ac4Testes = function () {
@@ -144,8 +145,13 @@ export function instalarTestes(ctx) {
         descricao: 'Escala AC4',
         origem: 'AC4',
         qtdPm: 1,
-        tabela: lerTabelaAtual(),
+        tabela: TABELA_OFICIAL,
       };
+      /* v73: editar a data reaplica a tabela da norma da nova data. */
+      const gravadaAntiga = { ...escalaTeste, inicio: '2026-08-07T08:00', fim: '2026-08-07T18:00',
+        tabela: { id: 'ssp-550-2024', portaria: 'Portaria nº 550/2024', valores: { AD: 2647, AN: 2980, VD: 3641, VN: 4138 } } };
+      const editada = aplicarNorma({ ...gravadaAntiga, inicio: '2026-08-08T08:00', fim: '2026-08-08T18:00' }).escala;
+      add('Edição de data reaplica a tabela oficial', editada.tabela.id === TABELA_OFICIAL.id && editada.tabela.valores.VD === 4000);
       add('Simular criação de objeto de escala', escalaTeste.inicio === '2026-07-05T08:00' && escalaTeste.fim === '2026-07-06T08:00' && escalaTeste.origem === 'AC4');
 
       estado.escalas = [];
@@ -177,7 +183,7 @@ export function instalarTestes(ctx) {
 
   window.__ac4ValidarICS = function (entrada) {
     const fonte = Array.isArray(entrada) ? entrada : escalasOrdenadas();
-    const resultado = validarICSBase(fonte, tabelaParaCalculo());
+    const resultado = validarICSBase(fonte, TABELA_OFICIAL);
     if (resultado.falhas.length && console.table) console.table(resultado.falhas);
     return resultado;
   };
