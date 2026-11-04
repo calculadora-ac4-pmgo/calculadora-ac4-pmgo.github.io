@@ -333,6 +333,8 @@ const MODULOS_UI = {
   avisos: ['toast', 'dialogConfirmar', 'haptic'],
   observabilidade: ['registrarErro', 'initObservabilidade'],
   aparencia: ['aplicarTema', 'initTema', 'initNovidades', 'abrirNovidades', 'marcarNovidadesVistas'],
+  dados: ['salvar', 'carregar', 'salvarModelos', 'salvarMetas', 'normalizarModelos', 'normalizarMetas', 'exportarBackup',
+    'restaurarBackup', 'pedirArmazenamentoPersistente', 'textoStatusBackup', 'lembrarBackup', 'ehIOS', 'rodandoInstalado'],
 };
 const resultadoModulosUI = await (async () => {
   const app = readFileSync(join(raiz, 'js', 'app.js'), 'utf8');
@@ -360,5 +362,32 @@ const resultadoModulosUI = await (async () => {
   return falhas.length ? falhas : 'MÓDULOS DE INTERFACE OK';
 })();
 rodar('Módulos de interface (js/modules/ui)', () => resultadoModulosUI);
+
+/* Review Focus v74 (1): restaurar backup pela fábrica grava em estado.escalas
+   (não numa variável local) e redesenha a tela. */
+const resultadoRestaurar = await (async () => {
+  try {
+    const { criarDados } = await import(pathToFileURL(join(raiz, 'js', 'modules', 'ui', 'dados.mjs')).href);
+    let escalas = [], modelos = [], metasMensais = {}, renderizou = 0;
+    const estado = {
+      get escalas() { return escalas; }, set escalas(v) { escalas = v; },
+      get modelos() { return modelos; }, set modelos(v) { modelos = v; },
+      get metasMensais() { return metasMensais; }, set metasMensais(v) { metasMensais = v; },
+      sheetAberto: false,
+    };
+    const STORAGE = { escalas: 'eqEscalas', schema: 'eqSchema', modelos: 'eqModelos', metas: 'eqMetas', ultimoBackup: 'eqBackup', lembreteBackup: 'eqLembrete' };
+    const dados = criarDados({ $: () => null, estado, STORAGE, APP_VERSION: '0', lerLocal: () => null,
+      toast: () => {}, dialogConfirmar: async () => true, registrarErro: () => {}, render: () => { renderizou++; },
+      renderModelos: () => {}, cancelarEdicao: () => {}, clonarEscalas: () => JSON.parse(JSON.stringify(escalas)) });
+    const backup = JSON.stringify({ escalas: [{ id: 'b1', inicio: '2026-08-07T08:00', fim: '2026-08-07T18:00' }], metasMensais: { '2026-08': { valorCentavos: 100, horas: 1 } } });
+    await dados.restaurarBackup({ size: backup.length, text: async () => backup });
+    const falhas = [];
+    if (!(escalas.length === 1 && escalas[0].id === 'b1')) falhas.push('estado.escalas não atualizado pelo restaurarBackup');
+    if (!metasMensais['2026-08']) falhas.push('estado.metasMensais não atualizado');
+    if (!renderizou) falhas.push('render não chamado após restaurar');
+    return falhas.length ? falhas : 'RESTAURAR GRAVA NO ESTADO OK';
+  } catch (e) { return [`dados: ${e.message}`]; }
+})();
+rodar('Restaurar backup grava no estado (ui/dados)', () => resultadoRestaurar);
 
 process.exit(falhou ? 1 : 0);
