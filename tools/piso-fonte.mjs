@@ -118,6 +118,25 @@ function tamanhosDaRegra(corpo) {
   return saida;
 }
 
+const escaparRegex = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * Um seletor de regra é de leitura quando QUALQUER parte dele (grupo separado por vírgula,
+ * composto, com pseudo-classe/elemento) usa um seletor da lista de leitura como unidade
+ * inteira. Assim `.launch-panel .field-hint`, `.field-hint, .x` e `.field-hint:hover` não
+ * escapam do mínimo de 14 px. `.field-hint-x` não conta (outro nome).
+ */
+export function ehSeletorLeitura(seletor, leitura) {
+  const partes = seletor.split(',').map((p) => p.trim().replace(/\s+/g, ' '));
+  for (const entrada of leitura) {
+    const re = new RegExp(`(^|[\\s>+~])${escaparRegex(entrada)}(?![\\w-])`);
+    /* Pseudo-elemento (::before/::after) é outro texto (ex.: o rótulo da célula no
+       celular): só conta se o seletor for exatamente o da lista. */
+    if (partes.some((p) => (p.includes('::') ? p === entrada : re.test(p)))) return true;
+  }
+  return false;
+}
+
 function carregarFixture(raiz) {
   const f = join(raiz, 'tests', 'fixtures', 'fontes-leitura.json');
   const dados = existsSync(f) ? JSON.parse(readFileSync(f, 'utf8')) : {};
@@ -146,11 +165,11 @@ export function avaliarRegras(raiz, { arquivos } = {}) {
         if (t.propriedade === 'font') {
           const a = tamanhoDaAbreviacao(t.valor);
           if (a.semTamanho) continue;
-          if (a.naoAvaliavel) { itens.push({ arquivo, linha: r.linha, seletor: r.seletor, valor: t.valor, px: null, ehLeitura: leitura.has(r.seletor), aceito: aceitos.has(r.seletor) }); continue; }
+          if (a.naoAvaliavel) { itens.push({ arquivo, linha: r.linha, seletor: r.seletor, valor: t.valor, px: null, ehLeitura: ehSeletorLeitura(r.seletor, leitura), aceito: aceitos.has(r.seletor) }); continue; }
           valor = a.valor;
         }
         if (/^(inherit|initial|unset|revert)$/i.test(valor)) continue; // não define tamanho novo
-        itens.push({ arquivo, linha: r.linha, seletor: r.seletor, valor, px: paraPx(valor, vars), ehLeitura: leitura.has(r.seletor), aceito: aceitos.has(r.seletor) });
+        itens.push({ arquivo, linha: r.linha, seletor: r.seletor, valor, px: paraPx(valor, vars), ehLeitura: ehSeletorLeitura(r.seletor, leitura), aceito: aceitos.has(r.seletor) });
       }
     }
   }
@@ -165,6 +184,21 @@ export function avaliarRegras(raiz, { arquivos } = {}) {
 export function verificarPiso(raiz, { arquivos } = {}) {
   const itens = avaliarRegras(raiz, { arquivos });
   const falhas = [];
+  /* Lista obsoleta: seletor que não existe mais no CSS deixaria o texto sem proteção.
+     Só confere com todos os fontes (com `arquivos` a lista não é a visão completa). */
+  if (!arquivos || !arquivos.length) {
+    const { leitura, aceitos } = carregarFixture(raiz);
+    for (const entrada of leitura) {
+      if (!itens.some((it) => ehSeletorLeitura(it.seletor, [entrada]))) {
+        falhas.push(`fontes-leitura.json: "${entrada}" obsoleto — nenhuma regra de tela com font-size usa esse seletor`);
+      }
+    }
+    for (const entrada of aceitos) {
+      if (!itens.some((it) => it.seletor === entrada)) {
+        falhas.push(`fontes-leitura.json: naoAvaliaveisAceitos "${entrada}" obsoleto — nenhuma regra com esse seletor`);
+      }
+    }
+  }
   for (const it of itens) {
     const onde = `${it.arquivo}:${it.linha} ${it.seletor}`;
     if (it.px === null) {

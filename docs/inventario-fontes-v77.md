@@ -105,11 +105,14 @@ Gerado a partir de `css/src/` por `tools/piso-fonte.mjs`. Lista as **86 regras d
 
 Cada ajuste de espaço ou quebra de linha feito para o aumento caber em 320–390 px entra aqui, com o motivo.
 
-1. **Histórico de 6 meses em 320 px** (`.planning-history-value`, 10,24 px → 12 px). Com 12 px o pior caso realista
-   ("8,8 mil", 7 caracteres) precisava de 40 px e a coluna tinha 38 px: o valor seria cortado com reticências,
-   sem aviso. Ajuste mínimo: `gap` da grade `.planning-history-bars` de 6 px para 3 px **só em até 360 px**
-   (`90-responsivo.css`). A coluna passa a ter 41 px e o valor cabe. Acima de 360 px nada mudou.
-   Coberto por 3 verificações novas em `tests/mobile-check.mjs` (valores reais, pior caso, sem rolagem horizontal).
+1. **Histórico de 6 meses até 414 px** (`.planning-history-value`, 10,24 px → 12 px). O valor de cada coluna usa
+   `overflow: hidden` com reticências, então texto que não cabe é cortado sem aviso. Com 12 px, "8,8 mil" já não cabia
+   em 320 px, e a revisão independente mostrou que valores maiores ("12,5 mil", "125,3 mil") passavam a ser cortados em
+   larguras onde a v76 os mostrava inteiros. Ajuste mínimo, em `90-responsivo.css`, **só até 414 px**:
+   `gap` da grade `.planning-history-bars` de 6 px para 2 px e `letter-spacing: -0.03em` no valor.
+   Regra de aceitação: **nunca pior que a v76** — "8,8 mil" cabe em 320 px; "12,5 mil", a partir de 360 px;
+   "125,3 mil", a partir de 375 px. Em 320 px, "12,5 mil" já era cortado na v76 e continua sendo. Acima de 414 px nada mudou.
+   Coberto por `roteiroHistorico` em `tests/mobile-check.mjs` (320, 360, 375 e 393 px).
 
 ## Revisão visual (capturas antes × depois)
 

@@ -634,7 +634,14 @@
   .mobile-bar { gap: 8px; padding-inline: 10px; }
   .mobile-bar-actions { gap: 6px; }
   .mobile-bar-total .value { font-size: 0.92rem; letter-spacing: -0.02em; }
-  /* v77: com a letra em 12 px, "8,8 mil" não cabia na coluna do histórico (40 px em 38). */
-  .planning-history-bars { gap: 3px; }
+}
+
+/* v77: com a letra em 12 px os valores do histórico de 6 meses ("12,5 mil", "125,3 mil")
+   passavam a ser cortados em larguras onde cabiam a 10 px. Menos espaço entre as colunas e
+   letras um pouco mais juntas até 414 px devolvem o que a v76 mostrava. Cobertura:
+   roteiroHistorico em tests/mobile-check.mjs (320, 375 e 393 px). */
+@media (max-width: 414px) {
+  .planning-history-bars { gap: 2px; }
+  .planning-history-value { letter-spacing: -0.03em; }
 }
 

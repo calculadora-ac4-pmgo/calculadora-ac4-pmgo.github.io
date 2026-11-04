@@ -424,8 +424,12 @@ const ROTEIRO_MOBILE = `(async () => {
   // v77 (R6): lista com o painel do mês expandido e o diálogo Compartilhar aberto
   const pequenosLista = menoresQue12();
   ok('Nenhum texto visível abaixo de 12 px na lista (inclui herança)', pequenosLista.length === 0, pequenosLista.join(' | '));
-  document.getElementById('planningToggle')?.click();
-  await espera(250);
+  /* O painel já pode estar expandido (aberto mais acima no roteiro): só clica se estiver recolhido. */
+  if (document.getElementById('planningToggle')?.getAttribute('aria-expanded') !== 'true') {
+    document.getElementById('planningToggle')?.click();
+    await espera(250);
+  }
+  ok('Painel do mês realmente expandido antes da medição', document.querySelector('.planning-panel')?.classList.contains('is-expanded'));
   const pequenosPainel = menoresQue12();
   ok('Nenhum texto visível abaixo de 12 px com o painel do mês expandido', pequenosPainel.length === 0, pequenosPainel.join(' | '));
   document.getElementById('mobileShare').click();
@@ -478,32 +482,50 @@ const ROTEIRO_320 = `(async () => {
      acoes.length === 2 && acoes.every((b) => b.getBoundingClientRect().height >= 44),
      acoes.map((b) => Math.round(b.getBoundingClientRect().width) + '×' + Math.round(b.getBoundingClientRect().height)).join(' | '));
 
-  /* v77 (R6): o valor de cada coluna do histórico de 6 meses usa overflow:hidden
-     com reticências — se não couber, é cortado sem aviso. Confere os valores
-     reais e o pior caso realista ("8,8 mil", 7 caracteres) em 320px. */
-  for (const d of ['2026-08-10T07:00', '2026-09-14T07:00']) {
+  localStorage.removeItem('pmgoEscalas');
+  return JSON.stringify(passos);
+})()`;
+
+/* v77 (R6): histórico de 6 meses. O valor de cada coluna usa overflow:hidden com
+   reticências — se não couber, é cortado sem aviso. A letra passou de 10 px para
+   12 px, então confere, por largura de tela, valores de até 9 caracteres: nunca
+   pior que a v76 ("8,8 mil" cabia em 320 px; "12,5 mil" a partir de 340 px; "125,3 mil"
+   a partir de 365 px). */
+const roteiroHistorico = (textos) => `(async () => {
+  const passos = [];
+  const ok = (nome, cond, detalhe = '') => passos.push({ nome, ok: !!cond, detalhe: String(detalhe) });
+  const espera = (ms) => new Promise((r) => setTimeout(r, ms));
+  for (let i = 0; i < 50 && !document.getElementById('formEscala'); i++) await espera(100);
+  localStorage.removeItem('pmgoEscalas');
+  for (const d of ['2026-07-06T07:00', '2026-08-10T07:00', '2026-09-14T07:00']) {
+    const ini = document.getElementById('escalaInicio');
     ini.value = d;
     ini.dispatchEvent(new Event('change', { bubbles: true }));
+    const dur = document.getElementById('escalaDuracao');
     dur.value = '24';
     dur.dispatchEvent(new Event('change', { bubbles: true }));
     document.getElementById('btnSubmit').click();
     await espera(400);
   }
-  document.getElementById('planningToggle')?.click();
-  await espera(300);
+  if (document.getElementById('planningToggle')?.getAttribute('aria-expanded') !== 'true') {
+    document.getElementById('planningToggle')?.click();
+    await espera(300);
+  }
   const historico = document.getElementById('planningHistory');
   for (let i = 0; i < 20 && historico?.classList.contains('hidden'); i++) await espera(100);
   const valores = () => [...document.querySelectorAll('.planning-history-value')];
   const cabe = (e) => e.scrollWidth <= e.clientWidth + 1;
-  ok('320px: histórico de 6 meses visível (2+ meses com escalas)', historico && !historico.classList.contains('hidden') && valores().length === 6);
-  ok('320px: valores do histórico cabem na coluna', valores().length === 6 && valores().every(cabe),
+  ok('histórico de 6 meses visível (2+ meses com escalas)', historico && !historico.classList.contains('hidden') && valores().length === 6,
+     document.querySelectorAll('.escala-card').length + ' cards');
+  ok('valores reais do histórico cabem na coluna', valores().length === 6 && valores().every(cabe),
      valores().map((e) => e.textContent + ':' + e.scrollWidth + '/' + e.clientWidth).join(' '));
-  valores().forEach((e) => { e.textContent = '8,8 mil'; });
-  await espera(100);
-  ok('320px: pior caso do histórico ("8,8 mil") cabe na coluna', valores().every(cabe),
-     valores().map((e) => e.scrollWidth + '/' + e.clientWidth).join(' '));
-  ok('320px: histórico sem rolagem horizontal', document.documentElement.scrollWidth <= window.innerWidth + 1);
-
+  for (const texto of ${JSON.stringify(textos)}) {
+    valores().forEach((e) => { e.textContent = texto; });
+    await espera(80);
+    ok('valor "' + texto + '" do histórico cabe na coluna', valores().length === 6 && valores().every(cabe),
+       valores().map((e) => e.scrollWidth + '/' + e.clientWidth).join(' '));
+  }
+  ok('histórico sem rolagem horizontal', document.documentElement.scrollWidth <= window.innerWidth + 1);
   localStorage.removeItem('pmgoEscalas');
   return JSON.stringify(passos);
 })()`;
@@ -542,6 +564,10 @@ try {
 
   await rodarViewport(cdp, sessionId, porta, 393, 852, ROTEIRO_MOBILE, 'Celular 393×852 (padrão Android)');
   await rodarViewport(cdp, sessionId, porta, 320, 568, ROTEIRO_320, 'Celular 320×568 (mínimo)');
+  await rodarViewport(cdp, sessionId, porta, 320, 568, roteiroHistorico(['8,8 mil']), 'Histórico 320 px');
+  await rodarViewport(cdp, sessionId, porta, 360, 640, roteiroHistorico(['8,8 mil', '12,5 mil']), 'Histórico 360 px');
+  await rodarViewport(cdp, sessionId, porta, 375, 667, roteiroHistorico(['12,5 mil', '125,3 mil']), 'Histórico 375 px');
+  await rodarViewport(cdp, sessionId, porta, 393, 852, roteiroHistorico(['12,5 mil', '125,3 mil']), 'Histórico 393 px');
 
   /* iPhone: força o User-Agent de iOS para validar o fluxo de instalação do Safari. */
   await cdp.enviar('Emulation.setUserAgentOverride', {

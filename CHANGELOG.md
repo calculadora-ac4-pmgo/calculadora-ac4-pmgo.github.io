@@ -5,10 +5,10 @@
 Mudança visível: nenhum texto de tela fica menor que **12 px** (rótulos) e os textos de leitura (dicas, avisos, mensagens, informações dos cards) têm no mínimo **14 px**. O layout é o mesmo.
 - **86 regras de tela estavam abaixo de 14 px, 36 delas abaixo de 12 px.** 63 subiram para o mínimo da sua classe (rótulo 12 px, leitura 14 px); as outras 23 já estavam no mínimo ou acima e não foram tocadas. `@media print` (PDF) ficou fora.
 - **Duas variáveis em `css/src/00-base.css`:** `--fs-rotulo` (0,75 rem) e `--fs-leitura` (0,875 rem), a fonte única dos mínimos.
-- **`tools/piso-fonte.mjs`** confere os fontes de `css/src/` e acusa qualquer tamanho abaixo do mínimo ou que não consiga avaliar. Os seletores de leitura ficam em `tests/fixtures/fontes-leitura.json`. **Teste novo "Piso de fonte (R6)"** no `npm run test:unit`.
+- **`tools/piso-fonte.mjs`** confere os fontes de `css/src/` e acusa qualquer tamanho abaixo do mínimo ou que não consiga avaliar. Os seletores de leitura ficam em `tests/fixtures/fontes-leitura.json`. **Testes novos no `npm run test:unit`:** "Piso de fonte (R6)" e "casos de borda do verificador" (seletor composto, em grupo, com pseudo-classe, e item obsoleto na lista de leitura). Pseudo-elementos (`::before`) não herdam a classe do elemento.
 - **Inventário** de todas as regras, com a classe de cada uma e as decisões: `docs/inventario-fontes-v77.md`.
-- **Histórico de 6 meses em 320 px:** com 12 px, "8,8 mil" não cabia na coluna (40 px em 38). O espaço entre as barras cai de 6 para 3 px, só em telas de até 360 px.
-- **`tests/mobile-check.mjs`:** verificação de herança (nenhum texto visível abaixo de 12 px, medido no navegador, com sheet aberto, lista, painel do mês e Compartilhar) e 3 verificações do histórico em 320 px.
+- **Histórico de 6 meses até 414 px:** com 12 px, valores como "8,8 mil" (320 px) e "12,5 mil"/"125,3 mil" (360–400 px) passavam a ser cortados. O espaço entre as barras cai de 6 para 2 px e as letras ficam 3 % mais juntas, só em telas de até 414 px. Regra: nunca pior que a v76.
+- **`tests/mobile-check.mjs`:** verificação de herança (nenhum texto visível abaixo de 12 px, medido no navegador, com sheet aberto, lista, painel do mês realmente expandido e Compartilhar) e `roteiroHistorico` (valores do histórico cabem na coluna em 320, 360, 375 e 393 px).
 - **`tests/capturas-fontes.mjs`** (apoio, fora do `npm test`): capturas em 320, 390 e 1280 px, claro e escuro, para comparar versões. Antes × depois sem texto cortado nem rolagem horizontal; as páginas ficam ~4–5 % mais altas.
 - Aviso de novidades reaberto uma vez (`data-conteudo="77"`): letras maiores, só horas inteiras, lista mais rápida.
 - Equivalência (26 capturas) e textos preservados continuam idênticos: só CSS e o aviso de novidades mudaram.
