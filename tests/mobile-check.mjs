@@ -767,6 +767,21 @@ const ROTEIRO_LOTE = `(async () => {
   await espera(100);
   ok('mudança vinda de outra aba fecha a janela do lote', abertaAntes && !dlg.open, abertaAntes + ' → ' + dlg.open);
 
+  // v80 (M4): "Escala adicionada." só depois de gravar de verdade
+  for (let i = 0; i < 300 && document.querySelector('#toastRegion .toast'); i++) await espera(100);
+  const setOrig = Storage.prototype.setItem;
+  Storage.prototype.setItem = function () { throw new Error('cheio'); };
+  await lancar('2026-11-26T19:00', { duracao: '12' });
+  Storage.prototype.setItem = setOrig;
+  const vistos = [];
+  for (let i = 0; i < 90; i++) {
+    const t = document.querySelector('#toastRegion .toast span')?.textContent;
+    if (t && !vistos.includes(t)) vistos.push(t);
+    await espera(100);
+  }
+  ok('falha ao gravar não anuncia "Escala adicionada."', vistos.length > 0 && !vistos.includes('Escala adicionada.') &&
+     vistos[0].startsWith('Não foi possível salvar'), vistos.join(' | '));
+
   localStorage.removeItem('pmgoEscalas');
   return JSON.stringify(passos);
 })()`;

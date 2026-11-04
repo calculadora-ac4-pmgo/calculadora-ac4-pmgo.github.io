@@ -171,12 +171,13 @@ export function criarFormulario(ctx) {
       const escalasAntes = clonarEscalas();
 
       const novoRegistro = estado.editandoId === null;
+      let aviso;
       if (!novoRegistro) {
         const idx = estado.escalas.findIndex((e) => e.id === estado.editandoId);
         /* Data editada pode mudar de norma: reaplica a tabela da nova data. */
         if (idx >= 0) estado.escalas[idx] = aplicarNorma({ ...estado.escalas[idx], ...dados }).escala;
         cancelarEdicao();
-        toast('Escala atualizada.');
+        aviso = () => toast('Escala atualizada.');
       } else {
         const idNovo = gerarIdEscala();
         estado.escalas.push({ id: idNovo, ...dados, status: 'planejada', tabela: tabelaParaData(dados.inicio) || TABELA_OFICIAL });
@@ -184,9 +185,11 @@ export function criarFormulario(ctx) {
         if ($('escalaQtdPm'))    $('escalaQtdPm').value = '1';
         if ($('escalaOrigem'))   $('escalaOrigem').value = 'AC4';
         /* v79: atalho para lançar a mesma escala em outros dias. */
-        toast('Escala adicionada.', { acao: { rotulo: 'Lançar em outros dias', fn: () => abrirLote(idNovo) } });
+        aviso = () => toast('Escala adicionada.', { acao: { rotulo: 'Lançar em outros dias', fn: () => abrirLote(idNovo) } });
       }
       if (!salvar()) { estado.escalas = escalasAntes; render(); return; }
+      /* O aviso só sai depois de gravar de verdade (v80). */
+      aviso();
       render();
       if (novoRegistro) { mostrarInstalacaoAposConversao(); pedirArmazenamentoPersistente(); }
       /* No mobile, salvar com sucesso fecha o bottom sheet. */
