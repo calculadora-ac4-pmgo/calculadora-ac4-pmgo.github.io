@@ -47,7 +47,9 @@ export function situacaoDoDia(escalas, base, data, horario) {
   const cand = escalaDoDia(base, data, horario);
   if (!tabelaParaData(cand.inicio)) return { estado: 'fora-vigencia', motivo: MOTIVO_FORA, conflitos: [] };
   if (cand.inicio === base.inicio && cand.fim === base.fim) return { estado: 'base', motivo: MOTIVO_BASE, conflitos: [] };
-  const { duplicadas, sobrepostas } = detectarConflitos(escalas, cand, base.id);
+  /* Sem ignorar a base: o caso idêntico já foi tratado acima; um horário trocado
+     pode sobrepor a própria escala de origem (revisão final, I1). */
+  const { duplicadas, sobrepostas } = detectarConflitos(escalas, cand);
   const conflitos = [...duplicadas, ...sobrepostas];
   if (conflitos.length) return { estado: 'ocupado', motivo: MOTIVO_OCUPADO, conflitos };
   return { estado: 'livre', motivo: '', conflitos: [] };

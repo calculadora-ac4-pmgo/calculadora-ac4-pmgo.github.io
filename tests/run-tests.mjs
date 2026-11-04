@@ -594,6 +594,14 @@ const resultadoLote = await (async () => {
     g.descricao === 'Unidade X' && g.origem === 'AC4' && g.qtdPm === 2 && g.status === 'planejada'));
   ok('norma da data de cada escala', geradas[0].tabela && geradas[0].tabela.id === tabelaParaData('2026-07-20T18:00').id);
   ok('intervalo gerado', geradas[1].inicio === '2026-07-22T18:00' && geradas[1].fim === '2026-07-23T08:00');
+  // revisão final (I1): dia com horário trocado que sobrepõe a própria escala base
+  const baseNoite = { ...base, id: 'b2', inicio: '2026-07-20T19:00', fim: '2026-07-21T07:00' };
+  ok('horário trocado que sobrepõe a base fica ocupado',
+     situacaoDoDia([baseNoite], baseNoite, '2026-07-21', { hora: '06:00', duracaoMin: 720 }).estado === 'ocupado');
+  ok('lote com dia que sobrepõe a base falha',
+     !validarLote([baseNoite], baseNoite, [{ data: '2026-07-21', horario: { hora: '06:00', duracaoMin: 720 } }]).ok);
+  const baseLonga = { ...base, id: 'b3', inicio: '2026-07-20T07:00', fim: '2026-07-21T08:00' };
+  ok('base com mais de 24 h bloqueia o dia seguinte', situacaoDoDia([baseLonga], baseLonga, '2026-07-21').estado === 'ocupado');
   let lancou = false;
   try { gerarEscalasLote(base, [{ data: '2026-06-20' }]); } catch { lancou = true; }
   ok('gerar fora da vigência lança erro', lancou);
