@@ -846,6 +846,34 @@ const ROTEIRO_LOTE = `(async () => {
   await lancar('2026-12-09T07:00', { duracao: '12' });
   ok('2ª escala de dezembro não abre', !dlg.open);
 
+  // v83: gravação que falha não perde a edição nem os campos digitados
+  for (let i = 0; i < 300 && document.querySelector('#toastRegion .toast'); i++) await espera(100);
+  const dez = JSON.parse(localStorage.getItem('pmgoEscalas') || '[]').find((e) => e.inicio === '2026-12-09T07:00');
+  document.querySelector('[data-acao="editar"][data-id="' + dez?.id + '"]')?.click();
+  await espera(200);
+  $('escalaDescricao').value = 'Unidade nova';
+  const setOrig2 = Storage.prototype.setItem;
+  Storage.prototype.setItem = function () { throw new Error('cheio'); };
+  $('btnSubmit').click();
+  await espera(500);
+  Storage.prototype.setItem = setOrig2;
+  ok('falha ao gravar mantém a edição aberta com o texto digitado', !$('btnCancelEdit').classList.contains('hidden') &&
+     $('escalaDescricao').value === 'Unidade nova', $('btnCancelEdit').className + ' / ' + $('escalaDescricao').value);
+  ok('falha ao gravar não altera a escala salva', JSON.parse(localStorage.getItem('pmgoEscalas') || '[]').find((e) => e.id === dez?.id)?.descricao !== 'Unidade nova');
+  $('btnSubmit').click();
+  await espera(500);
+  ok('nova tentativa grava a edição', JSON.parse(localStorage.getItem('pmgoEscalas') || '[]').find((e) => e.id === dez?.id)?.descricao === 'Unidade nova' &&
+     $('btnCancelEdit').classList.contains('hidden'));
+  // escala nova: os campos digitados sobrevivem a uma falha
+  $('escalaInicio').value = '2026-12-20T07:00'; $('escalaInicio').dispatchEvent(new Event('change', { bubbles: true }));
+  $('escalaDuracao').value = '12'; $('escalaDuracao').dispatchEvent(new Event('change', { bubbles: true }));
+  $('escalaDescricao').value = 'Unidade digitada';
+  Storage.prototype.setItem = function () { throw new Error('cheio'); };
+  $('btnSubmit').click();
+  await espera(500);
+  Storage.prototype.setItem = setOrig2;
+  ok('falha ao gravar escala nova mantém a unidade digitada', $('escalaDescricao').value === 'Unidade digitada', $('escalaDescricao').value);
+
   localStorage.removeItem('pmgoEscalas');
   return JSON.stringify(passos);
 })()`;

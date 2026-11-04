@@ -177,16 +177,18 @@ export function criarFormulario(ctx) {
         const idx = estado.escalas.findIndex((e) => e.id === estado.editandoId);
         /* Data editada pode mudar de norma: reaplica a tabela da nova data. */
         if (idx >= 0) estado.escalas[idx] = aplicarNorma({ ...estado.escalas[idx], ...dados }).escala;
-        cancelarEdicao();
-        aviso = () => toast('Escala atualizada.');
+        /* v83: sai da edição só depois de gravar (falha de gravação não perde o que foi digitado). */
+        aviso = () => { cancelarEdicao(); toast('Escala atualizada.'); };
       } else {
         const idNovo = gerarIdEscala();
         estado.escalas.push({ id: idNovo, ...dados, status: 'planejada', tabela: tabelaParaData(dados.inicio) || TABELA_OFICIAL });
-        if ($('escalaDescricao')) $('escalaDescricao').value = '';
-        if ($('escalaQtdPm'))    $('escalaQtdPm').value = '1';
-        if ($('escalaOrigem'))   $('escalaOrigem').value = 'AC4';
-        /* v79: atalho para lançar a mesma escala em outros dias. */
-        aviso = () => toast('Escala adicionada.', { acao: { rotulo: 'Lançar em outros dias', fn: () => abrirLote(idNovo) } });
+        /* v83: limpa os campos só depois de gravar. v79: atalho para lançar em outros dias. */
+        aviso = () => {
+          if ($('escalaDescricao')) $('escalaDescricao').value = '';
+          if ($('escalaQtdPm'))    $('escalaQtdPm').value = '1';
+          if ($('escalaOrigem'))   $('escalaOrigem').value = 'AC4';
+          toast('Escala adicionada.', { acao: { rotulo: 'Lançar em outros dias', fn: () => abrirLote(idNovo) } });
+        };
       }
       if (!salvar()) { estado.escalas = escalasAntes; render(); return; }
       /* O aviso só sai depois de gravar de verdade (v80). */
