@@ -10,6 +10,13 @@ import { aplicarNorma, desserializarEscalas, detectarConflitos, normalizarEscala
 
 const raiz = join(dirname(fileURLToPath(import.meta.url)), '..');
 
+/* Módulos de produção em js/modules/, incluindo subpastas (ui/ desde a v74),
+   como caminhos relativos ("calculo.mjs", "ui/avisos.mjs"). */
+const listarModulos = (dir = join(raiz, 'js', 'modules'), prefixo = '') =>
+  readdirSync(dir, { withFileTypes: true }).flatMap((f) => (f.isDirectory()
+    ? listarModulos(join(dir, f.name), `${prefixo}${f.name}/`)
+    : f.name.endsWith('.mjs') ? [`${prefixo}${f.name}`] : []));
+
 /* ---- stubs mínimos de navegador ---- */
 const storageStub = () => {
   const dados = new Map();
@@ -179,8 +186,8 @@ rodar('Conformidade com a Portaria 621/2026 (Anexo I)', validarAnexoI);
 const validarGanchosLocais = () => {
   const app = readFileSync(join(raiz, 'js/app.js'), 'utf8');
   /* app.js + módulos de produção (testes.mjs só carrega em localhost). */
-  const modulos = readdirSync(join(raiz, 'js', 'modules'))
-    .filter((f) => f.endsWith('.mjs') && f !== 'testes.mjs')
+  const modulos = listarModulos()
+    .filter((f) => f !== 'testes.mjs')
     .map((f) => readFileSync(join(raiz, 'js', 'modules', f), 'utf8'));
   const linhas = [app, ...modulos].join('\n').split('\n');
   /* Um gancho é aceito na mesma linha do if (ambienteDeTeste) ou na linha
@@ -205,8 +212,8 @@ rodar('Ganchos de teste restritos a localhost', validarGanchosLocais);
 const validarShellModulos = () => {
   const sw = readFileSync(join(raiz, 'sw.js'), 'utf8');
   const soTeste = new Set(['testes.mjs']);
-  const faltando = readdirSync(join(raiz, 'js', 'modules'))
-    .filter((f) => f.endsWith('.mjs') && !soTeste.has(f))
+  const faltando = listarModulos()
+    .filter((f) => !soTeste.has(f))
     .filter((f) => !sw.includes(`'./js/modules/${f}'`));
   const falhas = faltando.map((f) => `fora do SHELL do sw.js: js/modules/${f}`);
   /* Módulos só de teste também ficam fora do site publicado (deploy.yml). */

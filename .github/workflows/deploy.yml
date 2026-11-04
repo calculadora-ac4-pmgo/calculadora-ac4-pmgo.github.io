@@ -43,6 +43,9 @@ jobs:
       - name: Smoke test de interface (Chrome headless)
         run: node tests/smoke.mjs
 
+      - name: Equivalência da interface (fotografia)
+        run: node tests/equivalencia.mjs
+
       - name: Validação mobile (touch targets, barra fixa, overflow)
         run: node tests/mobile-check.mjs
 
