@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Calculadora AC4 — v76
+   Calculadora AC4 — v77
    Arquivo gerado por tools/montar-css.mjs — edite css/src/ e rode o script.
    ========================================================================== */
 
@@ -23,6 +23,9 @@
 }
 
 :root {
+  --fs-rotulo: 0.75rem; /* 12px: rótulos (R6) */
+  --fs-leitura: 0.875rem; /* 14px: texto de leitura (R6) */
+
   --navy-950: #071426;
   --navy-900: #0b1f3a;
   --navy-800: #102d52;
@@ -194,7 +197,7 @@ button { color: inherit; }
   transition: top 0.15s;
 }
 .skip-link:focus { top: 12px; }
-.field-optional { font-weight: 400; font-size: 0.72rem; color: var(--text-faint); }
+.field-optional { font-weight: 400; font-size: var(--fs-rotulo); color: var(--text-faint); }
 
 :focus-visible {
   outline: none;

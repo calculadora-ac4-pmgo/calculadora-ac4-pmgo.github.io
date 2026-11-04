@@ -16,12 +16,12 @@
 }
 .site-footer-copy {
   color: var(--text-muted);
-  font-size: 0.82rem;
+  font-size: var(--fs-leitura);
   font-weight: 600;
 }
 .site-footer-meta {
   color: var(--text-faint);
-  font-size: 0.78rem;
+  font-size: var(--fs-leitura);
   font-weight: 500;
 }
 .footer-link {

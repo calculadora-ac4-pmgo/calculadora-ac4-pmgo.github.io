@@ -59,7 +59,7 @@
   .planning-panel.is-expanded .planning-details { display: block; }
   .planning-status-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .planning-status { min-height: 64px; }
-  .planning-status span { font-size: 0.72rem; }
+  .planning-status span { font-size: var(--fs-rotulo); }
   .status-select { min-height: 44px; font-size: 0.76rem; }
   .planning-dialog .dialog-actions { flex-wrap: wrap; }
   .whats-new-dialog {
@@ -110,7 +110,7 @@
   .escala-table td::before {
     content: attr(data-label);
     color: var(--text-muted);
-    font-size: 0.72rem;
+    font-size: var(--fs-rotulo);
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -285,7 +285,7 @@
     display: block;
     margin-bottom: 6px;
     color: var(--text-faint);
-    font-size: 0.72rem;
+    font-size: var(--fs-rotulo);
     font-weight: 800;
     letter-spacing: 0.03em;
     text-transform: uppercase;
@@ -345,7 +345,7 @@
     position: absolute;
     top: 4px;
     right: 7px;
-    font-size: 0.68rem;
+    font-size: var(--fs-rotulo);
     font-weight: 900;
   }
 
@@ -355,11 +355,11 @@
     margin-left: 4px;
     color: var(--gold-500);
     font-weight: 800;
-    font-size: 0.68rem;
+    font-size: var(--fs-rotulo);
     text-transform: uppercase;
     letter-spacing: 0.05em;
   }
-  .fim-hint { display: block; margin-top: 6px; color: var(--text-faint); font-size: 0.74rem; font-weight: 600; }
+  .fim-hint { display: block; margin-top: 6px; color: var(--text-faint); font-size: var(--fs-leitura); font-weight: 600; }
 
   /* Stepper de Qtd. PM — largura total: [ − ]  input  [ + ] */
   .qtd-control { display: flex; align-items: stretch; gap: 10px; }
@@ -424,7 +424,7 @@
     display: block;
     margin-top: 6px;
     color: var(--text-muted);
-    font-size: 0.82rem;
+    font-size: var(--fs-leitura);
     font-weight: 700;
     font-variant-numeric: tabular-nums;
   }
@@ -468,7 +468,7 @@
   .ec-unit { font-weight: 700; }
   .ec-date-line {
     color: var(--warn-text);
-    font-size: 0.7rem;
+    font-size: var(--fs-leitura);
     font-weight: 800;
     letter-spacing: 0.07em;
   }
@@ -487,7 +487,7 @@
   .ec-duration {
     margin-top: 3px;
     color: var(--text-muted);
-    font-size: 0.8rem;
+    font-size: var(--fs-leitura);
     font-weight: 650;
     font-variant-numeric: tabular-nums;
   }
@@ -503,8 +503,8 @@
   }
   [data-theme="dark"] .ec-money,
   [data-theme="dark"] .ec-total { color: #34d399; }
-  .ec-qtd { margin-top: 4px; color: var(--text); font-size: 0.74rem; font-weight: 750; }
-  .ec-per-pm { margin-top: 1px; color: var(--text-muted); font-size: 0.72rem; font-weight: 600; white-space: nowrap; }
+  .ec-qtd { margin-top: 4px; color: var(--text); font-size: var(--fs-leitura); font-weight: 750; }
+  .ec-per-pm { margin-top: 1px; color: var(--text-muted); font-size: var(--fs-leitura); font-weight: 600; white-space: nowrap; }
   .ec-card-actions {
     margin-top: 12px;
     padding-top: 12px;
@@ -609,7 +609,7 @@
 @media (max-width: 560px) {
   body { font-size: 14px; }
   .brand-text h1 { font-size: 1.12rem; }
-  .brand-text p { font-size: 0.74rem; }
+  .brand-text p { font-size: var(--fs-rotulo); }
   .metrics { grid-template-columns: 1fr; }
   .metric-card { min-height: 104px; }
   .launch-grid { grid-template-columns: 1fr; }
@@ -634,5 +634,14 @@
   .mobile-bar { gap: 8px; padding-inline: 10px; }
   .mobile-bar-actions { gap: 6px; }
   .mobile-bar-total .value { font-size: 0.92rem; letter-spacing: -0.02em; }
+}
+
+/* v77: com a letra em 12 px os valores do histórico de 6 meses ("12,5 mil", "125,3 mil")
+   passavam a ser cortados em larguras onde cabiam a 10 px. Menos espaço entre as colunas e
+   letras um pouco mais juntas até 414 px devolvem o que a v76 mostrava. Cobertura:
+   roteiroHistorico em tests/mobile-check.mjs (320, 375 e 393 px). */
+@media (max-width: 414px) {
+  .planning-history-bars { gap: 2px; }
+  .planning-history-value { letter-spacing: -0.03em; }
 }
 

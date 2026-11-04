@@ -496,4 +496,52 @@ const resultadoCssBom = await (async () => {
 })();
 rodar('CSS: fonte com BOM é recusado', () => resultadoCssBom);
 
+/* v77 (R6): piso de fonte. Fora de @media print, rótulo ≥ 12 px e texto de
+   leitura ≥ 14 px (lista em tests/fixtures/fontes-leitura.json). Tamanho que o
+   verificador não consegue avaliar também falha. */
+const resultadoPisoFonte = await (async () => {
+  try {
+    const { verificarPiso } = await import(pathToFileURL(join(raiz, 'tools', 'piso-fonte.mjs')).href);
+    const { falhas, avaliadas } = verificarPiso(raiz);
+    return falhas.length === 0 && avaliadas > 0 ? 'PISO DE FONTE OK' : (falhas.length ? falhas : ['verificador não avaliou nenhuma regra']);
+  } catch (e) { return [`piso-fonte: ${e.message}`]; }
+})();
+rodar('Piso de fonte (R6)', () => resultadoPisoFonte);
+
+/* v77 (revisão): o verificador precisa pegar regra de leitura escrita de outro jeito
+   (seletor composto, em grupo, com pseudo-classe) e acusar item obsoleto da lista. */
+const resultadoPisoBorda = await (async () => {
+  const { mkdtempSync, mkdirSync, rmSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { verificarPiso } = await import(pathToFileURL(join(raiz, 'tools', 'piso-fonte.mjs')).href);
+  const rodarCom = (css, leitura = ['.field-hint']) => {
+    const tmp = mkdtempSync(join(tmpdir(), 'ac4-piso-'));
+    try {
+      mkdirSync(join(tmp, 'css', 'src'), { recursive: true });
+      mkdirSync(join(tmp, 'tests', 'fixtures'), { recursive: true });
+      writeFileSync(join(tmp, 'css', 'src', '00-a.css'), css);
+      writeFileSync(join(tmp, 'tests', 'fixtures', 'fontes-leitura.json'), JSON.stringify({ leitura }));
+      return verificarPiso(tmp).falhas;
+    } finally { rmSync(tmp, { recursive: true, force: true }); }
+  };
+  const erros = [];
+  const deve = (nome, css, leitura, trecho) => {
+    const f = rodarCom(css, leitura);
+    if (!f.length || (trecho && !f.some((x) => x.includes(trecho)))) erros.push(`não pegou: ${nome} (falhas: ${JSON.stringify(f)})`);
+  };
+  const naoDeve = (nome, css, leitura) => {
+    const f = rodarCom(css, leitura);
+    if (f.length) erros.push(`falso alarme: ${nome} (${JSON.stringify(f)})`);
+  };
+  deve('seletor composto', '.launch-panel .field-hint { font-size: 12px; }', ['.field-hint']);
+  deve('seletor em grupo', '.field-hint, .outro { font-size: 12px; }', ['.field-hint']);
+  deve('com pseudo-classe', '.field-hint:hover { font-size: 12px; }', ['.field-hint']);
+  deve('item obsoleto na lista de leitura', '.outro { font-size: 12px; }', ['.sumiu'], 'obsoleto');
+  naoDeve('leitura em 14 px', '.field-hint { font-size: 14px; }', ['.field-hint']);
+  naoDeve('rótulo em 12 px', '.field-hint { font-size: 14px; }\n.rotulo { font-size: 12px; }', ['.field-hint']);
+  naoDeve('seletor parecido não é o mesmo', '.field-hint-x { font-size: 12px; }\n.field-hint { font-size: 14px; }', ['.field-hint']);
+  return erros.length ? erros : 'VERIFICADOR PEGA OS CASOS DE BORDA';
+})();
+rodar('Piso de fonte: casos de borda do verificador', () => resultadoPisoBorda);
+
 process.exit(falhou ? 1 : 0);

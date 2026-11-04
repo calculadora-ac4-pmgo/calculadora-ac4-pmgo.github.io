@@ -16,7 +16,7 @@
 .mobile-bar-total { line-height: 1.15; }
 .mobile-bar-total .label {
   color: var(--text-muted);
-  font-size: 0.68rem;
+  font-size: var(--fs-rotulo);
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -59,7 +59,7 @@
   background: var(--navy-900);
   color: #fff;
   box-shadow: var(--shadow-lg);
-  font-size: 0.85rem;
+  font-size: var(--fs-leitura);
   font-weight: 600;
   animation: toastIn 0.25s ease-out;
 }

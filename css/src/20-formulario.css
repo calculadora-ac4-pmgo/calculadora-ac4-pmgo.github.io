@@ -30,13 +30,13 @@ textarea.control { min-height: 74px; resize: vertical; }
 .field-error {
   display: none;
   color: var(--danger);
-  font-size: 0.75rem;
+  font-size: var(--fs-leitura);
   font-weight: 600;
   margin-top: 5px;
 }
 .field-hint {
   color: var(--text-faint);
-  font-size: 0.72rem;
+  font-size: var(--fs-leitura);
   font-weight: 600;
   margin-top: 5px;
 }
@@ -48,7 +48,7 @@ textarea.control { min-height: 74px; resize: vertical; }
   gap: 6px;
   margin-top: 6px;
   color: var(--green-600);
-  font-size: 0.78rem;
+  font-size: var(--fs-leitura);
   font-weight: 700;
 }
 .fim-auto::before {
@@ -90,7 +90,7 @@ textarea.control { min-height: 74px; resize: vertical; }
   cursor: pointer;
 }
 .launch-advanced-toggle span { grid-column: 1; grid-row: 1; font-size: 0.8rem; font-weight: 850; }
-.launch-advanced-toggle small { grid-column: 1 / 3; grid-row: 2; color: var(--text-muted); font-size: 0.7rem; font-weight: 600; }
+.launch-advanced-toggle small { grid-column: 1 / 3; grid-row: 2; color: var(--text-muted); font-size: var(--fs-leitura); font-weight: 600; }
 .launch-advanced-toggle .icon { grid-column: 3; grid-row: 1 / 3; transition: transform 0.16s; }
 .launch-advanced-toggle.is-open .icon { transform: rotate(180deg); }
 .template-dialog-actions { margin-top: 20px; }
@@ -119,7 +119,7 @@ textarea.control { min-height: 74px; resize: vertical; }
 }
 .launch-result-title {
   color: var(--text-muted);
-  font-size: 0.7rem;
+  font-size: var(--fs-rotulo);
   font-weight: 900;
   letter-spacing: 0.09em;
 }
@@ -145,7 +145,7 @@ textarea.control { min-height: 74px; resize: vertical; }
 .launch-result-helper {
   margin-top: 6px;
   color: var(--text-muted);
-  font-size: 0.8rem;
+  font-size: var(--fs-leitura);
   font-weight: 750;
 }
 .launch-result-duration {
@@ -170,7 +170,7 @@ textarea.control { min-height: 74px; resize: vertical; }
   align-items: center;
   gap: 6px;
   color: var(--green-700);
-  font-size: 0.72rem;
+  font-size: var(--fs-rotulo);
   font-weight: 850;
 }
 [data-theme="dark"] .launch-result-end-label { color: #6ee7b7; }

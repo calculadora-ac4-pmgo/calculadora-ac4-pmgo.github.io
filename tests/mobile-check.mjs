@@ -116,6 +116,26 @@ const ROTEIRO_MOBILE = `(async () => {
   document.getElementById('btnSubmit').click();
   await espera(400);
 
+  /* v77 (R6): herança. O verificador de CSS olha regras, não elementos: um texto
+     sem font-size próprio pode herdar de um pai pequeno. Mede no navegador o
+     tamanho calculado de todo texto visível; o piso é 12 px. */
+  const menoresQue12 = () => {
+    const achados = new Set();
+    const andador = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    while (andador.nextNode()) {
+      const no = andador.currentNode;
+      if (!no.nodeValue.trim()) continue;
+      const el = no.parentElement;
+      if (!el || /^(SCRIPT|STYLE|NOSCRIPT|OPTION)$/.test(el.tagName)) continue;
+      const r = el.getBoundingClientRect();
+      const cs = getComputedStyle(el);
+      if (r.width < 2 || r.height < 2 || cs.visibility === 'hidden' || cs.display === 'none') continue;
+      const px = parseFloat(cs.fontSize);
+      if (px > 0 && px < 11.99) achados.add(el.tagName.toLowerCase() + (el.className && typeof el.className === 'string' ? '.' + el.className.trim().split(/\\s+/).join('.') : '') + ' ' + px + 'px');
+    }
+    return [...achados];
+  };
+
   // 1. barra fixa mobile visível e com ações ≥ 44px
   ok('Barra fixa mobile visível', visivel('.mobile-bar'));
   const share = rect('#mobileShare');
@@ -385,6 +405,9 @@ const ROTEIRO_MOBILE = `(async () => {
   ok('Título do sheet "Nova escala AC4"', document.getElementById('mobileLaunchTitle').textContent.trim() === 'Nova escala AC4');
   ok('Ícones dos campos visíveis no mobile', getComputedStyle(document.querySelector('#fieldInicio .field-ico')).display !== 'none');
 
+  const pequenosSheet = menoresQue12();
+  ok('Nenhum texto visível abaixo de 12 px com o sheet aberto (inclui herança)', pequenosSheet.length === 0, pequenosSheet.join(' | '));
+
   document.getElementById('mobileLaunchClose').click();
   await espera(350);
   ok('Botão fechar recolhe o sheet', !painel.classList.contains('is-open'));
@@ -397,6 +420,23 @@ const ROTEIRO_MOBILE = `(async () => {
   ok('Compartilhar tem uma única opção de agenda', !document.getElementById('shareGoogleOpt') && !!document.getElementById('shareIcsOpt') && document.getElementById('shareIcsOpt').textContent.includes('Agenda'));
   const inst = document.getElementById('shareInstallOpt');
   ok('Opção "Instalar" disponível no Compartilhar', !!inst && !inst.classList.contains('hidden'));
+
+  // v77 (R6): lista com o painel do mês expandido e o diálogo Compartilhar aberto
+  const pequenosLista = menoresQue12();
+  ok('Nenhum texto visível abaixo de 12 px na lista (inclui herança)', pequenosLista.length === 0, pequenosLista.join(' | '));
+  /* O painel já pode estar expandido (aberto mais acima no roteiro): só clica se estiver recolhido. */
+  if (document.getElementById('planningToggle')?.getAttribute('aria-expanded') !== 'true') {
+    document.getElementById('planningToggle')?.click();
+    await espera(250);
+  }
+  ok('Painel do mês realmente expandido antes da medição', document.querySelector('.planning-panel')?.classList.contains('is-expanded'));
+  const pequenosPainel = menoresQue12();
+  ok('Nenhum texto visível abaixo de 12 px com o painel do mês expandido', pequenosPainel.length === 0, pequenosPainel.join(' | '));
+  document.getElementById('mobileShare').click();
+  await espera(350);
+  const pequenosShare = menoresQue12();
+  ok('Nenhum texto visível abaixo de 12 px no diálogo Compartilhar', pequenosShare.length === 0, pequenosShare.join(' | '));
+  document.getElementById('dialogShare').close();
 
   localStorage.removeItem('pmgoEscalas');
   return JSON.stringify(passos);
@@ -441,6 +481,51 @@ const ROTEIRO_320 = `(async () => {
   ok('320px: ações continuam tocáveis',
      acoes.length === 2 && acoes.every((b) => b.getBoundingClientRect().height >= 44),
      acoes.map((b) => Math.round(b.getBoundingClientRect().width) + '×' + Math.round(b.getBoundingClientRect().height)).join(' | '));
+
+  localStorage.removeItem('pmgoEscalas');
+  return JSON.stringify(passos);
+})()`;
+
+/* v77 (R6): histórico de 6 meses. O valor de cada coluna usa overflow:hidden com
+   reticências — se não couber, é cortado sem aviso. A letra passou de 10 px para
+   12 px, então confere, por largura de tela, valores de até 9 caracteres: nunca
+   pior que a v76 ("8,8 mil" cabia em 320 px; "12,5 mil" a partir de 340 px; "125,3 mil"
+   a partir de 365 px). */
+const roteiroHistorico = (textos) => `(async () => {
+  const passos = [];
+  const ok = (nome, cond, detalhe = '') => passos.push({ nome, ok: !!cond, detalhe: String(detalhe) });
+  const espera = (ms) => new Promise((r) => setTimeout(r, ms));
+  for (let i = 0; i < 50 && !document.getElementById('formEscala'); i++) await espera(100);
+  localStorage.removeItem('pmgoEscalas');
+  for (const d of ['2026-07-06T07:00', '2026-08-10T07:00', '2026-09-14T07:00']) {
+    const ini = document.getElementById('escalaInicio');
+    ini.value = d;
+    ini.dispatchEvent(new Event('change', { bubbles: true }));
+    const dur = document.getElementById('escalaDuracao');
+    dur.value = '24';
+    dur.dispatchEvent(new Event('change', { bubbles: true }));
+    document.getElementById('btnSubmit').click();
+    await espera(400);
+  }
+  if (document.getElementById('planningToggle')?.getAttribute('aria-expanded') !== 'true') {
+    document.getElementById('planningToggle')?.click();
+    await espera(300);
+  }
+  const historico = document.getElementById('planningHistory');
+  for (let i = 0; i < 20 && historico?.classList.contains('hidden'); i++) await espera(100);
+  const valores = () => [...document.querySelectorAll('.planning-history-value')];
+  const cabe = (e) => e.scrollWidth <= e.clientWidth + 1;
+  ok('histórico de 6 meses visível (2+ meses com escalas)', historico && !historico.classList.contains('hidden') && valores().length === 6,
+     document.querySelectorAll('.escala-card').length + ' cards');
+  ok('valores reais do histórico cabem na coluna', valores().length === 6 && valores().every(cabe),
+     valores().map((e) => e.textContent + ':' + e.scrollWidth + '/' + e.clientWidth).join(' '));
+  for (const texto of ${JSON.stringify(textos)}) {
+    valores().forEach((e) => { e.textContent = texto; });
+    await espera(80);
+    ok('valor "' + texto + '" do histórico cabe na coluna', valores().length === 6 && valores().every(cabe),
+       valores().map((e) => e.scrollWidth + '/' + e.clientWidth).join(' '));
+  }
+  ok('histórico sem rolagem horizontal', document.documentElement.scrollWidth <= window.innerWidth + 1);
   localStorage.removeItem('pmgoEscalas');
   return JSON.stringify(passos);
 })()`;
@@ -479,6 +564,10 @@ try {
 
   await rodarViewport(cdp, sessionId, porta, 393, 852, ROTEIRO_MOBILE, 'Celular 393×852 (padrão Android)');
   await rodarViewport(cdp, sessionId, porta, 320, 568, ROTEIRO_320, 'Celular 320×568 (mínimo)');
+  await rodarViewport(cdp, sessionId, porta, 320, 568, roteiroHistorico(['8,8 mil']), 'Histórico 320 px');
+  await rodarViewport(cdp, sessionId, porta, 360, 640, roteiroHistorico(['8,8 mil', '12,5 mil']), 'Histórico 360 px');
+  await rodarViewport(cdp, sessionId, porta, 375, 667, roteiroHistorico(['12,5 mil', '125,3 mil']), 'Histórico 375 px');
+  await rodarViewport(cdp, sessionId, porta, 393, 852, roteiroHistorico(['12,5 mil', '125,3 mil']), 'Histórico 393 px');
 
   /* iPhone: força o User-Agent de iOS para validar o fluxo de instalação do Safari. */
   await cdp.enviar('Emulation.setUserAgentOverride', {
