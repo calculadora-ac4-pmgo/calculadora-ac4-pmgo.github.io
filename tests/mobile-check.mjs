@@ -746,6 +746,31 @@ const ROTEIRO_LOTE = `(async () => {
   return JSON.stringify(passos);
 })()`;
 
+/* v80: janelas (.confirm-dialog) centralizadas — `* { margin: 0 }` anulava o centro padrão do <dialog>.
+   No celular a de novidades é folha inferior (ancorada no rodapé). */
+const roteiroJanelas = (mobile) => `(async () => {
+  const passos = [];
+  const ok = (nome, cond, detalhe = '') => passos.push({ nome, ok: !!cond, detalhe: String(detalhe) });
+  const espera = (ms) => new Promise((r) => setTimeout(r, ms));
+  for (let i = 0; i < 50 && !document.getElementById('formEscala'); i++) await espera(100);
+  document.querySelectorAll('dialog[open]').forEach((d) => d.close());
+  for (const d of document.querySelectorAll('dialog.confirm-dialog')) {
+    d.showModal();
+    await espera(320);
+    const r = d.getBoundingClientRect();
+    const folha = ${mobile} && d.id === 'dialogNovidades';
+    if (folha) {
+      ok(d.id + ': folha ancorada no rodapé', Math.abs(r.bottom - innerHeight) <= 2 && r.left <= 1, Math.round(r.left) + ',' + Math.round(r.bottom) + '/' + innerHeight);
+    } else {
+      const h = Math.abs(r.left - (innerWidth - r.right));
+      const v = r.height < innerHeight - 4 ? Math.abs(r.top - (innerHeight - r.bottom)) : 0;
+      ok(d.id + ': centralizada', h <= 2 && v <= 2, 'h=' + Math.round(h) + ' v=' + Math.round(v) + ' (' + Math.round(r.left) + ',' + Math.round(r.top) + ' ' + Math.round(r.width) + 'x' + Math.round(r.height) + ')');
+    }
+    d.close();
+  }
+  return JSON.stringify(passos);
+})()`;
+
 const servidor = await iniciarServidor();
 const porta = servidor.address().port;
 const perfil = await mkdtemp(join(tmpdir(), 'ac4-mob-'));
@@ -784,6 +809,8 @@ try {
   await rodarViewport(cdp, sessionId, porta, 360, 640, roteiroHistorico(['8,8 mil', '12,5 mil']), 'Histórico 360 px');
   await rodarViewport(cdp, sessionId, porta, 375, 667, roteiroHistorico(['12,5 mil', '125,3 mil']), 'Histórico 375 px');
   await rodarViewport(cdp, sessionId, porta, 393, 852, roteiroHistorico(['12,5 mil', '125,3 mil']), 'Histórico 393 px');
+  await rodarViewport(cdp, sessionId, porta, 390, 844, roteiroJanelas(true), 'Janelas centralizadas (390 px)');
+  await rodarViewport(cdp, sessionId, porta, 1280, 900, roteiroJanelas(false), 'Janelas centralizadas (1280 px)');
   await rodarViewport(cdp, sessionId, porta, 390, 844, ROTEIRO_LOTE, 'Lançar em outros dias — calendário (390 px)');
 
   /* iPhone: força o User-Agent de iOS para validar o fluxo de instalação do Safari. */
