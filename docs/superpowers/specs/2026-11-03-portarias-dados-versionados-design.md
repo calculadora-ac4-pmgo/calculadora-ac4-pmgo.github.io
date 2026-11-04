@@ -121,7 +121,7 @@ export function aplicarNorma(escala) → { escala, alterada: boolean }
 
 ### `js/modules/relatorio.mjs`
 
-- **PDF:** uma linha após o resumo: *"Valores: Portaria SSP nº 621/2026 (DOE nº 24.801, 17/06/2026)."*
+- **PDF** *(ajuste no plano: o cabeçalho já tinha "Base normativa" fixa; ela passa a ser preenchida com a citação, em vez de criar uma linha nova)*: a citação *"Valores: Portaria SSP nº 621/2026 (DOE nº 24.801, 17/06/2026)."*
   A norma vem das tabelas das escalas listadas. Se houver mais de uma norma no relatório, todas são
   citadas, separadas por "; ".
 - **Texto compartilhado:** `⚠️ _Portaria SSP n.º 621/2026 · Valor simulado_` passa a usar a norma de

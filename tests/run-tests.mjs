@@ -236,6 +236,9 @@ const validarModulosExtraidos = () => {
     [linhasCsv[3].endsWith(';1440,00'), 'CSV: total = 2 PMs × R$ 480 + R$ 480'],
     [!tabelaHTML.includes('<b>') && tabelaHTML.includes('&lt;b&gt;'), 'PDF escapa a unidade'],
     [resumoHTML.includes('R$') && resumoHTML.includes('960,00'), 'PDF: resumo com o valor total'],
+    [montarRelatorioImpressao([{ e, r }]).normaTexto === 'Portaria SSP nº 621/2026 (DOE nº 24.801, 17/06/2026)', 'PDF cita norma e DOE'],
+    [montarRelatorioImpressao([{ e, r: { ...r, tabela: { id: 'desconhecida', portaria: 'X', valores: r.tabela.valores } } }]).normaTexto.startsWith('Portaria SSP nº 621/2026'), 'PDF sem norma conhecida cai na atual'],
+    [montarTextoResumo([{ e, r }]).includes(`_${normaAtual().norma} · Valor simulado_`), 'texto compartilhado usa a norma dos dados'],
     (() => {
       const pref = { ...e, origem: 'PREFEITURAS' };
       const txt = montarTextoResumo([{ e: pref, r }, { e: { ...pref, qtdPm: 1 }, r }]);

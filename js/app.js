@@ -1400,10 +1400,11 @@ import { criarPWA } from './modules/pwa.mjs';
   function imprimirRelatorio() {
     const lista = escalasOrdenadas();
     if (!lista.length) { toast('Adicione escalas antes de imprimir.', { erro: true }); return; }
-    const { resumoHTML, tabelaHTML } = montarRelatorioImpressao(lista.map((e) => ({ e, r: calcularEscala(e) })));
+    const { resumoHTML, tabelaHTML, normaTexto } = montarRelatorioImpressao(lista.map((e) => ({ e, r: calcularEscala(e) })));
     $('prDate').textContent = new Date().toLocaleString('pt-BR', {
       day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
     });
+    $('prNorma').textContent = normaTexto;
     $('prSummary').innerHTML = resumoHTML;
     $('prTableWrap').innerHTML = tabelaHTML;
     /* window.print() bloqueia a thread até o diálogo fechar; chamado no próprio
