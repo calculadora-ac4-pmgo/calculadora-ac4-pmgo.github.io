@@ -481,6 +481,36 @@ const ROTEIRO_IOS = `(async () => {
   ok('iOS: banner aparece em visita engajada', !!banner && !banner.classList.contains('hidden'));
   const inst = document.getElementById('shareInstallOpt');
   ok('iOS: opção Instalar disponível', !!inst && !inst.classList.contains('hidden'));
+
+  // v82: no iPhone, a agenda abre o arquivo no Safari (é o caminho que oferece "Adicionar ao Calendário")
+  localStorage.removeItem('pmgoEscalas');
+  const $ = (id) => document.getElementById(id);
+  $('escalaInicio').value = '2026-12-15T07:00';
+  $('escalaInicio').dispatchEvent(new Event('change', { bubbles: true }));
+  $('escalaDuracao').value = '12';
+  $('escalaDuracao').dispatchEvent(new Event('change', { bubbles: true }));
+  $('btnSubmit').click();
+  for (let i = 0; i < 60 && !$('dialogLote')?.open; i++) await espera(50);
+  $('loteFechar')?.click();
+  await espera(100);
+  const salva = JSON.parse(localStorage.getItem('pmgoEscalas') || '[]')[0];
+  document.querySelector('[data-acao="agenda"][data-id="' + salva?.id + '"]')?.click();
+  await espera(150);
+  const opcaoIcs = document.querySelector('#agendaBody [data-prov="ics"]');
+  ok('iOS: opção de arquivo vira "Calendário do iPhone"', opcaoIcs?.textContent.includes('Calendário do iPhone'), opcaoIcs?.textContent.trim());
+  let aberto = null, blobAberto = null;
+  const abrirOriginal = window.open, criarUrlOriginal = URL.createObjectURL;
+  window.open = (url) => { aberto = url; return {}; };
+  URL.createObjectURL = (b) => { blobAberto = b; return criarUrlOriginal.call(URL, b); };
+  opcaoIcs?.click();
+  await espera(100);
+  window.open = abrirOriginal;
+  URL.createObjectURL = criarUrlOriginal;
+  ok('iOS: abre o arquivo de agenda (não baixa para Downloads)', typeof aberto === 'string' && aberto.startsWith('blob:') &&
+     blobAberto?.type.startsWith('text/calendar'), aberto + ' ' + blobAberto?.type);
+  const conteudo = blobAberto ? await blobAberto.text() : '';
+  ok('iOS: arquivo aberto tem o evento e o lembrete', conteudo.includes('BEGIN:VEVENT') && conteudo.includes('TRIGGER:-PT2H'), conteudo.slice(0, 40));
+  localStorage.removeItem('pmgoEscalas');
   return JSON.stringify(passos);
 })()`;
 

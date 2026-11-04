@@ -121,7 +121,7 @@ import { criarAgendaDias } from './modules/ui/agenda-dias.mjs';
     clonarEscalas,
   });
   const { exportarCSV, imprimirRelatorio, agendarEscalas, agendarEscalaItem } = criarExportacoes({
-    $, estado, toast, haptic, escalasOrdenadas, aposProximoPaint,
+    $, estado, toast, haptic, escalasOrdenadas, aposProximoPaint, ehIOS,
     /* consts definidas mais abaixo: chamadas só no momento do uso */
     calcularEscala: (e) => calcularEscala(e), montarICS: (lista) => montarICS(lista),
     gerarLinkGoogleAgenda: (e) => gerarLinkGoogleAgenda(e),
