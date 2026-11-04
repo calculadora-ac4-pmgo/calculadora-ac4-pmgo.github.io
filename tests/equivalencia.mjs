@@ -137,6 +137,10 @@ try {
   const { sessionId } = await cdp.enviar('Target.attachToTarget', { targetId, flatten: true });
   await cdp.enviar('Page.enable', {}, sessionId);
   await cdp.enviar('Runtime.enable', {}, sessionId);
+  /* Fuso fixo: links da agenda e .ics convertem a hora local para UTC. A
+     referência usa o fuso dos usuários (Goiás); sem isso, a fotografia mudaria
+     com o fuso da máquina (o runner do CI roda em UTC). */
+  await cdp.enviar('Emulation.setTimezoneOverride', { timezoneId: 'America/Sao_Paulo' }, sessionId);
   const navegar = async () => {
     const carregou = cdp.aguardarEvento('Page.loadEventFired');
     await cdp.enviar('Page.navigate', { url: `http://127.0.0.1:${porta}/` }, sessionId);
