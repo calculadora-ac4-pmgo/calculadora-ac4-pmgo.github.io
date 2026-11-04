@@ -51,6 +51,10 @@ A Portaria descreve o diurno como "5h01 às 21h59" e o noturno como "22h às 5h"
 
 Com o pagamento só por horas inteiras (v71), essa leitura é a que preserva as horas cheias: qualquer leitura que deslocasse 1 minuto (ex.: noturno até 5h00 inclusive) quebraria a hora 5h–6h em 59 minutos e ela deixaria de ser paga.
 
+### Fonte dos dados no código
+
+Valores, DOE e vigência desta Portaria estão em `js/modules/portarias.mjs` (fonte única desde a v73). Nenhum outro arquivo de código repete esses valores.
+
 ### Conferência automática
 
 `tests/run-tests.mjs` → "Conformidade com a Portaria 621/2026 (Anexo I)": 52 casos derivados diretamente desta tabela (para cada dia da semana: hora diurna, hora noturna, madrugada paga pelo noturno do dia anterior, viradas das 5h e das 22h, fração não paga) e 10 escalas reais da planilha do gestor, conferidas coluna a coluna (ex.: qui 24/09/2026 18h → sex 05h = R$ 351,00; seg 21/09/2026 04h → 06h = R$ 75,00; qui 13/08/2026 18h → sex 08h = R$ 471,00). Roda no CI em todo PR.
