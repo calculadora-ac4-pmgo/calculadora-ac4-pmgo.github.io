@@ -224,6 +224,7 @@ dependem de decisão ou ação humana fora do repositório.
 - [x] **R5 [código]** Tabela da Portaria em arquivo de dados versionado (fonte DOE), testes gerados do Anexo, versão da tabela impressa no PDF. *Parcial:* testes gerados do Anexo I feitos na **v71** (suíte "Conformidade com o Anexo I", 52 casos); concluído na **v73, PR #77**: `js/modules/portarias.mjs` e norma + DOE no PDF.
 - [x] **[código]** Dividir `js/app.js` em módulos (item P3-2 da auditoria v67) — **v72**: 2.489 → ~1.860 linhas; `templates`, `relatorio`, `pwa` e `testes` (este sob demanda, só em localhost). **v74, PR #79**: 1ª entrega da divisão em `js/modules/ui/` (avisos, observabilidade, aparência, dados, exportações, compartilhar), 1.820 → 1.234 linhas, com teste de equivalência permanente; **v75, PR #80**: divisão concluída (planejamento, formulário, modelos), `app.js` com 408 linhas, teste de textos preservados.
 - [x] **[código]** CSS dividido por área em `css/src/`, montado num único `styles.css` (subprojeto 3 da refatoração) — **v76, PR #81**. O piso de fonte (R6) veio na v77.
+- [x] **[código]** Lançar em outros dias (pedido do usuário em 04/11/2026): calendário que cria várias escalas a partir de uma, com troca de horário por dia, bloqueio de dia ocupado e Desfazer — **v79, PR #84**.
 - [ ] **R3 [gestão]** Segundo mantenedor com acesso ao repositório.
 
 ### 12 meses — Escalar

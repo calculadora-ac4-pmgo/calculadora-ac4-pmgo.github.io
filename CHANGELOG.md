@@ -1,5 +1,15 @@
 # Changelog
 
+## v79 — Lançar em outros dias
+
+Novidade pedida pelo usuário: lançar várias escalas iguais com poucos toques no celular.
+- **Entrada:** item "Lançar em outros dias" no menu de cada escala (celular e computador) e atalho no aviso "Escala adicionada.".
+- **Calendário** (`<dialog id="dialogLote">`): um mês por vez, seg–dom, até 3 meses antes e depois do mês da escala de origem. Toque marca/desmarca. Dias com escala sobreposta, fora da vigência da Portaria ou da própria escala de origem ficam bloqueados, e o motivo aparece na janela. Limite de 31 dias por lote.
+- **Revisão:** lista "Dom 15/11 · 18:00 → 08:00"; tocar num dia troca a hora de início e a duração (12/14/24 h ou término) só daquele dia. Dias do lote que se sobrepõem entre si bloqueiam o lançamento.
+- **Lançar:** uma única gravação; se falhar, nada é salvo. Antes de gravar, confere de novo: dia que ficou ocupado sai do lote e pede novo toque. Aviso "N escalas lançadas." com **Desfazer** (remove só as escalas do lote).
+- **Código:** regra pura em `js/modules/lote.mjs` (suíte "Lançamento em lote") e interface em `js/modules/ui/agenda-dias.mjs`; ambos no cache offline. `tests/mobile-check.mjs`: roteiro completo em 390 px (calendário, revisão, toque duplo, falha de gravação, Desfazer, revalidação, atalho).
+- Aviso de novidades reaberto (`data-conteudo="79"`).
+
 ## v78 — Desmarcar a duração rápida
 
 Correção pedida pelo usuário: no celular, depois de tocar num chip de duração rápida (12h, 14h, 24h) não havia como desmarcá-lo.

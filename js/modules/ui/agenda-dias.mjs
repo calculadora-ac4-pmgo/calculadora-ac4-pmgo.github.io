@@ -133,7 +133,10 @@ export function criarAgendaDias(ctx) {
       btn.setAttribute('aria-label', `Trocar horário de ${rotuloDia(data)}`);
       const texto = document.createElement('span');
       texto.className = 'lote-item-texto';
-      texto.textContent = `${rotuloDia(data)} · ${inicio.slice(11, 16)} → ${fim.slice(11, 16)}`;
+      /* Término a partir de 2 dias depois ganha a data, para não parecer no mesmo dia. */
+      const dias = Math.round((parseDateTimeLocal(fim.slice(0, 10) + 'T00:00') - parseDateTimeLocal(data + 'T00:00')) / 86400000);
+      const fimTexto = dias >= 2 ? `${fim.slice(8, 10)}/${fim.slice(5, 7)} ${fim.slice(11, 16)}` : fim.slice(11, 16);
+      texto.textContent = `${rotuloDia(data)} · ${inicio.slice(11, 16)} → ${fimTexto}`;
       btn.appendChild(texto);
       if (problemaPorData.has(data)) {
         const prob = document.createElement('span');

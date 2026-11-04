@@ -71,6 +71,7 @@ Todo número monetário ou de horas usa `font-variant-numeric: tabular-nums`.
 - **Card de escala** (`.escala-card`): data (eyebrow dourado) → horário → duração · unidade; valor à direita; rodapé com seletor de situação + Editar + Mais.
 - **Botão primário** (`.btn-primary`): gradiente dourado vertical, borda e brilho interno de 1px.
 - **Botões da topbar**: fundo branco 6%, borda branca 16%, ícone dourado.
+- **Calendário de lote** (`.lote-dialog`, v79): grade seg–dom de botões `.lote-dia` (≥ 44 px a partir de 390 px, letra de leitura); marcado em dourado como o botão primário (`aria-pressed`); bloqueado riscado em `--text-faint` (`aria-disabled`, motivo no `title` e em `.lote-aviso`); dia de origem com borda tracejada; hoje com borda dourada. Revisão em lista `.lote-item` com problema em `--danger`.
 
 ## Checklist para mudanças visuais
 

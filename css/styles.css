@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Calculadora AC4 — v78
+   Calculadora AC4 — v79
    Arquivo gerado por tools/montar-css.mjs — edite css/src/ e rode o script.
    ========================================================================== */
 
@@ -1520,14 +1520,15 @@ textarea.control { min-height: 74px; resize: vertical; }
 
 
 /* ===== LANÇAR EM OUTROS DIAS (v79) ===== */
-.lote-dialog { max-width: min(96vw, 440px); }
+.lote-dialog { max-width: min(96vw, 440px); margin: auto; } /* `* { margin: 0 }` anula o centro padrão do <dialog> */
 .lote-body { padding: 18px 16px; }
 .lote-topo { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .lote-fechar { width: 44px; height: 44px; flex: 0 0 44px; }
 .lote-mes-nav { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
 .lote-mes-nav .btn-icon { width: 44px; height: 44px; }
 .lote-mes-nav .btn-icon:disabled { opacity: 0.35; cursor: default; }
-.lote-mes { font-size: var(--fs-leitura); font-weight: 750; text-transform: capitalize; }
+.lote-mes { display: inline-block; font-size: var(--fs-leitura); font-weight: 750; }
+.lote-mes::first-letter { text-transform: uppercase; }
 .lote-semana,
 .lote-grade { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
 .lote-semana { margin-bottom: 4px; }

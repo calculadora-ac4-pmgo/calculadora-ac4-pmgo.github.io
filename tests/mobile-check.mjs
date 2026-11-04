@@ -654,6 +654,7 @@ const ROTEIRO_LOTE = `(async () => {
     $('loteFim').value = '2026-11-19T20:00'; $('loteFim').dispatchEvent(new Event('change', { bubbles: true }));
   }
   await espera(50);
+  ok('término 2 dias depois mostra a data', textoItem(17) === 'Ter 17/11 · 06:00 → 19/11 20:00', textoItem(17));
   ok('dia 17 sobrepondo o 19 bloqueia o lançamento', problemaItem(17) === 'Sobrepõe outro dia deste lote.' && !!$('loteLancar')?.disabled,
      textoItem(17) + ' / ' + problemaItem(17));
   document.querySelector('#loteEditar .lote-dur[data-horas="14"]')?.click(); await espera(50);
