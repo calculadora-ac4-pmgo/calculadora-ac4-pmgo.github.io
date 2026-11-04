@@ -336,6 +336,7 @@ const MODULOS_UI = {
   dados: ['salvar', 'carregar', 'salvarModelos', 'salvarMetas', 'normalizarModelos', 'normalizarMetas', 'exportarBackup',
     'restaurarBackup', 'pedirArmazenamentoPersistente', 'textoStatusBackup', 'lembrarBackup', 'ehIOS', 'rodandoInstalado'],
   exportacoes: ['exportarCSV', 'imprimirRelatorio', 'agendarEscalas', 'baixarArquivoAgenda', 'agendarEscalaItem'],
+  compartilhar: ['abrirShareSheet', 'copiarResumo', 'compartilharWhatsApp', 'compartilharNativo', 'gerarTextoResumo', 'initFeedback'],
 };
 const resultadoModulosUI = await (async () => {
   const app = readFileSync(join(raiz, 'js', 'app.js'), 'utf8');

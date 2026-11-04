@@ -23,6 +23,7 @@ const SHELL = [
   './js/modules/ui/aparencia.mjs',
   './js/modules/ui/dados.mjs',
   './js/modules/ui/exportacoes.mjs',
+  './js/modules/ui/compartilhar.mjs',
   './manifest.webmanifest',
   './assets/icon.svg',
   './assets/icon-maskable.svg',
