@@ -479,4 +479,21 @@ const resultadoCssMontado = await (async () => {
 })();
 rodar('CSS montado a partir de css/src', () => resultadoCssMontado);
 
+/* v76 (revisão): BOM num fonte do meio iria parar no meio do styles.css e o
+   navegador descartaria a primeira regra daquele fonte — montarCSS recusa. */
+const resultadoCssBom = await (async () => {
+  const { mkdtempSync, mkdirSync, rmSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { montarCSS } = await import(pathToFileURL(join(raiz, 'tools', 'montar-css.mjs')).href);
+  const tmp = mkdtempSync(join(tmpdir(), 'ac4-css-'));
+  try {
+    mkdirSync(join(tmp, 'css', 'src'), { recursive: true });
+    writeFileSync(join(tmp, 'css', 'src', '00-a.css'), 'a { color: red; }\n');
+    writeFileSync(join(tmp, 'css', 'src', '05-b.css'), '﻿.b { position: fixed; }\n');
+    try { montarCSS(tmp); return ['montarCSS aceitou um fonte com BOM']; }
+    catch (e) { return /BOM/.test(e.message) ? 'CSS COM BOM RECUSADO' : [`erro inesperado: ${e.message}`]; }
+  } finally { rmSync(tmp, { recursive: true, force: true }); }
+})();
+rodar('CSS: fonte com BOM é recusado', () => resultadoCssBom);
+
 process.exit(falhou ? 1 : 0);

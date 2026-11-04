@@ -19,7 +19,13 @@ export function montarCSS(raiz) {
   const dir = join(raiz, 'css', 'src');
   const arquivos = readdirSync(dir).filter((f) => f.endsWith('.css')).sort();
   if (!arquivos.length) throw new Error('css/src/ sem arquivos .css');
-  return arquivos.map((f) => readFileSync(join(dir, f), 'utf8')).join('');
+  return arquivos.map((f) => {
+    const conteudo = readFileSync(join(dir, f), 'utf8');
+    /* BOM no meio do styles.css viraria parte do seletor seguinte e o navegador
+       descartaria a regra sem aviso. Salve os fontes em UTF-8 sem BOM. */
+    if (conteudo.includes('\uFEFF')) throw new Error(`css/src/${f} contém BOM (U+FEFF) — salve em UTF-8 sem BOM`);
+    return conteudo;
+  }).join('');
 }
 
 const executadoDireto = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
