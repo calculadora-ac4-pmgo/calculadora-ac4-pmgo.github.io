@@ -3,7 +3,7 @@
    O app.js só toca o DOM dentro de funções; no carregamento bastam stubs. */
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join } from 'node:path';
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { calcularEscala, regraNormativaParaData, TABELA_OFICIAL, tabelaParaData } from '../js/modules/calculo.mjs';
 import { NORMAS, normaParaData, normaAtual, citacaoNorma } from '../js/modules/portarias.mjs';
 import { aplicarNorma, desserializarEscalas, detectarConflitos, normalizarEscala, STORAGE_SCHEMA_VERSION } from '../js/modules/persistencia.mjs';
@@ -406,5 +406,35 @@ const resultadoRestaurar = await (async () => {
   } catch (e) { return [`dados: ${e.message}`]; }
 })();
 rodar('Restaurar backup grava no estado (ui/dados)', () => resultadoRestaurar);
+
+/* Textos preservados em refatoração (v75): o multiconjunto de literais de
+   js/app.js + js/modules/ui/*.mjs precisa bater com tests/fixtures/literais.json.
+   `estado.` é ignorado só dentro de ${…} (troca legítima de referência); fora
+   disso, qualquer mudança de texto acusa — inclusive o incidente da v74
+   ("As estado.escalas…"). Mudança intencional: LITERAIS_ATUALIZAR=1. */
+const validarLiterais = () => {
+  const arquivos = [join(raiz, 'js', 'app.js'),
+    ...readdirSync(join(raiz, 'js', 'modules', 'ui')).filter((f) => f.endsWith('.mjs')).map((f) => join(raiz, 'js', 'modules', 'ui', f))];
+  const contagem = {};
+  arquivos.forEach((arq) => {
+    const fonte = readFileSync(arq, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`])\/\/.*$/gm, '$1');
+    const literais = fonte.match(/'(?:[^'\\\n]|\\.)*'|"(?:[^"\\\n]|\\.)*"|`(?:[^`\\]|\\.)*`/g) || [];
+    literais
+      .filter((l) => !/^['"]\.{1,2}\//.test(l))
+      .map((l) => l.replace(/\$\{[^{}]*\}/g, (m) => m.replace(/\bestado\./g, '')))
+      .forEach((l) => { contagem[l] = (contagem[l] || 0) + 1; });
+  });
+  const arqRef = join(raiz, 'tests', 'fixtures', 'literais.json');
+  if (process.env.LITERAIS_ATUALIZAR === '1') {
+    writeFileSync(arqRef, `${JSON.stringify(Object.fromEntries(Object.entries(contagem).sort()), null, 1)}\n`);
+    return `REFERÊNCIA DE TEXTOS REGRAVADA (${Object.keys(contagem).length} literais)`;
+  }
+  const ref = JSON.parse(readFileSync(arqRef, 'utf8'));
+  const entraram = Object.keys(contagem).filter((k) => (contagem[k] || 0) > (ref[k] || 0));
+  const sairam = Object.keys(ref).filter((k) => (ref[k] || 0) > (contagem[k] || 0));
+  if (!entraram.length && !sairam.length) return `TEXTOS PRESERVADOS (${Object.keys(ref).length} literais)`;
+  return [...entraram.slice(0, 10).map((k) => `novo/alterado: ${k.slice(0, 160)}`), ...sairam.slice(0, 10).map((k) => `sumiu: ${k.slice(0, 160)}`)];
+};
+rodar('Textos preservados em refatoração', validarLiterais);
 
 process.exit(falhou ? 1 : 0);
