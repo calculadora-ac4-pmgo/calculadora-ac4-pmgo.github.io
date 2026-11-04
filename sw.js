@@ -1,14 +1,14 @@
 /* Service Worker — Calculadora AC4
    Estratégia: network-first para o app shell (atualizações chegam rápido),
    com fallback ao cache quando offline. */
-const CACHE = 'ac4-v82';
-const SW_VERSION = '82';
+const CACHE = 'ac4-v83';
+const SW_VERSION = '83';
 const SHELL = [
   './',
   './index.html',
-  './css/styles.css?v=82',
-  './js/app.js?v=82',
-  './js/theme.js?v=82',
+  './css/styles.css?v=83',
+  './js/app.js?v=83',
+  './js/theme.js?v=83',
   // módulos importados sem query string (resolvidos pelo import de app.js)
   './js/modules/formato.mjs',
   './js/modules/calculo.mjs',

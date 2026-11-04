@@ -1,5 +1,12 @@
 # Changelog
 
+## v83 — Gravação que falha não perde o que foi digitado
+
+Correção, sem aviso de novidades (`data-conteudo` continua "82").
+- **Editar uma escala:** se a gravação falhasse (aparelho sem espaço, modo privado), o formulário saía da edição antes da tentativa de salvar, e o que foi digitado se perdia. Agora `cancelarEdicao()` só roda depois de gravar; numa falha, a edição continua aberta com os campos preenchidos para tentar de novo.
+- **Escala nova:** unidade, Qtd. PM e origem também só são limpas depois de gravar.
+- Testes em `tests/mobile-check.mjs`: edição mantida com o texto digitado após a falha, escala salva inalterada, nova tentativa gravando, e campos da escala nova preservados.
+
 ## v82 — Escalas na agenda do celular
 
 Pedido do usuário: conferir e melhorar o agendamento nos celulares (Google e iPhone).
