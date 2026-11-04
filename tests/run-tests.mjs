@@ -447,7 +447,8 @@ const validarLiterais = () => {
     ...readdirSync(join(raiz, 'js', 'modules', 'ui')).filter((f) => f.endsWith('.mjs')).map((f) => join(raiz, 'js', 'modules', 'ui', f))];
   const contagem = {};
   arquivos.forEach((arq) => {
-    const fonte = readFileSync(arq, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`])\/\/.*$/gm, '$1');
+    /* APP_VERSION muda a cada bump (tools/bump-version.mjs): fora da comparação. */
+    const fonte = readFileSync(arq, 'utf8').replace(/const APP_VERSION = '\d+';/, '').replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`])\/\/.*$/gm, '$1');
     const literais = fonte.match(/'(?:[^'\\\n]|\\.)*'|"(?:[^"\\\n]|\\.)*"|`(?:[^`\\]|\\.)*`/g) || [];
     literais
       .filter((l) => !/^['"]\.{1,2}\//.test(l))

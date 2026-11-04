@@ -1,5 +1,18 @@
 # Changelog
 
+## v75 — Interface dividida em módulos (conclusão)
+
+Refatoração sem mudança para o usuário. O `js/app.js` passou de 1.234 para **408 linhas**; eram 2.489 na v71 e 1.820 antes desta refatoração. Agora ele cuida só do estado, da ligação dos módulos, do `render()` e de um `init()` de 64 linhas.
+- **Novos módulos em `js/modules/ui/`:**
+  - `planejamento`: seletor de mês, painel do mês, histórico, meta mensal e filtros da lista;
+  - `formulario`: lançamento, edição, data e hora, chips, stepper, sheet do celular com foco preso, e as ações da lista (duplicar, remover com desfazer, limpar, situação);
+  - `modelos`: modelos favoritos e "Repetir última".
+- **`ligarEventos()`:** cada módulo da v75 registra os próprios eventos; o `init()` só chama `ligarEventos()` e liga as áreas entre si.
+- **Novo teste "Textos preservados em refatoração":** compara os 443 textos de `app.js` + `ui/` com a referência da v74 (`tests/fixtures/literais.json`). Teria pegado o incidente da v74 ("As estado.escalas…"), e foi provado com esse mesmo caso. A versão (`APP_VERSION`) fica fora da comparação, para não quebrar a cada bump.
+- **Mais testes:** módulos de `ui/` sem atribuição direta a variáveis de estado (só via `estado.`); listener de teclado do documento registrado uma única vez.
+- **Equivalência:** as 26 capturas (lista, totais, planejamento, CSV, PDF, texto compartilhado, agenda, `.ics`) continuam idênticas às da v73.
+- **Pendências da revisão da v74 resolvidas:** comentário corrompido em `dados.mjs`, cabeçalho do `app.js` e testes que não restauravam globais.
+
 ## v74 — Interface dividida em módulos (1ª entrega)
 
 Refatoração sem mudança para o usuário: `js/app.js` passou de 1.820 para 1.234 linhas.
