@@ -712,6 +712,35 @@ const ROTEIRO_LOTE = `(async () => {
   $('loteLancar')?.click(); await espera(200);
   ok('novo toque lança o restante', cards() === antesReval + 1 && !dlg.open, cards());
 
+  // atalho no aviso de escala adicionada (Task 4)
+  localStorage.removeItem('pmgoEscalas');
+  // espera a fila de avisos anteriores esvaziar (toasts são enfileirados, ~3,8 s cada)
+  for (let i = 0; i < 300 && document.querySelector('#toastRegion .toast'); i++) await espera(100);
+  await lancar('2026-11-24T19:00', { duracao: '12' });
+  let atalho = null;
+  for (let i = 0; i < 150 && !atalho; i++) {
+    atalho = [...document.querySelectorAll('#toastRegion .toast-action')].find((b) => b.textContent.trim() === 'Lançar em outros dias' &&
+      b.closest('.toast')?.textContent.includes('Escala adicionada.'));
+    if (!atalho) await espera(100);
+  }
+  ok('aviso "Escala adicionada." tem "Lançar em outros dias"', !!atalho);
+  atalho?.click();
+  await espera(200);
+  ok('atalho abre a agenda com a escala recém-salva como base', dlg.open && $('loteMes')?.textContent.trim() === 'novembro de 2026' &&
+     dia(24)?.classList.contains('is-base'), $('loteMes')?.textContent);
+  $('loteFechar')?.click();
+  await espera(100);
+  const recente = JSON.parse(localStorage.getItem('pmgoEscalas') || '[]').find((e) => e.inicio === '2026-11-24T19:00');
+  document.querySelector('[data-acao="editar"][data-id="' + recente?.id + '"]')?.click();
+  await espera(200);
+  $('btnSubmit').click();
+  let atualizada = null;
+  for (let i = 0; i < 150 && !atualizada; i++) {
+    atualizada = [...document.querySelectorAll('#toastRegion .toast')].find((t) => t.textContent.includes('Escala atualizada.'));
+    if (!atualizada) await espera(100);
+  }
+  ok('editar não oferece o atalho', !!atualizada && !atualizada.querySelector('.toast-action'), atualizada?.textContent);
+
   localStorage.removeItem('pmgoEscalas');
   return JSON.stringify(passos);
 })()`;

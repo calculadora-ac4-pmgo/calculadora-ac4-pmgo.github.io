@@ -178,11 +178,13 @@ export function criarFormulario(ctx) {
         cancelarEdicao();
         toast('Escala atualizada.');
       } else {
-        estado.escalas.push({ id: gerarIdEscala(), ...dados, status: 'planejada', tabela: tabelaParaData(dados.inicio) || TABELA_OFICIAL });
+        const idNovo = gerarIdEscala();
+        estado.escalas.push({ id: idNovo, ...dados, status: 'planejada', tabela: tabelaParaData(dados.inicio) || TABELA_OFICIAL });
         if ($('escalaDescricao')) $('escalaDescricao').value = '';
         if ($('escalaQtdPm'))    $('escalaQtdPm').value = '1';
         if ($('escalaOrigem'))   $('escalaOrigem').value = 'AC4';
-        toast('Escala adicionada.');
+        /* v79: atalho para lançar a mesma escala em outros dias. */
+        toast('Escala adicionada.', { acao: { rotulo: 'Lançar em outros dias', fn: () => abrirLote(idNovo) } });
       }
       if (!salvar()) { estado.escalas = escalasAntes; render(); return; }
       render();
