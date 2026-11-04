@@ -468,4 +468,15 @@ const validarLiterais = () => {
 };
 rodar('Textos preservados em refatoração', validarLiterais);
 
+/* v76: css/styles.css é gerado a partir de css/src/ (tools/montar-css.mjs).
+   Falha se alguém editar o gerado direto ou esquecer de montar. */
+const resultadoCssMontado = await (async () => {
+  try {
+    const { montarCSS } = await import(pathToFileURL(join(raiz, 'tools', 'montar-css.mjs')).href);
+    return montarCSS(raiz) === readFileSync(join(raiz, 'css', 'styles.css'), 'utf8')
+      ? 'CSS MONTADO EM DIA' : ['css/styles.css diferente de css/src/ — rode node tools/montar-css.mjs'];
+  } catch (e) { return [`montar-css: ${e.message}`]; }
+})();
+rodar('CSS montado a partir de css/src', () => resultadoCssMontado);
+
 process.exit(falhou ? 1 : 0);

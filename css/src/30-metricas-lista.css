@@ -1,0 +1,192 @@
+/* ===== METRICS ===== */
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+.metric-card {
+  position: relative;
+  overflow: hidden;
+  min-height: 116px;
+  background: var(--surface);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  box-shadow: var(--shadow-md);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  transition: transform var(--dur) var(--ease-out), box-shadow var(--dur) var(--ease-out);
+}
+.metric-card > div:last-child { min-width: 0; }
+.metric-card::before { content: none; }
+/* Cartão de valor: "hero" institucional — é o número que o usuário veio ver */
+.metric-card.highlight {
+  background: var(--hero-bg);
+  border-color: var(--hero-border);
+  color: #fff;
+  box-shadow: 0 1px 2px rgb(7 20 38 / 0.2), 0 18px 40px -20px rgb(11 31 58 / 0.7);
+}
+.metric-card.highlight .metric-label { color: color-mix(in srgb, var(--gold-300) 88%, #fff); }
+.metric-card.highlight .metric-sub,
+.metric-card.highlight .metric-resumo-mobile { color: rgb(255 255 255 / 0.74); }
+.metric-card.highlight .metric-icon.metric-money {
+  background: rgb(255 255 255 / 0.08);
+  color: var(--gold-300);
+  box-shadow: inset 0 0 0 1px rgb(242 221 155 / 0.26);
+}
+.metric-label {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-weight: 750;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+.metric-icon {
+  width: 48px; height: 48px;
+  border-radius: 14px;
+  display: grid; place-items: center;
+  flex-shrink: 0;
+}
+.metric-icon .icon { width: 24px; height: 24px; }
+.metric-clock { background: var(--metric-clock-bg); color: var(--metric-clock-color); }
+.metric-day   { background: var(--metric-day-bg);   color: var(--metric-day-color); }
+.metric-night { background: var(--metric-night-bg); color: var(--metric-night-color); }
+.metric-money { background: var(--metric-money-bg); color: var(--metric-money-color); }
+.metric-value {
+  margin-top: 6px;
+  color: var(--metric-value-color);
+  font-size: clamp(1.35rem, 2.1vw, 1.85rem);
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  line-height: 1.08;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.metric-card.highlight .metric-value { color: #fff; }
+.metric-sub { margin-top: 6px; color: var(--text-muted); font-size: 0.74rem; font-weight: 600; }
+
+/* ===== FEED ===== */
+.feed { margin-top: 20px; }
+/* CWV/CLS: a lista nasce vazia no HTML e só é populada pelo JS; sem altura
+   reservada, o footer e o alerta legal "pulam" quando o empty-state/tabela
+   entra. Reservar a altura do empty-state estabiliza o primeiro paint. */
+#listaEscalas { min-height: 220px; }
+
+/* CWV F-02 — barreira de primeiro paint: enquanto o <html> tem .app-pending
+   (removida pelo app.js após o init), o conteúdo dinâmico fica invisível mas
+   segue ocupando espaço (visibility, nunca display:none — sem layout shift).
+   Failsafe só-CSS: se o JS nunca rodar, a animação revela o conteúdo aos 5s. */
+.app-pending .layout,
+.app-pending .site-footer,
+.app-pending .mobile-bar {
+  visibility: hidden;
+  animation: ac4-revelar-failsafe 0s 5s forwards;
+}
+@keyframes ac4-revelar-failsafe {
+  to { visibility: visible; }
+}
+.feed-header {
+  min-height: 60px;
+  padding: 16px 20px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.feed-header h2 { font-size: 1.02rem; font-weight: 800; }
+.feed-tools { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.feed-filter { min-width: 150px; }
+.feed-filter:first-child { min-width: 190px; }
+.feed-filter .control { min-height: 40px; padding: 8px 11px; font-size: 0.78rem; }
+
+.table-wrap { width: 100%; overflow-x: auto; }
+.lista-anteriores {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  padding: 12px 14px;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+.escala-table {
+  width: 100%;
+  min-width: 860px;
+  border-collapse: collapse;
+}
+.escala-table th {
+  background: color-mix(in srgb, var(--glass-soft) 78%, var(--surface-2));
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-align: left;
+  text-transform: uppercase;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.escala-table td {
+  padding: 15px 16px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  font-size: 0.86rem;
+  vertical-align: middle;
+}
+.escala-table tbody tr { transition: background-color 0.15s; }
+.escala-table tbody tr:hover { background: color-mix(in srgb, var(--surface-2) 74%, transparent); }
+.table-total-row td { background: var(--surface-2); font-weight: 700; border-top: 2px solid var(--border); font-size: 0.82rem; }
+.escala-table strong { display: block; font-size: 0.9rem; overflow-wrap: anywhere; }
+.table-note { display: block; margin-top: 3px; color: var(--text-faint); font-size: 0.72rem; }
+.value-cell { color: var(--green-600) !important; font-weight: 800; white-space: nowrap; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 0.69rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.chip-blue    { background: #e8f0ff; color: var(--blue-600); }
+.chip-green   { background: #dcfce7; color: var(--green-700); }
+.chip-red     { background: var(--danger-soft); color: var(--danger); }
+.chip-night   { background: var(--info-soft); color: var(--info-text); }
+.chip-day     { background: var(--surface-3); color: var(--text-muted); }
+.chip-neutral { background: var(--surface-3); color: var(--text-muted); border: 1px solid var(--border); }
+.chip-origem  { background: color-mix(in srgb, var(--gold-500) 14%, var(--surface-3)); color: var(--warn-text); border: 1px solid color-mix(in srgb, var(--gold-500) 30%, var(--border)); }
+
+.escala-actions { display: flex; gap: 4px; justify-content: flex-end; }
+.escala-actions .btn-icon { width: 32px; height: 32px; border-color: transparent; background: transparent; }
+.escala-actions .btn-icon:hover { background: var(--surface-3); }
+.escala-actions .delete:hover { background: var(--danger-soft); color: var(--danger); }
+.escala-actions .gcal:hover  { background: #e8f0fe; color: #1a73e8; }
+
+.empty-state {
+  margin: 0;
+  padding: 64px 24px;
+  text-align: center;
+  color: var(--text-muted);
+}
+.empty-state .icon { width: 44px; height: 44px; margin: 0 auto 16px; color: var(--text-faint); }
+.empty-state h3 { color: var(--text); font-size: 1rem; font-weight: 800; margin-bottom: 6px; }
+.empty-state p { font-size: 0.85rem; }
+
+.legal-alert {
+  margin-top: 16px;
+  padding: 14px 18px;
+  border: 1px solid color-mix(in srgb, var(--gold-500) 40%, var(--border));
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--warn-soft) 78%, var(--glass));
+  color: var(--warn-text);
+  font-size: 0.84rem;
+  font-weight: 700;
+  backdrop-filter: blur(18px) saturate(145%);
+  -webkit-backdrop-filter: blur(18px) saturate(145%);
+}
+
