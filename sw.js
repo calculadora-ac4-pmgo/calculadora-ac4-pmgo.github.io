@@ -12,6 +12,7 @@ const SHELL = [
   // módulos importados sem query string (resolvidos pelo import de app.js)
   './js/modules/formato.mjs',
   './js/modules/calculo.mjs',
+  './js/modules/portarias.mjs',
   './js/modules/agenda.mjs',
   './js/modules/persistencia.mjs',
   './js/modules/templates.mjs',

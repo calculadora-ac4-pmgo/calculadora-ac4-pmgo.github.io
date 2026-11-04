@@ -5,6 +5,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join } from 'node:path';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { calcularEscala, regraNormativaParaData, TABELA_OFICIAL } from '../js/modules/calculo.mjs';
+import { NORMAS, normaParaData, normaAtual, citacaoNorma } from '../js/modules/portarias.mjs';
 import { desserializarEscalas, detectarConflitos, normalizarEscala, STORAGE_SCHEMA_VERSION } from '../js/modules/persistencia.mjs';
 
 const raiz = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -246,5 +247,25 @@ const validarModulosExtraidos = () => {
   return falhas.length ? falhas : 'TEMPLATES E EXPORTAÇÕES OK';
 };
 rodar('Templates e exportações (módulos extraídos)', validarModulosExtraidos);
+
+const validarNormas = () => {
+  const ids = new Set(NORMAS.map((n) => n.id));
+  const iso = /^\d{4}-\d{2}-\d{2}$/;
+  const checks = [
+    [NORMAS.length >= 1 && ids.size === NORMAS.length, 'ids únicos'],
+    [NORMAS.every((n) => n.norma && n.doe?.numero && iso.test(n.doe?.data) && iso.test(n.vigenciaInicio)), 'campos obrigatórios'],
+    [NORMAS.every((n) => ['AD', 'AN', 'VD', 'VN'].every((k) => Number.isInteger(n.valores[k]) && n.valores[k] > 0)), 'valores inteiros positivos'],
+    [NORMAS.every((n, i) => i === 0 || (NORMAS[i - 1].vigenciaFim && NORMAS[i - 1].vigenciaFim < n.vigenciaInicio)), 'vigências em ordem e sem sobreposição'],
+    [NORMAS.slice(0, -1).every((n) => n.vigenciaFim), 'só a última sem vigenciaFim'],
+    [Object.isFrozen(NORMAS) && NORMAS.every((n) => Object.isFrozen(n) && Object.isFrozen(n.valores) && Object.isFrozen(n.doe)), 'congeladas'],
+    [normaParaData('2026-06-30') === null, '30/06/2026 sem norma'],
+    [normaParaData('2026-07-01T00:00')?.id === 'ssp-621-2026-07-01', '01/07/2026 → 621'],
+    [normaParaData('lixo') === null, 'data inválida → null'],
+    [citacaoNorma(normaAtual()) === 'Portaria SSP nº 621/2026 (DOE nº 24.801, 17/06/2026)', 'citação padrão'],
+  ];
+  const falhas = checks.filter(([ok]) => !ok).map(([, nome]) => nome);
+  return falhas.length ? falhas : 'NORMAS OK';
+};
+rodar('Normas da Portaria (dados versionados)', validarNormas);
 
 process.exit(falhou ? 1 : 0);
