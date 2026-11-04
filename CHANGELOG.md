@@ -1,5 +1,15 @@
 # Changelog
 
+## v76 — CSS organizado em css/src/
+
+Sem mudança para o usuário: o `css/styles.css` publicado é idêntico ao da v75, exceto pelo comentário de cabeçalho.
+- **11 arquivos-fonte em `css/src/`**, um por área: base, PWA, topo e botões, layout, formulário, tarifas e planejamento, métricas e lista, barra e avisos, diálogos, responsivo, rodapé e impressão. Cada um é uma fatia contínua do CSS anterior, na mesma ordem, porque a cascata depende da ordem.
+- **`tools/montar-css.mjs`** junta os fontes no único `styles.css` (o celular continua baixando um arquivo só). `--verificar` confere se está em dia.
+- **`tools/bump-version.mjs`** grava a versão em `css/src/00-base.css` e monta o CSS.
+- **Teste novo "CSS montado a partir de css/src"**: bloqueia `styles.css` editado direto ou desatualizado.
+- `css/src/` fica fora do site publicado.
+- Prova: `diff` com a v75 mostra só a linha "Arquivo gerado por tools/montar-css.mjs", e todas as suítes passam sem regravar referências.
+
 ## v75 — Interface dividida em módulos (conclusão)
 
 Refatoração sem mudança para o usuário. O `js/app.js` passou de 1.234 para **408 linhas**; eram 2.489 na v71 e 1.820 antes desta refatoração. Agora ele cuida só do estado, da ligação dos módulos, do `render()` e de um `init()` de 64 linhas.

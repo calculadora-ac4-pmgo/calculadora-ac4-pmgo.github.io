@@ -14,13 +14,14 @@ majoritário em **celular**. Produção: <https://calculadora-ac4-pmgo.github.io
 
 ## Arquitetura em uma tela
 
-- Sem build, sem framework, **sem dependências em produção**. `index.html` + `css/styles.css` + `js/app.js` (IIFE: estado, eventos e orquestração da UI) + `js/modules/*.mjs`:
+- Sem build, sem framework, **sem dependências em produção**. `index.html` + `css/styles.css` (**gerado**, ver abaixo) + `js/app.js` (IIFE: estado, eventos e orquestração da UI) + `js/modules/*.mjs`:
   - dados: `portarias` (fonte única das normas: valores, DOE, vigência);
   - funções puras: `calculo` (regra da Portaria), `formato`, `agenda` (.ics/links), `persistencia`, `templates` (HTML da lista), `relatorio` (PDF/CSV/texto compartilhado);
   - `pwa` (fábrica `criarPWA(ctx)`: atualização e instalação);
   - `ui/` (v74–v75): um módulo por área da interface (`avisos`, `observabilidade`, `aparencia`, `dados`, `exportacoes`, `compartilhar`, `planejamento`, `formulario`, `modelos`), cada um com uma fábrica `criarX(ctx)` que não toca o DOM ao ser criada. Módulos com eventos próprios expõem `ligarEventos()`, chamado pelo `init()`; ligações **entre** áreas (ex.: opções do Compartilhar que exportam ou fazem backup) ficam no `init()`. O `app.js` (~400 linhas) só tem estado, ligação, `render()` e `init()`. Estado só via o objeto `estado` do `app.js` (getters/setters). **Módulo de UI não importa outro módulo de UI**; o `app.js` cria todos no topo e repassa as dependências. Consts do `app.js` declaradas mais abaixo vão como função de chamada tardia (`calcularEscala: (e) => calcularEscala(e)`), para evitar zona morta (TDZ);
   - `testes` (suítes de regressão, **import dinâmico só em localhost**; testes aguardam `window.__ac4TestesProntos`).
   - Módulo novo? Coloque no `SHELL` do `sw.js` (o teste "Módulos no cache offline" confere).
+- **CSS (desde a v76):** edite `css/src/NN-area.css` e rode `node tools/montar-css.mjs`, que junta os fontes em ordem alfabética no único `css/styles.css` publicado. Os fontes são fatias contínuas: a cascata depende da ordem, então regra nova vai no arquivo da área, e regra de celular vai em `90-responsivo.css`. O teste "CSS montado a partir de css/src" bloqueia `styles.css` editado direto ou desatualizado. `css/src/` não vai para o site (deploy.yml).
 - Dados **só no aparelho** (`localStorage`, chaves `pmgo*`). Nunca coletar dados pessoais (LGPD).
 - `sw.js`: network-first, atualização só com confirmação do usuário (`SKIP_WAITING` via banner).
 - Não há mais limpeza forçada: o `js/force-update.js` (v65–v68) recarregava a página a cada versão sem perguntar e foi removido na v69. Caches antigos são apagados no `activate` do `sw.js`. **Não reintroduzir** (o teste "Atualização PWA" bloqueia).
@@ -29,7 +30,7 @@ majoritário em **celular**. Produção: <https://calculadora-ac4-pmgo.github.io
 ## Fluxo de trabalho obrigatório
 
 1. Branch → commits → `npm run verify` (lint + unit + smoke + equivalência + mobile + mobile-v55 + vitals) → PR → CI verde → `gh pr merge --merge --delete-branch` → acompanhar o deploy da `main` → **conferir o site publicado** (ex.: `curl -s https://calculadora-ac4-pmgo.github.io/sw.js | sed -n 4,5p`). Não declarar concluído só com o workflow verde.
-2. Mudou `index.html`, `css/` ou `js/`? **Bump de versão:** `node tools/bump-version.mjs <n>` (atualiza index, sw, app.js, styles.css e package.json). Versão atual: **v75** → próxima **v76**.
+2. Mudou `index.html`, `css/` ou `js/`? **Bump de versão:** `node tools/bump-version.mjs <n>` (atualiza index, sw, app.js, `css/src/00-base.css` e package.json, e monta o `styles.css`). Versão atual: **v76** → próxima **v77**.
 3. Todo bump exige **entrada nova no topo do `CHANGELOG.md`** com a mesma versão (o teste "Release" falha se não houver) e, se houver novidade para o usuário, o conteúdo do `#dialogNovidades` em `index.html` (**exatamente 3 itens** na lista; o smoke confere) **e o atributo `data-conteudo` com a versão atual** — é ele que decide se o aviso reabre sozinho (sem novidade, mantenha o valor antigo para não repetir o aviso).
 4. **Equivalência da interface** (`tests/equivalencia.mjs`): compara lista, totais, planejamento, CSV, PDF, texto compartilhado e agenda com `tests/fixtures/equivalencia.json`. Mudança visual ou de texto **intencional**: `node tests/equivalencia.mjs --atualizar` e explicar a diferença no PR. Refatoração: a fotografia **não** pode mudar. Ela não cobre os textos de toast; para isso existe o teste **"Textos preservados em refatoração"** (unit), que compara todos os literais de `js/app.js` + `js/modules/ui/*.mjs` com `tests/fixtures/literais.json`. Texto alterado de propósito: `LITERAIS_ATUALIZAR=1 node tests/run-tests.mjs` e explicar no PR.
 5. Os testes regeneram PNGs em `artifacts/v55/`. Não commitar isso por acidente: `git checkout -- artifacts/` antes do `git add`.
@@ -49,5 +50,6 @@ majoritário em **celular**. Produção: <https://calculadora-ac4-pmgo.github.io
 - **Smoke no runner:** se falhar com "Chrome não expôs o DevTools", é infraestrutura: `gh run rerun <id> --failed`. Se o job de *deploy* do Pages falhar, usar `gh workflow run deploy.yml`.
 - **`window.print()`** bloqueia a thread até o diálogo fechar: chame via `aposProximoPaint` (senão o tempo no diálogo entra no INP).
 - **Mover código com troca automática de nomes corrompe textos.** Na v74, trocar `escalas` por `estado.escalas` com regex também alterou mensagens ("As estado.escalas ficam…"). Troque só referências de código e compare os literais com a versão anterior.
+- **Nunca edite `css/styles.css` direto**: ele é sobrescrito pelo `tools/montar-css.mjs`. Edite `css/src/` (v76).
 - **Documentos podem estar desatualizados.** Confirme no código antes de afirmar que um recurso existe (ex.: a importação `.ics` foi removida na v48, mas `ESCOPO_MVP.md` ainda a cita, item R7 do backlog).
 - **Revisão visual é obrigatória** em mudanças de UI: capturas em 390 px e 1280 px, temas claro e escuro (o harness de `tests/mobile-v55-check.mjs` serve de base).

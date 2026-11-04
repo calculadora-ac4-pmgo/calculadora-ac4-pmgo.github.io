@@ -1,0 +1,204 @@
+/* ==========================================================================
+   Calculadora AC4 — v76
+   Arquivo gerado por tools/montar-css.mjs — edite css/src/ e rode o script.
+   ========================================================================== */
+
+/* Inter (variable, 100–900) self-hosted — sem dependência do Google Fonts,
+   funciona offline via Service Worker. */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('../assets/fonts/inter-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('../assets/fonts/inter-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+:root {
+  --navy-950: #071426;
+  --navy-900: #0b1f3a;
+  --navy-800: #102d52;
+  --navy-700: #173d6d;
+  --gold-500: #d6ad55;
+  --gold-300: #f2dd9b;
+  --green-600: #059669;
+  --green-700: #047857;
+  --blue-600: #2563eb;
+  --red-600: #dc2626;
+
+  --bg: #f4f6fa;
+  --surface: #ffffff;
+  --surface-2: #f8fafc;
+  --surface-3: #eef2f7;
+  --glass: rgba(255, 255, 255, 0.72);
+  --glass-strong: rgba(255, 255, 255, 0.84);
+  --glass-soft: rgba(255, 255, 255, 0.48);
+  --glass-border: #e3e9f1;
+  --border: #dde4ee;
+  --border-strong: #c3cfdd;
+  --text: #122033;
+  --text-muted: #627286; /* AA: 4.54:1 sobre --bg (era #66778c, 4.23:1) */
+  --text-faint: #64707c; /* AA: 4.53:1 sobre --surface-3 (era #93a4b7, 2.55:1) */
+  --primary: var(--navy-900);
+  --primary-hover: var(--navy-800);
+  --primary-soft: #e8eef7;
+  --primary-text: #12335d;
+  --danger: var(--red-600);
+  --danger-soft: #fee2e2;
+  --warn-soft: #fff8e6;
+  --warn-text: #7a4f08;
+  --info-soft: #eaf2ff;
+  --info-text: #1d4ed8;
+  --focus-ring: rgba(214, 173, 85, 0.34);
+  --overlay: rgba(7, 20, 38, 0.62);
+
+  /* Sombras em camadas (contato + ambiente), no padrão de design systems
+     como Open Props/Radix: nítidas de perto, difusas de longe. */
+  --shadow-sm: 0 1px 2px rgb(15 23 42 / 0.05);
+  --shadow-md: 0 1px 2px rgb(15 23 42 / 0.04), 0 10px 28px -14px rgb(15 23 42 / 0.16);
+  --shadow-lg: 0 2px 6px rgb(7 20 38 / 0.06), 0 28px 72px -28px rgb(7 20 38 / 0.5);
+
+  --radius-sm: 10px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 22px;
+
+  /* Movimento — curvas e durações únicas para todo o app */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.3, 0.64, 1);
+  --dur-fast: 0.12s;
+  --dur: 0.2s;
+
+  /* Cartão "hero" de valor — azul institucional com brilho dourado */
+  --hero-bg:
+    radial-gradient(120% 150% at 100% 0%, rgb(214 173 85 / 0.26), transparent 55%),
+    linear-gradient(150deg, #123463 0%, var(--navy-900) 55%, var(--navy-950) 100%);
+  --hero-border: rgb(242 221 155 / 0.22);
+
+  --font: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+  --metric-clock-bg: #08245a;
+  --metric-clock-color: #fff;
+  --metric-day-bg: #fff1cf;
+  --metric-day-color: #c48607;
+  --metric-night-bg: #dbe6ff;
+  --metric-night-color: #0a2c69;
+  --metric-money-bg: #dcfce7;
+  --metric-money-color: #047857;
+  --metric-value-color: #122033;
+
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  --bg: #07111f;
+  --surface: #0d1b2e;
+  --surface-2: #111f34;
+  --surface-3: #172941;
+  --glass: rgba(13, 27, 46, 0.68);
+  --glass-strong: rgba(13, 27, 46, 0.82);
+  --glass-soft: rgba(255, 255, 255, 0.06);
+  --glass-border: #1d304a;
+  --border: #20334d;
+  --border-strong: #38506e;
+  --text: #e8eef7;
+  --text-muted: #a5b4c7;
+  --text-faint: #73859d; /* AA: 4.59:1 sobre --surface escuro (era #71829a, 4.42:1) */
+  --primary: #d6ad55;
+  --primary-hover: #f2dd9b;
+  --primary-soft: rgba(214, 173, 85, 0.14);
+  --primary-text: #f2dd9b;
+  --danger: #f87171;
+  --danger-soft: rgba(248, 113, 113, 0.15);
+  --warn-soft: rgba(214, 173, 85, 0.15);
+  --warn-text: #f2dd9b;
+  --info-soft: rgba(37, 99, 235, 0.18);
+  --info-text: #93c5fd;
+  --focus-ring: rgba(242, 221, 155, 0.28);
+  --overlay: rgba(3, 9, 18, 0.72);
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.34);
+  --shadow-md: 0 10px 28px -16px rgb(0 0 0 / 0.74);
+  --shadow-lg: 0 28px 80px -30px rgb(0 0 0 / 0.86);
+  --hero-bg:
+    radial-gradient(120% 150% at 100% 0%, rgb(214 173 85 / 0.2), transparent 55%),
+    linear-gradient(150deg, #15345c 0%, #0d2140 60%, #0a1830 100%);
+  --hero-border: rgb(242 221 155 / 0.2);
+
+  --metric-clock-bg: rgba(37, 99, 235, 0.22);
+  --metric-clock-color: #93c5fd;
+  --metric-day-bg: rgba(214, 173, 85, 0.18);
+  --metric-day-color: #f2dd9b;
+  --metric-night-bg: rgba(37, 99, 235, 0.14);
+  --metric-night-color: #93c5fd;
+  --metric-money-bg: rgba(5, 150, 105, 0.18);
+  --metric-money-color: #34d399;
+  --metric-value-color: #f4f7fb;
+
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+* { margin: 0; }
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  min-height: 100dvh;
+  background:
+    radial-gradient(900px 320px at 50% -120px, color-mix(in srgb, var(--gold-500) 10%, transparent), transparent 70%),
+    var(--bg);
+  background-repeat: no-repeat;
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+.noscript-warning { padding: 16px; text-align: center; background: #fee2e2; color: #7f1d1d; font-weight: 600; }
+.btn-cancel-edit { margin-top: 8px; }
+
+img, svg { display: block; max-width: 100%; }
+button, input, select, textarea { font: inherit; }
+button { color: inherit; }
+.icon { width: 18px; height: 18px; flex-shrink: 0; }
+.icon-sm { width: 15px; height: 15px; }
+.hidden { display: none !important; }
+.sr-only {
+  position: absolute !important;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0);
+  white-space: nowrap; border: 0;
+}
+
+/* Link "pular para o conteúdo" — visível apenas ao receber foco por teclado */
+.skip-link {
+  position: absolute;
+  left: 12px;
+  top: -48px;
+  z-index: 100;
+  padding: 10px 16px;
+  background: var(--navy-900);
+  color: #fff;
+  font-weight: 700;
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  transition: top 0.15s;
+}
+.skip-link:focus { top: 12px; }
+.field-optional { font-weight: 400; font-size: 0.72rem; color: var(--text-faint); }
+
+:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
+  border-radius: var(--radius-sm);
+}
+

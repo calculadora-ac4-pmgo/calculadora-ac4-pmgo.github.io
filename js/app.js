@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Calculadora AC4 — v75
+   Calculadora AC4 — v76
    Módulo principal: estado, ligação dos módulos de interface (js/modules/ui/),
    render() e init(). Regras de negócio, formatação e agenda vivem em js/modules/.
    ========================================================================== */
@@ -42,7 +42,7 @@ import { criarModelos } from './modules/ui/modelos.mjs';
   /* Versão da aplicação (sincronizada pelo tools/bump-version.mjs). Serve para
      carimbar o log de erros e detectar clientes presos em cache antigo:
      se __ac4Version no console divergir do rodapé/CHANGELOG, o SW não atualizou. */
-  const APP_VERSION = '75';
+  const APP_VERSION = '76';
 
   const STORAGE = {
     escalas:   'pmgoEscalas',

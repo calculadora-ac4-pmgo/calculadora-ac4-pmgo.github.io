@@ -1,0 +1,152 @@
+/* ===== SITE FOOTER ===== */
+.site-footer {
+  margin-top: 40px;
+  padding: 28px 34px calc(28px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 80%, var(--bg));
+}
+.site-footer-inner {
+  width: min(1440px, 100%);
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.site-footer-copy {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+.site-footer-meta {
+  color: var(--text-faint);
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+.footer-link {
+  color: var(--text-muted);
+  text-decoration: none;
+  font-weight: 700;
+  transition: color 0.15s;
+}
+.footer-link:hover { color: var(--text); }
+
+/* Estas regras precisam vir DEPOIS da base .site-footer acima — mesma
+   especificidade, então a ordem no arquivo decide quem vence. */
+@media (max-width: 760px) {
+  /* folga para a barra fixa mobile não cobrir o rodapé */
+  .site-footer { padding-bottom: calc(90px + env(safe-area-inset-bottom)); }
+}
+@media (max-width: 560px) {
+  .site-footer { padding: 20px 14px calc(90px + env(safe-area-inset-bottom)); }
+  .site-footer-inner { flex-direction: column; align-items: flex-start; gap: 6px; }
+}
+
+/* ===== PRINT STYLES ===== */
+@media print {
+  @page { size: A4 portrait; margin: 10mm; }
+
+  html, body {
+    background: #fff !important; color: #000 !important;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 10pt; line-height: 1.4;
+    margin: 0; padding: 0; width: 100%;
+  }
+
+  /* Ocultar toda a interface; exibir apenas o relatório de impressão */
+  body > * { display: none !important; }
+  #printReport { display: block !important; width: 100%; max-width: 100%; }
+
+  /* --- Cabeçalho --- */
+  .pr-header {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    border-bottom: 2px solid #111; padding-bottom: 10px; margin-bottom: 12px;
+    break-inside: avoid;
+  }
+  .pr-header .pr-title { font-size: 13pt; font-weight: bold; color: #000 !important; margin: 0 0 3px; }
+  .pr-subtitle { font-size: 8.5pt; color: #555 !important; margin: 0; }
+  .pr-header-right { text-align: right; font-size: 8pt; color: #444 !important; line-height: 1.7; }
+  .pr-header-right p { margin: 0; }
+
+  /* --- Seções --- */
+  .pr-section { margin-bottom: 12px; }
+  .pr-section-title {
+    font-size: 8.5pt; font-weight: bold; text-transform: uppercase;
+    letter-spacing: 0.4px; color: #333 !important;
+    margin: 0 0 5px; padding-bottom: 3px;
+    border-bottom: 1px solid #aaa; break-after: avoid;
+  }
+
+  /* --- Resumo --- */
+  .pr-summary-grid { display: flex; border: 1px solid #ccc; break-inside: avoid; }
+  .pr-summary-grid div {
+    flex: 1; padding: 5px 8px; border-right: 1px solid #ccc;
+    font-size: 8pt; color: #000 !important;
+  }
+  .pr-summary-grid div:last-child { border-right: none; }
+  .pr-label { color: #555 !important; }
+
+  /* --- Tabela principal --- */
+  .pr-table {
+    width: 100%; border-collapse: collapse;
+    table-layout: fixed; font-size: 8pt; break-inside: auto;
+  }
+  .pr-table th, .pr-table td {
+    border: 1px solid #ccc; padding: 4px 5px;
+    vertical-align: top; overflow-wrap: anywhere; word-break: break-word;
+    color: #000 !important; background: #fff !important;
+  }
+  .pr-table th {
+    background: #f0f0f0 !important; font-weight: bold;
+    font-size: 7.5pt; text-align: center;
+  }
+  .pr-table thead { display: table-header-group; }
+  .pr-table tbody tr { break-inside: avoid; page-break-inside: avoid; }
+
+  /* Larguras calibradas para A4 — soma = 100% */
+  .pr-table th:nth-child(1)  { width:  3%; } /* N.º              */
+  .pr-table th:nth-child(2)  { width:  4%; } /* Dia              */
+  .pr-table th:nth-child(3)  { width: 10%; } /* Data             */
+  .pr-table th:nth-child(4)  { width:  6%; } /* Início           */
+  .pr-table th:nth-child(5)  { width: 14%; } /* Término          */
+  .pr-table th:nth-child(6)  { width:  5%; } /* Duração          */
+  .pr-table th:nth-child(7)  { width: 14%; } /* Unidade          */
+  .pr-table th:nth-child(8)  { width: 13%; } /* Origem Remun.    */
+  .pr-table th:nth-child(9)  { width:  7%; } /* H. Diurnas       */
+  .pr-table th:nth-child(10) { width:  7%; } /* H. Noturnas      */
+  .pr-table th:nth-child(11) { width: 17%; } /* Valor Estimado   */
+
+  .pr-num    { text-align: center; }
+  .pr-center { text-align: center; }
+  .pr-valor  { text-align: right; font-weight: 600; }
+  .pr-valor small { font-weight: 400; display: block; font-size: 6.5pt; color: #555 !important; }
+
+  /* Linha de total */
+  .pr-total-row td {
+    background: #f0f0f0 !important; font-weight: bold;
+    border-top: 2px solid #777 !important; color: #000 !important;
+  }
+
+  /* --- Rodapé --- */
+  .pr-footer {
+    margin-top: 14px; padding-top: 8px; border-top: 1px solid #aaa;
+    font-size: 7.5pt; color: #555 !important; break-inside: avoid;
+  }
+  .pr-footer p { margin: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+@media (forced-colors: active) {
+  :focus-visible {
+    outline: 2px solid CanvasText;
+    outline-offset: 2px;
+    box-shadow: none;
+  }
+  .btn, .btn-icon, .control, .dur-chip, .qtd-btn, .ec-action-btn {
+    border: 1px solid ButtonText;
+  }
+}
