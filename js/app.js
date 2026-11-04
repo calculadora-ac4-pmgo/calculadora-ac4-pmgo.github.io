@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Calculadora AC4 — v73
+   Calculadora AC4 — v74
    Módulo principal: estado, UI, persistência e exportações.
    Regras de negócio, formatação e agenda vivem em js/modules/.
    ========================================================================== */
@@ -18,15 +18,19 @@ import {
   gerarLinkOutlookAgenda as gerarLinkOutlookAgendaBase,
 } from './modules/agenda.mjs';
 import {
-  STORAGE_SCHEMA_VERSION, STATUS_ESCALA, gerarIdEscala, desserializarEscalas, detectarConflitos, aplicarNorma,
+  STATUS_ESCALA, gerarIdEscala, desserializarEscalas, detectarConflitos, aplicarNorma,
 } from './modules/persistencia.mjs';
-import { normaAtual } from './modules/portarias.mjs';
 import {
   STATUS_INFO, statusEscala, rotuloQuantidadePm,
   botoesAcaoHTML, seletorStatusHTML, cardEscalaHTML,
 } from './modules/templates.mjs';
-import { montarRelatorioImpressao, montarCSV, montarTextoResumo, baixarArquivo } from './modules/relatorio.mjs';
 import { criarPWA } from './modules/pwa.mjs';
+import { criarAvisos } from './modules/ui/avisos.mjs';
+import { criarObservabilidade } from './modules/ui/observabilidade.mjs';
+import { criarAparencia } from './modules/ui/aparencia.mjs';
+import { criarDados } from './modules/ui/dados.mjs';
+import { criarExportacoes } from './modules/ui/exportacoes.mjs';
+import { criarCompartilhar } from './modules/ui/compartilhar.mjs';
 
 (() => {
   'use strict';
@@ -37,7 +41,7 @@ import { criarPWA } from './modules/pwa.mjs';
   /* Versão da aplicação (sincronizada pelo tools/bump-version.mjs). Serve para
      carimbar o log de erros e detectar clientes presos em cache antigo:
      se __ac4Version no console divergir do rodapé/CHANGELOG, o SW não atualizou. */
-  const APP_VERSION = '73';
+  const APP_VERSION = '74';
 
   const STORAGE = {
     escalas:   'pmgoEscalas',
@@ -81,6 +85,52 @@ import { criarPWA } from './modules/pwa.mjs';
   /* Ganchos de teste (window.__ac4Testes*, simulações) só existem em ambiente
      local; em produção ficam só os de suporte (__ac4Erros, __ac4Version). */
   const ambienteDeTeste = ['localhost', '127.0.0.1'].includes(location.hostname);
+
+  /* Acesso ao estado para os módulos de interface (js/modules/ui/) e para as
+     suítes de teste: módulos leem e gravam só por aqui (v74). */
+  const estado = {
+    get escalas() { return escalas; }, set escalas(v) { escalas = v; },
+    get editandoId() { return editandoId; }, set editandoId(v) { editandoId = v; },
+    get ultimaExcluida() { return ultimaExcluida; }, set ultimaExcluida(v) { ultimaExcluida = v; },
+    get filtroMes() { return filtroMes; }, set filtroMes(v) { filtroMes = v; },
+    get filtroOrigem() { return filtroOrigem; }, set filtroOrigem(v) { filtroOrigem = v; },
+    get filtroBusca() { return filtroBusca; }, set filtroBusca(v) { filtroBusca = v; },
+    get filtroStatus() { return filtroStatus; }, set filtroStatus(v) { filtroStatus = v; },
+    get limiteLista() { return limiteLista; }, set limiteLista(v) { limiteLista = v; },
+    get modelos() { return modelos; }, set modelos(v) { modelos = v; },
+    get metasMensais() { return metasMensais; }, set metasMensais(v) { metasMensais = v; },
+    get versaoAnterior() { return versaoAnterior; }, set versaoAnterior(v) { versaoAnterior = v; },
+    get submetendo() { return submetendo; }, set submetendo(v) { submetendo = v; },
+    get sheetAberto() { return sheetAberto; }, set sheetAberto(v) { sheetAberto = v; },
+  };
+
+  /* Módulos de interface — criados nesta ordem; quem vem depois recebe o que
+     os anteriores devolvem. Um módulo de UI nunca importa outro. */
+  const { toast, dialogConfirmar, haptic } = criarAvisos({ $ });
+  const { registrarErro, initObservabilidade } = criarObservabilidade({ STORAGE, APP_VERSION, estado, toast });
+  const { aplicarTema, initTema, initNovidades } = criarAparencia({
+    $, on, STORAGE, lerLocal, APP_VERSION, estado, aposProximoPaint,
+  });
+  const {
+    salvar, carregar, salvarModelos, salvarMetas, exportarBackup, restaurarBackup,
+    pedirArmazenamentoPersistente, textoStatusBackup, lembrarBackup, ehIOS, rodandoInstalado,
+  } = criarDados({
+    estado, STORAGE, APP_VERSION, lerLocal, toast, dialogConfirmar, registrarErro,
+    render: () => render(), renderModelos: () => renderModelos(), cancelarEdicao: () => cancelarEdicao(),
+    clonarEscalas,
+  });
+  const { exportarCSV, imprimirRelatorio, agendarEscalas, agendarEscalaItem } = criarExportacoes({
+    $, estado, toast, haptic, escalasOrdenadas, aposProximoPaint,
+    /* consts definidas mais abaixo: chamadas só no momento do uso */
+    calcularEscala: (e) => calcularEscala(e), montarICS: (lista) => montarICS(lista),
+    gerarLinkGoogleAgenda: (e) => gerarLinkGoogleAgenda(e),
+    gerarLinkOutlookAgenda: (e, corporativo) => gerarLinkOutlookAgenda(e, corporativo),
+    isMobileViewport: () => isMobileViewport(),
+  });
+  const { abrirShareSheet, copiarResumo, compartilharWhatsApp, compartilharNativo, initFeedback } = criarCompartilhar({
+    $, on, toast, haptic, escalasOrdenadas, textoStatusBackup, aposProximoPaint, APP_VERSION, ambienteDeTeste,
+    calcularEscala: (e) => calcularEscala(e),
+  });
 
   function setDetalhesAvancados(aberto) {
     document.querySelectorAll('.advanced-field').forEach((el) => el.classList.toggle('hidden', !aberto));
@@ -151,141 +201,7 @@ import { criarPWA } from './modules/pwa.mjs';
     if (devolverFoco) $('mobileAdd')?.focus();
   }
 
-  function baixarArquivoAgenda(lista, mensagem = 'Arquivo .ics gerado para importar na sua agenda.') {
-    const arquivo = montarICS(lista);
-    if (!arquivo.eventos) {
-      toast('Não há escalas válidas para gerar o arquivo .ics.', { erro: true });
-      return null;
-    }
-    baixarArquivo(arquivo.conteudo, 'escalas-ac4.ics', 'text/calendar;charset=utf-8');
-    const total = `${arquivo.eventos} evento${arquivo.eventos === 1 ? '' : 's'}`;
-    const ignoradas = arquivo.ignoradas
-      ? ` ${arquivo.ignoradas} escala${arquivo.ignoradas === 1 ? '' : 's'} inválida${arquivo.ignoradas === 1 ? '' : 's'} foram ignoradas.`
-      : '';
-    toast(`${mensagem} ${total}.${ignoradas}`);
-    return arquivo;
-  }
-
-  function exportarBackup() {
-    const backup = {
-      produto: 'Calculadora AC4',
-      appVersion: APP_VERSION,
-      schemaVersion: STORAGE_SCHEMA_VERSION,
-      exportadoEm: new Date().toISOString(),
-      escalas,
-      modelos,
-      metasMensais,
-    };
-    baixarArquivo(`${JSON.stringify(backup, null, 2)}\n`, `backup-calculadora-ac4-v${APP_VERSION}.json`, 'application/json;charset=utf-8');
-    try { localStorage.setItem(STORAGE.ultimoBackup, String(Date.now())); } catch { /* lembrete pode reaparecer */ }
-    toast(`Backup gerado com ${escalas.length} escala${escalas.length === 1 ? '' : 's'}.`);
-  }
-
-  /* Pede ao navegador que não apague os dados por falta de espaço ou de uso
-     (Safari/iOS apaga após 7 dias sem visita). Chamado só após um lançamento,
-     uma vez por sessão — o Firefox pode perguntar ao usuário. Recusa é tolerada. */
-  let persistenciaSolicitada = false;
-  async function pedirArmazenamentoPersistente() {
-    if (persistenciaSolicitada || !navigator.storage?.persist) return;
-    persistenciaSolicitada = true;
-    try {
-      if (!(await navigator.storage.persisted())) await navigator.storage.persist();
-    } catch { /* sem suporte: o lembrete de backup continua sendo a proteção */ }
-  }
-
-  const ehIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent);
-  const rodandoInstalado = () => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
-
-  /* Situação do backup exibida no Compartilhar, perto dos botões Backup/Restaurar. */
-  function textoStatusBackup(agora = Date.now()) {
-    const ultimo = Number(lerLocal(STORAGE.ultimoBackup)) || 0;
-    let texto;
-    if (!ultimo) texto = 'Você ainda não fez backup. As escalas ficam só neste aparelho.';
-    else {
-      const dias = Math.max(0, Math.floor((agora - ultimo) / DIA_MS));
-      const quando = dias === 0 ? 'hoje' : dias === 1 ? 'ontem' : `há ${dias} dias`;
-      texto = `Último backup: ${fmtData(new Date(ultimo))} (${quando}).`;
-    }
-    if (ehIOS() && !rodandoInstalado()) {
-      texto += ' No iPhone, instale o app na Tela de Início: o Safari pode apagar dados de sites sem uso por 7 dias.';
-    }
-    return texto;
-  }
-
-  /* Lembrete de backup: os dados vivem só neste aparelho. Avisa quem tem
-     escalas e nunca salvou cópia (ou salvou há mais de 30 dias), no máximo
-     uma vez por semana e nunca por cima de um dialog ou do sheet aberto. */
-  const DIA_MS = 24 * 60 * 60 * 1000;
-  function lembrarBackup(agora = Date.now()) {
-    if (escalas.length < 3 || sheetAberto || document.querySelector('dialog[open]')) return false;
-    const ultimo = Number(lerLocal(STORAGE.ultimoBackup)) || 0;
-    const lembrado = Number(lerLocal(STORAGE.lembreteBackup)) || 0;
-    if (agora - lembrado < 7 * DIA_MS) return false;
-    if (ultimo && agora - ultimo <= 30 * DIA_MS) return false;
-    try { localStorage.setItem(STORAGE.lembreteBackup, String(agora)); } catch { return false; }
-    const dias = Math.floor((agora - ultimo) / DIA_MS);
-    toast(ultimo
-      ? `Último backup há ${dias} dias. Salve uma cópia das suas escalas.`
-      : 'Suas escalas ficam só neste aparelho. Salve uma cópia de segurança.',
-    { acao: { rotulo: 'Fazer backup', fn: exportarBackup } });
-    return true;
-  }
-
-  async function restaurarBackup(file) {
-    if (!file) return;
-    if (file.size > 1024 * 1024) {
-      toast('O backup excede o limite de 1 MB.', { erro: true });
-      return;
-    }
-    try {
-      const documento = JSON.parse(await file.text());
-      const fonte = Array.isArray(documento) ? documento : documento?.escalas;
-      if (!Array.isArray(fonte)) throw new Error('formato');
-      const resultado = desserializarEscalas(JSON.stringify(fonte));
-      const modelosBackup = !Array.isArray(documento) && Array.isArray(documento?.modelos)
-        ? normalizarModelos(documento.modelos)
-        : null;
-      const metasBackup = !Array.isArray(documento) && documento?.metasMensais
-        ? normalizarMetas(documento.metasMensais)
-        : null;
-      if (!resultado.escalas.length && fonte.length) throw new Error('sem-registros-validos');
-      const detalhe = resultado.rejeitadas ? ` ${resultado.rejeitadas} registro(s) inválido(s) serão ignorados.` : '';
-      const detalheModelos = modelosBackup ? ` O backup contém ${modelosBackup.length} modelo(s).` : '';
-      const ok = await dialogConfirmar(
-        `Restaurar ${resultado.escalas.length} escala${resultado.escalas.length === 1 ? '' : 's'} e substituir os dados atuais?${detalhe}${detalheModelos}`,
-        { textoOk: 'Restaurar', perigoso: false }
-      );
-      if (!ok) return;
-      const anteriores = clonarEscalas();
-      escalas = resultado.escalas;
-      cancelarEdicao();
-      if (!salvar()) { escalas = anteriores; render(); return; }
-      if (modelosBackup) {
-        const modelosAnteriores = modelos;
-        modelos = modelosBackup;
-        if (!salvarModelos()) modelos = modelosAnteriores;
-        renderModelos();
-      }
-      if (metasBackup) {
-        const metasAnteriores = metasMensais;
-        metasMensais = metasBackup;
-        if (!salvarMetas()) metasMensais = metasAnteriores;
-      }
-      render();
-      toast('Backup restaurado com sucesso.');
-      avisarRecalculadas(resultado.recalculadas);
-    } catch {
-      toast('Arquivo de backup inválido ou incompatível.', { erro: true });
-    }
-  }
-
   /* -------------------------------------------- tabela de valores */
-  /* Valores somente leitura, vindos de portarias.mjs (fonte única, v73).
-     Escalas gravam a tabela da norma vigente na data de início. */
-  const avisarRecalculadas = (k) => {
-    if (k > 0) toast(`${k} escala${k === 1 ? '' : 's'} recalculada${k === 1 ? '' : 's'} pela ${normaAtual().norma}.`);
-  };
-
   /* Pontes para os módulos — injetam a tabela vigente lida do DOM,
      mantendo as assinaturas originais nos pontos de uso. */
   /* Cache do cálculo (auditoria v67, P2-1): o laço minuto a minuto é caro e
@@ -310,266 +226,6 @@ import { criarPWA } from './modules/pwa.mjs';
   const montarICS = (lista) => montarICSBase(lista, TABELA_OFICIAL);
   const gerarLinkGoogleAgenda = (e) => gerarLinkGoogleAgendaBase(e, TABELA_OFICIAL);
   const gerarLinkOutlookAgenda = (e, corporativo) => gerarLinkOutlookAgendaBase(e, TABELA_OFICIAL, corporativo);
-
-  /* --------------------------------------------- persistência */
-  function salvar() {
-    try {
-      localStorage.setItem(STORAGE.escalas, JSON.stringify(escalas));
-      localStorage.setItem(STORAGE.schema, STORAGE_SCHEMA_VERSION);
-      sessionStorage.removeItem(STORAGE.escalas);
-      return true;
-    } catch {
-      toast('Não foi possível salvar neste navegador. Exporte os dados e confira o espaço disponível.', { erro: true });
-      return false;
-    }
-  }
-
-  const normalizarModelos = (fonte) => Array.isArray(fonte)
-    ? fonte.filter((m) => m && typeof m.id === 'string' && typeof m.nome === 'string'
-      && Number.isFinite(Number(m.duracao)) && Number(m.duracao) > 0 && Number(m.duracao) <= 24)
-      .slice(0, 20)
-    : [];
-
-  const normalizarMetas = (fonte) => {
-    if (!fonte || typeof fonte !== 'object' || Array.isArray(fonte)) return {};
-    return Object.fromEntries(Object.entries(fonte).filter(([mes, meta]) => /^\d{4}-\d{2}$/.test(mes)
-      && meta && typeof meta === 'object').map(([mes, meta]) => {
-      const valorCentavos = Math.max(0, Math.min(9_999_999_900, Math.round(Number(meta.valorCentavos) || 0)));
-      const horas = Math.max(0, Math.min(744, Number(meta.horas) || 0));
-      return [mes, { valorCentavos, horas }];
-    }).filter(([, meta]) => meta.valorCentavos > 0 || meta.horas > 0));
-  };
-
-  function carregar() {
-    /* pmgoConfig guardava os valores dos antigos campos ocultos (até a v72). */
-    try { localStorage.removeItem('pmgoConfig'); } catch { /* sem acesso ao storage */ }
-    try {
-      const legado = sessionStorage.getItem(STORAGE.escalas);
-      if (legado) { const p = JSON.parse(legado); if (Array.isArray(p) && p.length) localStorage.setItem(STORAGE.escalas, legado); sessionStorage.removeItem(STORAGE.escalas); }
-      const carregadas = desserializarEscalas(localStorage.getItem(STORAGE.escalas));
-      escalas = carregadas.escalas;
-      /* Regrava o formato normalizado e registra a versão do schema. Registros
-         inválidos são descartados antes de alcançar cálculo/renderização. */
-      if (salvar()) avisarRecalculadas(carregadas.recalculadas);
-      if (carregadas.rejeitadas) {
-        registrarErro({ msg: `${carregadas.rejeitadas} registro(s) local(is) inválido(s) ignorado(s)`, src: 'storage', ln: 0, col: 0 });
-      }
-    } catch { escalas = []; }
-    try {
-      const salvos = JSON.parse(lerLocal(STORAGE.modelos) || '[]');
-      modelos = normalizarModelos(salvos);
-    } catch { modelos = []; }
-    try { metasMensais = normalizarMetas(JSON.parse(lerLocal(STORAGE.metas) || '{}')); }
-    catch { metasMensais = {}; }
-  }
-
-  function salvarModelos() {
-    try {
-      localStorage.setItem(STORAGE.modelos, JSON.stringify(modelos));
-      return true;
-    } catch {
-      toast('Não foi possível salvar o modelo neste navegador.', { erro: true });
-      return false;
-    }
-  }
-
-  function salvarMetas() {
-    try {
-      localStorage.setItem(STORAGE.metas, JSON.stringify(metasMensais));
-      return true;
-    } catch {
-      toast('Não foi possível salvar a meta neste navegador.', { erro: true });
-      return false;
-    }
-  }
-
-  /* --------------------------------------------------------------- tema */
-  function aplicarTema(tema) {
-    document.documentElement.dataset.theme = tema;
-    try { localStorage.setItem(STORAGE.theme, tema); } catch { /* preferência não persistirá */ }
-    $('icon-sun')?.classList.toggle('hidden', tema !== 'dark');
-    $('icon-moon')?.classList.toggle('hidden', tema === 'dark');
-  }
-
-  function initTema() {
-    const salvo = lerLocal(STORAGE.theme);
-    aplicarTema(salvo || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
-      if (!lerLocal(STORAGE.theme)) aplicarTema(e.matches ? 'dark' : 'light');
-    });
-  }
-
-  /* --------------------------------------------------------------- toast */
-  const filaToasts = [];
-  let toastAtivo = null;
-
-  function exibirProximoToast() {
-    if (toastAtivo || !filaToasts.length) return;
-    const { msg, erro, acao } = filaToasts.shift();
-    const region = $('toastRegion');
-    if (!region) return;
-    const el = document.createElement('div');
-    el.className = 'toast' + (erro ? ' error' : '');
-    el.setAttribute('role', 'status');
-    el.innerHTML = `<span>${escapeHTML(msg)}</span>`;
-    let encerrado = false;
-    let timer = null;
-    const encerrar = () => {
-      if (encerrado) return;
-      encerrado = true;
-      clearTimeout(timer);
-      el.classList.add('is-hiding');
-      setTimeout(() => {
-        el.remove();
-        toastAtivo = null;
-        exibirProximoToast();
-      }, 320);
-    };
-    if (acao) {
-      const btn = document.createElement('button');
-      btn.className = 'toast-action';
-      btn.textContent = acao.rotulo;
-      btn.addEventListener('click', () => { acao.fn(); encerrar(); });
-      el.appendChild(btn);
-    }
-    region.replaceChildren(el);
-    toastAtivo = el;
-    timer = setTimeout(encerrar, acao ? 6000 : 3500);
-  }
-
-  function toast(msg, { erro = false, acao = null } = {}) {
-    filaToasts.push({ msg, erro, acao });
-    exibirProximoToast();
-  }
-
-  /* ------------------------------------------------ observabilidade
-     Captura erros de JS não tratados e rejeições de Promise para (a) avisar o
-     usuário de forma discreta e (b) guardar um log anônimo local — máx. 20
-     entradas com horário, mensagem e origem do erro, SEM dados pessoais (não
-     registra conteúdo de campos). Ajuda a diagnosticar sem coletar nada em
-     servidor (LGPD por minimização). Inspecione com window.__ac4Erros() e
-     limpe com window.__ac4LimparErros(). */
-  const MAX_ERROS_LOG = 20;
-  let ultimoToastErroTs = 0;
-
-  function registrarErro(info) {
-    try {
-      const log = JSON.parse(localStorage.getItem(STORAGE.erros) || '[]');
-      /* v carimba a versão do app: um erro vindo de cache velho aparece com
-         versão antiga, distinguindo bug real de cliente desatualizado. */
-      log.push({ t: new Date().toISOString(), v: APP_VERSION, ...info });
-      while (log.length > MAX_ERROS_LOG) log.shift();
-      localStorage.setItem(STORAGE.erros, JSON.stringify(log));
-    } catch { /* localStorage cheio/indisponível — erro não pode gerar erro */ }
-    const agora = Date.now();
-    if (agora - ultimoToastErroTs > 10000) {
-      ultimoToastErroTs = agora;
-      try { toast('Ocorreu um erro inesperado. Se persistir, recarregue a página.', { erro: true }); } catch {}
-    }
-  }
-
-  function initObservabilidade() {
-    window.addEventListener('error', (ev) => {
-      registrarErro({
-        msg: String(ev.message || 'erro').slice(0, 200),
-        src: String(ev.filename || '').replace(location.origin, '').slice(0, 120),
-        ln: ev.lineno || 0, col: ev.colno || 0,
-      });
-    });
-    window.addEventListener('unhandledrejection', (ev) => {
-      const motivo = ev.reason;
-      registrarErro({
-        msg: String((motivo && (motivo.message || motivo)) || 'promise rejeitada').slice(0, 200),
-        src: 'unhandledrejection', ln: 0, col: 0,
-      });
-    });
-    window.__ac4Erros = () => { try { return JSON.parse(localStorage.getItem(STORAGE.erros) || '[]'); } catch { return []; } };
-    window.__ac4LimparErros = () => { localStorage.removeItem(STORAGE.erros); return 'log de erros limpo'; };
-    /* Métrica de versão anônima: expõe a versão em execução e registra a última
-       vista. Em suporte, `__ac4Version` no console revela cache preso; a
-       comparação com a versão anterior detecta se o SW acabou de atualizar. */
-    window.__ac4Version = APP_VERSION;
-    try {
-      versaoAnterior = localStorage.getItem(STORAGE.versao);
-      if (versaoAnterior !== APP_VERSION) {
-        localStorage.setItem(STORAGE.versao, APP_VERSION);
-        if (versaoAnterior) console.info(`Calculadora AC4 atualizada: v${versaoAnterior} → v${APP_VERSION}`);
-      }
-      /* Marca da limpeza forçada (force-update.js, v65–v68), aposentada na v69. */
-      localStorage.removeItem('pmgoForceUpdate');
-    } catch {}
-  }
-
-  /* ---------------------------------------- novidades da versão */
-  function marcarNovidadesVistas() {
-    try { localStorage.setItem(STORAGE.novidades, APP_VERSION); } catch { /* preferência não persistirá */ }
-  }
-
-  function abrirNovidades() {
-    const dlg = $('dialogNovidades');
-    if (dlg && !dlg.open) dlg.showModal();
-  }
-
-  function initNovidades() {
-    const dlg = $('dialogNovidades');
-    if (!dlg) return;
-
-    const fechar = () => {
-      marcarNovidadesVistas();
-      if (dlg.open) dlg.close();
-    };
-    on('footerNovidades', 'click', (ev) => { ev.preventDefault(); abrirNovidades(); });
-    on('novidadesFechar', 'click', fechar);
-    on('novidadesContinuar', 'click', fechar);
-    dlg.addEventListener('close', marcarNovidadesVistas);
-
-    /* Instalações novas começam direto no fluxo principal. O aviso automático
-       é reservado a quem realmente acabou de receber uma atualização. */
-    /* Só reabre se o CONTEÚDO do aviso mudou desde o último visto
-       (data-conteudo no #dialogNovidades); versões só técnicas não repetem
-       o mesmo aviso. */
-    const conteudo = Number(dlg.dataset.conteudo) || Number(APP_VERSION);
-    const vistoEm = Number(lerLocal(STORAGE.novidades)) || 0;
-    if (versaoAnterior && versaoAnterior !== APP_VERSION && vistoEm < conteudo) {
-      aposProximoPaint(abrirNovidades);
-    }
-  }
-
-  /* ---------------------------------------- dialog de confirmação */
-  function dialogConfirmar(mensagem, { textoOk = 'Confirmar', perigoso = true } = {}) {
-    return new Promise((resolve) => {
-      const dlg = $('dialogConfirm');
-      if (!dlg) { resolve(window.confirm(mensagem)); return; }
-      $('dialogMsg').textContent = mensagem;
-      $('dialogOk').textContent = textoOk;
-      $('dialogOk').className = `btn ${perigoso ? 'btn-danger-soft' : 'btn-primary'}`;
-      dlg.showModal();
-
-      let resolvido = false;
-      function finalizar(valor) {
-        if (resolvido) return;
-        resolvido = true;
-        $('dialogOk').removeEventListener('click', onOk);
-        $('dialogCancel').removeEventListener('click', onCancel);
-        dlg.removeEventListener('click', onBackdrop);
-        dlg.removeEventListener('close', onClose);
-        if (dlg.open) dlg.close();
-        resolve(valor);
-      }
-      function onOk()     { finalizar(true); }
-      function onCancel() { finalizar(false); }
-      function onBackdrop(e) { if (e.target === dlg) finalizar(false); }
-      /* Esc fecha o <dialog> nativamente sem passar pelos botões —
-         sem este handler a Promise ficaria pendente e os listeners vazariam. */
-      function onClose()  { finalizar(false); }
-      $('dialogOk').addEventListener('click', onOk);
-      $('dialogCancel').addEventListener('click', onCancel);
-      dlg.addEventListener('click', onBackdrop);
-      dlg.addEventListener('close', onClose);
-    });
-  }
-
-  const haptic = (p = 10) => { try { navigator.vibrate?.(p); } catch {} };
 
   function escalasOrdenadas() {
     let lista = escalas
@@ -1173,115 +829,6 @@ import { criarPWA } from './modules/pwa.mjs';
     toast(`Escala marcada como ${STATUS_INFO[status].label.toLocaleLowerCase('pt-BR')}.`);
   }
 
-  /* ------------------------------------------------------- compartilhar */
-  function gerarTextoResumo() {
-    const lista = escalasOrdenadas();
-    if (!lista.length) return '';
-    return montarTextoResumo(lista.map((e) => ({ e, r: calcularEscala(e) })));
-  }
-
-  let resumoCompartilhamentoCache = '';
-  let urlWhatsAppCache = '';
-
-  function prepararCompartilhamento() {
-    resumoCompartilhamentoCache = gerarTextoResumo();
-    urlWhatsAppCache = `https://wa.me/?text=${encodeURIComponent(resumoCompartilhamentoCache)}`;
-  }
-
-  const obterResumoCompartilhamento = () => resumoCompartilhamentoCache || gerarTextoResumo();
-
-  async function compartilharWhatsApp() {
-    const lista = escalasOrdenadas();
-    if (!lista.length) { toast('Adicione escalas antes de compartilhar.', { erro: true }); return; }
-    const url = urlWhatsAppCache || `https://wa.me/?text=${encodeURIComponent(obterResumoCompartilhamento())}`;
-    window.open(url, '_blank', 'noopener');
-  }
-
-  async function compartilharNativo() {
-    const lista = escalasOrdenadas();
-    if (!lista.length) { toast('Adicione escalas antes de compartilhar.', { erro: true }); return; }
-    try { await navigator.share({ title: 'Relatório AC4', text: obterResumoCompartilhamento() }); }
-    catch (e) { if (e.name !== 'AbortError') compartilharWhatsApp(); }
-  }
-
-  async function copiarResumo() {
-    const lista = escalasOrdenadas();
-    if (!lista.length) { toast('Adicione escalas antes de copiar.', { erro: true }); return; }
-    try {
-      await navigator.clipboard.writeText(obterResumoCompartilhamento());
-      haptic([10, 10]);
-      toast('Resumo copiado para a área de transferência!');
-    } catch { toast('Não foi possível copiar automaticamente.', { erro: true }); }
-  }
-
-  function abrirShareSheet() {
-    const lista = escalasOrdenadas();
-    if (!lista.length) { toast('Adicione escalas antes de compartilhar.', { erro: true }); return; }
-    const dlg = $('dialogShare');
-    if (!dlg) { compartilharWhatsApp(); return; }
-    resumoCompartilhamentoCache = '';
-    urlWhatsAppCache = '';
-    const nativeBtn = $('shareNative');
-    if (nativeBtn) nativeBtn.classList.toggle('hidden', !navigator.share);
-    if ($('shareBackupStatus')) $('shareBackupStatus').textContent = textoStatusBackup();
-    dlg.showModal();
-    aposProximoPaint(prepararCompartilhamento);
-  }
-
-  /* ------------------------------------------------ canal de feedback
-     Elogios/sugestões/problemas vão direto ao mantenedor por e-mail, SEM
-     backend e SEM coleta: o mailto abre no aplicativo do próprio usuário,
-     que decide enviar. Coerente com a política de privacidade do app. */
-  const FEEDBACK_EMAIL = 'welitonsp@gmail.com';
-  let feedbackTipo = 'Elogio';
-
-  const montarMailtoFeedback = (tipo, mensagem) => {
-    const assunto = `[Calculadora AC4] ${tipo}`;
-    const corpo = `${mensagem}\n\n—\nTipo: ${tipo}\nCalculadora AC4 v${APP_VERSION} · enviado pelo canal de feedback do app`;
-    return `mailto:${FEEDBACK_EMAIL}?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`;
-  };
-  /* Exposto para o smoke test validar o link sem navegar para fora da página. */
-  if (ambienteDeTeste) window.__ac4MailtoFeedback = montarMailtoFeedback;
-
-  function selecionarTipoFeedback(botao) {
-    feedbackTipo = botao.dataset.tipo || 'Elogio';
-    document.querySelectorAll('#fbTipos .fb-tipo').forEach((b) => {
-      const ativo = b === botao;
-      b.classList.toggle('is-active', ativo);
-      b.setAttribute('aria-pressed', ativo ? 'true' : 'false');
-    });
-  }
-
-  function enviarFeedback() {
-    const mensagem = ($('fbMensagem')?.value || '').trim();
-    if (mensagem.length < 5) {
-      toast('Escreva sua mensagem antes de enviar.', { erro: true });
-      $('fbMensagem')?.focus();
-      return;
-    }
-    haptic(10);
-    window.location.href = montarMailtoFeedback(feedbackTipo, mensagem);
-    $('dialogFeedback')?.close();
-    toast('Abrindo seu aplicativo de e-mail…');
-  }
-
-  async function copiarEmailFeedback() {
-    try {
-      await navigator.clipboard.writeText(FEEDBACK_EMAIL);
-      toast(`E-mail copiado: ${FEEDBACK_EMAIL}`);
-    } catch { toast(`Envie para: ${FEEDBACK_EMAIL}`, { erro: false }); }
-  }
-
-  function initFeedback() {
-    on('footerFeedback', 'click', (ev) => { ev.preventDefault(); $('dialogFeedback')?.showModal(); });
-    on('fbFechar', 'click', () => $('dialogFeedback')?.close());
-    on('fbEnviar', 'click', enviarFeedback);
-    on('fbCopiarEmail', 'click', copiarEmailFeedback);
-    document.querySelectorAll('#fbTipos .fb-tipo').forEach((b) => {
-      b.addEventListener('click', () => selecionarTipoFeedback(b));
-    });
-  }
-
   /* ----------------------------------------------------------- render */
   function render() {
     atualizarSelectMes();
@@ -1392,134 +939,6 @@ import { criarPWA } from './modules/pwa.mjs';
         </div>`
       : '';
     container.innerHTML = anteriores + cardsMobile + html;
-  }
-
-  /* ------------------------------------------------------- exportações */
-
-  /* Popula #printReport e chama window.print() */
-  function imprimirRelatorio() {
-    const lista = escalasOrdenadas();
-    if (!lista.length) { toast('Adicione escalas antes de imprimir.', { erro: true }); return; }
-    const { resumoHTML, tabelaHTML, normaTexto } = montarRelatorioImpressao(lista.map((e) => ({ e, r: calcularEscala(e) })));
-    $('prDate').textContent = new Date().toLocaleString('pt-BR', {
-      day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
-    });
-    $('prNorma').textContent = normaTexto;
-    $('prSummary').innerHTML = resumoHTML;
-    $('prTableWrap').innerHTML = tabelaHTML;
-    /* window.print() bloqueia a thread até o diálogo fechar; chamado no próprio
-       clique, o tempo no diálogo entra no INP (11s no RUM). Pintar antes. */
-    aposProximoPaint(() => window.print());
-  }
-
-  /* ------------------------------------------------ agendamento
-     Celular e desktop usam o MESMO dialog de provedores: tocar em "Google
-     Agenda"/"Outlook" abre o evento já pré-preenchido (um toque em Salvar).
-     "Baixar .ics" fica como alternativa para outras agendas (Apple, Samsung). */
-  const PROVEDORES_AGENDA = [
-    {
-      id: 'google', nome: 'Google Agenda', hint: 'Abre com o evento pronto',
-      classeIco: 'google',
-      icone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/><path d="m9.5 14.5 2-2v5"/></svg>',
-      link: (e) => gerarLinkGoogleAgenda(e),
-    },
-    {
-      id: 'outlook', nome: 'Outlook pessoal', hint: 'Conta Outlook.com',
-      classeIco: 'outlook',
-      icone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/><circle cx="12" cy="15" r="2.6"/></svg>',
-      link: (e) => gerarLinkOutlookAgenda(e, false),
-    },
-    {
-      id: 'outlook365', nome: 'Outlook corporativo', hint: 'Conta Microsoft 365 (trabalho)',
-      classeIco: 'outlook',
-      icone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/><path d="M9.5 17v-4.5h2.2a1.4 1.4 0 0 1 0 2.8H9.5"/></svg>',
-      link: (e) => gerarLinkOutlookAgenda(e, true),
-    },
-  ];
-
-  const ICONE_ICS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>';
-
-  function agendarEscalas(lista) {
-    if (!lista.length) { toast('Adicione escalas antes de salvar na agenda.', { erro: true }); return; }
-    abrirDialogAgenda(lista);
-  }
-
-  function abrirDialogAgenda(lista) {
-    const dlg = $('dialogAgenda');
-    if (!dlg) return;
-    $('agendaSub').textContent = lista.length === 1
-      ? `${lista[0].descricao} — ${fmtDataHora(lista[0].inicio)}`
-      : `${lista.length} escalas selecionadas`;
-    montarOpcoesProvedor(lista);
-    dlg.showModal();
-  }
-
-  /* Alternativa universal: baixa o .ics (Apple Calendar, Samsung, etc.).
-     No celular a mensagem orienta a abrir o arquivo; no desktop, a importar. */
-  function baixarIcsDaAgenda(lista) {
-    $('dialogAgenda')?.close();
-    baixarArquivoAgenda(lista, isMobileViewport()
-      ? 'Arquivo .ics gerado — toque nele (em Downloads) para abrir na agenda.'
-      : 'Arquivo .ics gerado para importar na sua agenda.');
-  }
-
-  function montarOpcoesProvedor(lista) {
-    const body = $('agendaBody');
-    const provedores = PROVEDORES_AGENDA.map((p) => `
-      <button class="agenda-prov" data-prov="${p.id}" type="button">
-        <span class="agenda-prov-ico ${p.classeIco}" aria-hidden="true">${p.icone}</span>
-        <span class="agenda-prov-txt">${p.nome}<small>${p.hint}</small></span>
-      </button>`).join('');
-    body.innerHTML = `${provedores}
-      <button class="agenda-prov agenda-prov--ics" data-prov="ics" type="button">
-        <span class="agenda-prov-ico ics" aria-hidden="true">${ICONE_ICS}</span>
-        <span class="agenda-prov-txt">Baixar arquivo (.ics)<small>Apple, Samsung ou outra agenda</small></span>
-      </button>`;
-    body.querySelectorAll('.agenda-prov').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        haptic(10);
-        if (btn.dataset.prov === 'ics') { baixarIcsDaAgenda(lista); return; }
-        const prov = PROVEDORES_AGENDA.find((p) => p.id === btn.dataset.prov);
-        if (!prov) return;
-        if (lista.length === 1) {
-          window.open(prov.link(lista[0]), '_blank', 'noopener');
-          $('dialogAgenda')?.close();
-          return;
-        }
-        montarListaEscalasProvedor(lista, prov);
-      });
-    });
-  }
-
-  /* Agendas web só aceitam um evento por link: com várias escalas, cada uma
-     vira um link clicável — evita bloqueio de pop-up e dá controle ao PM. */
-  function montarListaEscalasProvedor(lista, prov) {
-    const body = $('agendaBody');
-    body.innerHTML = `
-      <p class="agenda-hint">O ${prov.nome} abre uma escala por vez. Clique em cada uma para adicionar:</p>
-      <div class="agenda-lista">
-        ${lista.map((e) => `
-          <a class="agenda-item" href="${escapeHTML(prov.link(e))}" target="_blank" rel="noopener">
-            <span>${escapeHTML(e.descricao || 'Escala AC4')} — ${fmtDataHora(e.inicio)}</span>
-          </a>`).join('')}
-      </div>
-      <button class="btn btn-ghost btn-sm" id="agendaVoltar" type="button">‹ Escolher outra agenda</button>`;
-    body.querySelectorAll('.agenda-item').forEach((a) => {
-      a.addEventListener('click', () => a.classList.add('aberta'));
-    });
-    $('agendaVoltar')?.addEventListener('click', () => montarOpcoesProvedor(lista));
-  }
-
-  function agendarEscalaItem(id) {
-    const e = escalas.find((x) => x.id === id);
-    if (e) agendarEscalas([e]);
-  }
-
-  function exportarCSV() {
-    const lista = escalasOrdenadas();
-    if (!lista.length) { toast('Adicione escalas antes de exportar CSV.', { erro: true }); return; }
-    baixarArquivo(montarCSV(lista.map((e) => ({ e, r: calcularEscala(e) }))), 'escalas-ac4.csv', 'text/csv;charset=utf-8');
-    toast('Planilha CSV gerada.');
   }
 
   /* -------------------------------------------- PWA (js/modules/pwa.mjs) */
@@ -1809,12 +1228,7 @@ import { criarPWA } from './modules/pwa.mjs';
     window.__ac4TestesProntos = import('./modules/testes.mjs').then(({ instalarTestes }) => instalarTestes({
       calcularEscala, escalasOrdenadas, montarICS,
       gerarLinkOutlookAgenda, salvar, render, $, STORAGE,
-      estado: {
-        get escalas() { return escalas; },
-        set escalas(v) { escalas = v; },
-        get filtroMes() { return filtroMes; },
-        set filtroMes(v) { filtroMes = v; },
-      },
+      estado,
     }));
   }
 })();

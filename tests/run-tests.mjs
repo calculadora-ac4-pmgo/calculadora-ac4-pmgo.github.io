@@ -10,6 +10,13 @@ import { aplicarNorma, desserializarEscalas, detectarConflitos, normalizarEscala
 
 const raiz = join(dirname(fileURLToPath(import.meta.url)), '..');
 
+/* Módulos de produção em js/modules/, incluindo subpastas (ui/ desde a v74),
+   como caminhos relativos ("calculo.mjs", "ui/avisos.mjs"). */
+const listarModulos = (dir = join(raiz, 'js', 'modules'), prefixo = '') =>
+  readdirSync(dir, { withFileTypes: true }).flatMap((f) => (f.isDirectory()
+    ? listarModulos(join(dir, f.name), `${prefixo}${f.name}/`)
+    : f.name.endsWith('.mjs') ? [`${prefixo}${f.name}`] : []));
+
 /* ---- stubs mínimos de navegador ---- */
 const storageStub = () => {
   const dados = new Map();
@@ -179,8 +186,8 @@ rodar('Conformidade com a Portaria 621/2026 (Anexo I)', validarAnexoI);
 const validarGanchosLocais = () => {
   const app = readFileSync(join(raiz, 'js/app.js'), 'utf8');
   /* app.js + módulos de produção (testes.mjs só carrega em localhost). */
-  const modulos = readdirSync(join(raiz, 'js', 'modules'))
-    .filter((f) => f.endsWith('.mjs') && f !== 'testes.mjs')
+  const modulos = listarModulos()
+    .filter((f) => f !== 'testes.mjs')
     .map((f) => readFileSync(join(raiz, 'js', 'modules', f), 'utf8'));
   const linhas = [app, ...modulos].join('\n').split('\n');
   /* Um gancho é aceito na mesma linha do if (ambienteDeTeste) ou na linha
@@ -205,8 +212,8 @@ rodar('Ganchos de teste restritos a localhost', validarGanchosLocais);
 const validarShellModulos = () => {
   const sw = readFileSync(join(raiz, 'sw.js'), 'utf8');
   const soTeste = new Set(['testes.mjs']);
-  const faltando = readdirSync(join(raiz, 'js', 'modules'))
-    .filter((f) => f.endsWith('.mjs') && !soTeste.has(f))
+  const faltando = listarModulos()
+    .filter((f) => !soTeste.has(f))
     .filter((f) => !sw.includes(`'./js/modules/${f}'`));
   const falhas = faltando.map((f) => `fora do SHELL do sw.js: js/modules/${f}`);
   /* Módulos só de teste também ficam fora do site publicado (deploy.yml). */
@@ -318,5 +325,86 @@ const validarFonteUnica = () => {
   return falhas.length ? falhas : 'FONTE ÚNICA OK';
 };
 rodar('Fonte única da Portaria', validarFonteUnica);
+
+/* Módulos de interface (v74): cada js/modules/ui/<nome>.mjs exporta criar<Nome>(ctx);
+   a fábrica não toca o DOM ao ser criada (chamada aqui com um ctx "vazio") e as
+   funções públicas saíram do app.js. */
+const MODULOS_UI = {
+  avisos: ['toast', 'dialogConfirmar', 'haptic'],
+  observabilidade: ['registrarErro', 'initObservabilidade'],
+  aparencia: ['aplicarTema', 'initTema', 'initNovidades', 'abrirNovidades', 'marcarNovidadesVistas'],
+  dados: ['salvar', 'carregar', 'salvarModelos', 'salvarMetas', 'normalizarModelos', 'normalizarMetas', 'exportarBackup',
+    'restaurarBackup', 'pedirArmazenamentoPersistente', 'textoStatusBackup', 'lembrarBackup', 'ehIOS', 'rodandoInstalado'],
+  exportacoes: ['exportarCSV', 'imprimirRelatorio', 'agendarEscalas', 'baixarArquivoAgenda', 'agendarEscalaItem'],
+  compartilhar: ['abrirShareSheet', 'copiarResumo', 'compartilharWhatsApp', 'compartilharNativo', 'gerarTextoResumo', 'initFeedback'],
+};
+const resultadoModulosUI = await (async () => {
+  const app = readFileSync(join(raiz, 'js', 'app.js'), 'utf8');
+  const falhas = [];
+  const ctxVazio = new Proxy({}, { get: () => () => {} });
+  for (const [nome, chaves] of Object.entries(MODULOS_UI)) {
+    let mod;
+    try { mod = await import(pathToFileURL(join(raiz, 'js', 'modules', 'ui', `${nome}.mjs`)).href); } catch { falhas.push(`${nome}: módulo ausente`); continue; }
+    const fabrica = mod[`criar${nome[0].toUpperCase()}${nome.slice(1)}`];
+    if (typeof fabrica !== 'function') { falhas.push(`${nome}: fábrica ausente`); continue; }
+    let api;
+    try { api = fabrica(ctxVazio); } catch (e) { falhas.push(`${nome}: fábrica falhou ao ser criada (${e.message})`); continue; }
+    chaves.forEach((k) => { if (typeof api[k] !== 'function') falhas.push(`${nome}.${k} ausente`); });
+    chaves.forEach((k) => { if (new RegExp(`function ${k}\\(|const ${k} = (async )?\\(`).test(app)) falhas.push(`${k} ainda definida no app.js`); });
+  }
+  try {
+    const { criarObservabilidade } = await import(pathToFileURL(join(raiz, 'js', 'modules', 'ui', 'observabilidade.mjs')).href);
+    delete globalThis.__ac4Erros;
+    globalThis.addEventListener ??= () => {};
+    criarObservabilidade({ STORAGE: { erros: 'eqErros', versao: 'eqVersao' }, APP_VERSION: '0', estado: {} }).initObservabilidade();
+    if (typeof globalThis.__ac4Erros !== 'function') falhas.push('initObservabilidade não expõe __ac4Erros');
+  } catch (e) { falhas.push(`observabilidade: ${e.message}`); }
+  if (!/function init\(\) \{\s*initObservabilidade\(\);/.test(app)) falhas.push('initObservabilidade deixou de ser a primeira chamada do init()');
+  if ((app.match(/criarAvisos\(/g) || []).length !== 1) falhas.push('criarAvisos deve ser instanciado uma única vez (fila de toasts única)');
+  return falhas.length ? falhas : 'MÓDULOS DE INTERFACE OK';
+})();
+rodar('Módulos de interface (js/modules/ui)', () => resultadoModulosUI);
+
+/* Review Focus v74 (1): restaurar backup pela fábrica grava em estado.escalas
+   (não numa variável local) e redesenha a tela. */
+const resultadoRestaurar = await (async () => {
+  try {
+    const { criarDados } = await import(pathToFileURL(join(raiz, 'js', 'modules', 'ui', 'dados.mjs')).href);
+    let escalas = [], modelos = [], metasMensais = {}, renderizou = 0;
+    const estado = {
+      get escalas() { return escalas; }, set escalas(v) { escalas = v; },
+      get modelos() { return modelos; }, set modelos(v) { modelos = v; },
+      get metasMensais() { return metasMensais; }, set metasMensais(v) { metasMensais = v; },
+      sheetAberto: false,
+    };
+    const STORAGE = { escalas: 'eqEscalas', schema: 'eqSchema', modelos: 'eqModelos', metas: 'eqMetas', ultimoBackup: 'eqBackup', lembreteBackup: 'eqLembrete' };
+    const dados = criarDados({ $: () => null, estado, STORAGE, APP_VERSION: '0', lerLocal: () => null,
+      toast: () => {}, dialogConfirmar: async () => true, registrarErro: () => {}, render: () => { renderizou++; },
+      renderModelos: () => {}, cancelarEdicao: () => {}, clonarEscalas: () => JSON.parse(JSON.stringify(escalas)) });
+    const backup = JSON.stringify({ escalas: [{ id: 'b1', inicio: '2026-08-07T08:00', fim: '2026-08-07T18:00' }], metasMensais: { '2026-08': { valorCentavos: 100, horas: 1 } } });
+    await dados.restaurarBackup({ size: backup.length, text: async () => backup });
+    const falhas = [];
+    if (!(escalas.length === 1 && escalas[0].id === 'b1')) falhas.push('estado.escalas não atualizado pelo restaurarBackup');
+    if (!metasMensais['2026-08']) falhas.push('estado.metasMensais não atualizado');
+    if (!renderizou) falhas.push('render não chamado após restaurar');
+    /* Textos do backup (o código foi movido; as mensagens não podem mudar). */
+    if (dados.textoStatusBackup() !== 'Você ainda não fez backup. As escalas ficam só neste aparelho.') falhas.push(`status do backup alterado: ${dados.textoStatusBackup()}`);
+    const avisos = [];
+    const dados2 = criarDados({ estado: { escalas: [1, 2, 3], sheetAberto: false }, STORAGE, APP_VERSION: '0', lerLocal: () => null,
+      toast: (m) => avisos.push(m), dialogConfirmar: async () => true, registrarErro: () => {}, render: () => {},
+      renderModelos: () => {}, cancelarEdicao: () => {}, clonarEscalas: () => [] });
+    globalThis.document.querySelector = () => null;
+    dados2.lembrarBackup(Date.parse('2026-08-10T12:00:00Z'));
+    if (avisos[0] !== 'Suas escalas ficam só neste aparelho. Salve uma cópia de segurança.') falhas.push(`lembrete sem backup alterado: ${avisos[0]}`);
+    localStorage.removeItem('eqLembrete');
+    const dados3 = criarDados({ estado: { escalas: [1, 2, 3], sheetAberto: false }, STORAGE, APP_VERSION: '0', lerLocal: (k) => (k === 'eqBackup' ? String(Date.parse('2026-06-01T12:00:00Z')) : null),
+      toast: (m) => avisos.push(m), dialogConfirmar: async () => true, registrarErro: () => {}, render: () => {},
+      renderModelos: () => {}, cancelarEdicao: () => {}, clonarEscalas: () => [] });
+    dados3.lembrarBackup(Date.parse('2026-08-10T12:00:00Z'));
+    if (avisos[1] !== 'Último backup há 70 dias. Salve uma cópia das suas escalas.') falhas.push(`lembrete com backup antigo alterado: ${avisos[1]}`);
+    return falhas.length ? falhas : 'RESTAURAR GRAVA NO ESTADO OK';
+  } catch (e) { return [`dados: ${e.message}`]; }
+})();
+rodar('Restaurar backup grava no estado (ui/dados)', () => resultadoRestaurar);
 
 process.exit(falhou ? 1 : 0);

@@ -18,6 +18,7 @@ majoritário em **celular**. Produção: <https://calculadora-ac4-pmgo.github.io
   - dados: `portarias` (fonte única das normas: valores, DOE, vigência);
   - funções puras: `calculo` (regra da Portaria), `formato`, `agenda` (.ics/links), `persistencia`, `templates` (HTML da lista), `relatorio` (PDF/CSV/texto compartilhado);
   - `pwa` (fábrica `criarPWA(ctx)`: atualização e instalação);
+  - `ui/` (desde a v74): um módulo por área da interface (`avisos`, `observabilidade`, `aparencia`, `dados`, `exportacoes`, `compartilhar`), cada um com uma fábrica `criarX(ctx)` que não toca o DOM ao ser criada. Estado só via o objeto `estado` do `app.js` (getters/setters). **Módulo de UI não importa outro módulo de UI**; o `app.js` cria todos no topo e repassa as dependências. Consts do `app.js` declaradas mais abaixo vão como função de chamada tardia (`calcularEscala: (e) => calcularEscala(e)`), para evitar zona morta (TDZ);
   - `testes` (suítes de regressão, **import dinâmico só em localhost**; testes aguardam `window.__ac4TestesProntos`).
   - Módulo novo? Coloque no `SHELL` do `sw.js` (o teste "Módulos no cache offline" confere).
 - Dados **só no aparelho** (`localStorage`, chaves `pmgo*`). Nunca coletar dados pessoais (LGPD).
@@ -27,11 +28,12 @@ majoritário em **celular**. Produção: <https://calculadora-ac4-pmgo.github.io
 
 ## Fluxo de trabalho obrigatório
 
-1. Branch → commits → `npm run verify` (lint + unit + smoke + mobile + mobile-v55 + vitals) → PR → CI verde → `gh pr merge --merge --delete-branch` → acompanhar o deploy da `main` → **conferir o site publicado** (ex.: `curl -s https://calculadora-ac4-pmgo.github.io/sw.js | sed -n 4,5p`). Não declarar concluído só com o workflow verde.
-2. Mudou `index.html`, `css/` ou `js/`? **Bump de versão:** `node tools/bump-version.mjs <n>` (atualiza index, sw, app.js, styles.css e package.json). Versão atual: **v73** → próxima **v74**.
+1. Branch → commits → `npm run verify` (lint + unit + smoke + equivalência + mobile + mobile-v55 + vitals) → PR → CI verde → `gh pr merge --merge --delete-branch` → acompanhar o deploy da `main` → **conferir o site publicado** (ex.: `curl -s https://calculadora-ac4-pmgo.github.io/sw.js | sed -n 4,5p`). Não declarar concluído só com o workflow verde.
+2. Mudou `index.html`, `css/` ou `js/`? **Bump de versão:** `node tools/bump-version.mjs <n>` (atualiza index, sw, app.js, styles.css e package.json). Versão atual: **v74** → próxima **v75**.
 3. Todo bump exige **entrada nova no topo do `CHANGELOG.md`** com a mesma versão (o teste "Release" falha se não houver) e, se houver novidade para o usuário, o conteúdo do `#dialogNovidades` em `index.html` (**exatamente 3 itens** na lista; o smoke confere) **e o atributo `data-conteudo` com a versão atual** — é ele que decide se o aviso reabre sozinho (sem novidade, mantenha o valor antigo para não repetir o aviso).
-4. Os testes regeneram PNGs em `artifacts/v55/`. Não commitar isso por acidente: `git checkout -- artifacts/` antes do `git add`.
-5. Mensagens de commit e PR em português, no estilo do histórico (`feat(v66): …`, `fix: …`, `ci: …`).
+4. **Equivalência da interface** (`tests/equivalencia.mjs`): compara lista, totais, planejamento, CSV, PDF, texto compartilhado e agenda com `tests/fixtures/equivalencia.json`. Mudança visual ou de texto **intencional**: `node tests/equivalencia.mjs --atualizar` e explicar a diferença no PR. Refatoração: a fotografia **não** pode mudar. Ela não cobre os textos de toast; ao mover código, confira os literais (o teste "Restaurar backup grava no estado" cobre os textos de backup).
+5. Os testes regeneram PNGs em `artifacts/v55/`. Não commitar isso por acidente: `git checkout -- artifacts/` antes do `git add`.
+6. Mensagens de commit e PR em português, no estilo do histórico (`feat(v66): …`, `fix: …`, `ci: …`).
 
 ## Armadilhas conhecidas (aprendidas na prática)
 
@@ -46,5 +48,6 @@ majoritário em **celular**. Produção: <https://calculadora-ac4-pmgo.github.io
 - **Testes de desempenho oscilam em máquina carregada.** Antes de concluir que houve regressão, compare com a `main` nas mesmas condições (ex.: `git worktree add` da `main` e rodar os dois alternadamente). O CI em runner limpo é o juiz.
 - **Smoke no runner:** se falhar com "Chrome não expôs o DevTools", é infraestrutura: `gh run rerun <id> --failed`. Se o job de *deploy* do Pages falhar, usar `gh workflow run deploy.yml`.
 - **`window.print()`** bloqueia a thread até o diálogo fechar: chame via `aposProximoPaint` (senão o tempo no diálogo entra no INP).
+- **Mover código com troca automática de nomes corrompe textos.** Na v74, trocar `escalas` por `estado.escalas` com regex também alterou mensagens ("As estado.escalas ficam…"). Troque só referências de código e compare os literais com a versão anterior.
 - **Documentos podem estar desatualizados.** Confirme no código antes de afirmar que um recurso existe (ex.: a importação `.ics` foi removida na v48, mas `ESCOPO_MVP.md` ainda a cita, item R7 do backlog).
 - **Revisão visual é obrigatória** em mudanças de UI: capturas em 390 px e 1280 px, temas claro e escuro (o harness de `tests/mobile-v55-check.mjs` serve de base).
