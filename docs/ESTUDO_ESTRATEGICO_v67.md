@@ -92,7 +92,7 @@ dos dados do policial, a segurança operacional do que ele compartilha e a insti
 - **Ação:** programa de acessibilidade abaixo. A LBI (Lei 13.146/2015, art. 63) exige acessibilidade em sítios de órgãos de governo.
 
 ### R7 — Documentação divergente do produto · **MÉDIO**
-- **Evidência:** `docs/ESCOPO_MVP.md` e `docs/CHECKLIST.md` dizem que a importação `.ics` foi entregue na v30; ela foi **removida na v48** (commit `2cbd917`) e não existe no código. O incidente da v65 (redesign descartado por engano no PR #58) segue o mesmo padrão.
+- **Evidência:** `docs/historico/ESCOPO_MVP.md` e `docs/historico/CHECKLIST.md` dizem que a importação `.ics` foi entregue na v30; ela foi **removida na v48** (commit `2cbd917`) e não existe no código. O incidente da v65 (redesign descartado por engano no PR #58) segue o mesmo padrão.
 - **Ação:** corrigir os documentos; revisão de docs na definição de pronto; manter a proteção de release da v67.
 
 ## Programa de acessibilidade e usabilidade
@@ -214,7 +214,7 @@ dependem de decisão ou ação humana fora do repositório.
 - [x] **R1 [código]** `navigator.storage.persist()` (após o primeiro lançamento, tolerando recusa); aviso do Safari/iOS fora do modo standalone; data do último backup visível no Compartilhar — **v70, PR #66**. O guia "Adicionar à Tela de Início" já existia (banner + Compartilhar → Instalar).
 - [ ] **R2 [código]** Compartilhamento enxuto por padrão em `gerarTextoResumo()` (só totais); opção explícita "incluir horários e unidade"; aviso curto antes de compartilhar detalhes.
 - [x] **R6 [código]** Piso de fonte: ≥ 12 px em rótulos secundários, ≥ 14 px em texto de leitura; começar por `.planning-history-value` (0.64rem) e pelos cards de escala. Conferir no teste mobile que nada quebra em 390 px. — **v77, PR #82** (inventário em `docs/inventario-fontes-v77.md`).
-- [x] **R7 [código]** Corrigir `docs/ESCOPO_MVP.md` e `docs/CHECKLIST.md`: importação `.ics` removida na v48 — **PR de governança de 23/09/2026**.
+- [x] **R7 [código]** Corrigir `docs/historico/ESCOPO_MVP.md` e `docs/historico/CHECKLIST.md`: importação `.ics` removida na v48 — **PR de governança de 23/09/2026**.
 - [x] **[gestão]** Monitor de disponibilidade externo — **criado pelo gestor em 08/07/2026** (UptimeRobot, HTTP, 5 min; ver diário). *Pendente:* confirmar que o alerta por e-mail está ativo.
 
 ### 90 dias — Institucionalizar
@@ -225,6 +225,7 @@ dependem de decisão ou ação humana fora do repositório.
 - [x] **[código]** Dividir `js/app.js` em módulos (item P3-2 da auditoria v67) — **v72**: 2.489 → ~1.860 linhas; `templates`, `relatorio`, `pwa` e `testes` (este sob demanda, só em localhost). **v74, PR #79**: 1ª entrega da divisão em `js/modules/ui/` (avisos, observabilidade, aparência, dados, exportações, compartilhar), 1.820 → 1.234 linhas, com teste de equivalência permanente; **v75, PR #80**: divisão concluída (planejamento, formulário, modelos), `app.js` com 408 linhas, teste de textos preservados.
 - [x] **[código]** CSS dividido por área em `css/src/`, montado num único `styles.css` (subprojeto 3 da refatoração) — **v76, PR #81**. O piso de fonte (R6) veio na v77.
 - [x] **[código]** Lançar em outros dias (pedido do usuário em 04/11/2026): calendário que cria várias escalas a partir de uma, com troca de horário por dia, bloqueio de dia ocupado e Desfazer — **v79, PR #84**.
+- [x] **[código]** Acabamento profissional (subprojeto 4 da refatoração): README para quem vem de fora, `docs/ARQUITETURA.md` com diagrama, índice `docs/README.md`, documentos superados em `docs/historico/` e teste de links dos documentos — **docs, PR #87**.
 - [ ] **R3 [gestão]** Segundo mantenedor com acesso ao repositório.
 
 ### 12 meses — Escalar

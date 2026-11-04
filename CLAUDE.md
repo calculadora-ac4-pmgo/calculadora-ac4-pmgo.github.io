@@ -11,6 +11,7 @@ majoritário em **celular**. Produção: <https://calculadora-ac4-pmgo.github.io
 2. **Regras invioláveis e onboarding:** fim de [`docs/DIARIO_DE_BORDO.md`](docs/DIARIO_DE_BORDO.md).
 3. **Base normativa (antes de mexer em cálculo):** [`docs/portaria-ssp-621-2026.md`](docs/portaria-ssp-621-2026.md).
 4. **Design system:** [`docs/DESIGN.md`](docs/DESIGN.md). **Histórico por versão:** [`CHANGELOG.md`](CHANGELOG.md).
+5. **Arquitetura e índice dos documentos:** [`docs/ARQUITETURA.md`](docs/ARQUITETURA.md) (diagrama, "onde mexer para…") e [`docs/README.md`](docs/README.md). Documentos superados ficam em `docs/historico/`; o teste "Links dos documentos" bloqueia link relativo quebrado nos `.md`.
 
 ## Arquitetura em uma tela
 
@@ -52,6 +53,6 @@ majoritário em **celular**. Produção: <https://calculadora-ac4-pmgo.github.io
 - **Mover código com troca automática de nomes corrompe textos.** Na v74, trocar `escalas` por `estado.escalas` com regex também alterou mensagens ("As estado.escalas ficam…"). Troque só referências de código e compare os literais com a versão anterior.
 - **Letra nova abaixo de 12/14 px é bloqueada** pelo teste "Piso de fonte (R6)" (`tools/piso-fonte.mjs`): rótulo ≥ 12 px (`var(--fs-rotulo)`), leitura ≥ 14 px (`var(--fs-leitura)`). Texto de leitura novo entra em `tests/fixtures/fontes-leitura.json`. `@media print` fica fora. Tamanho em `em`/`%`/`calc` o verificador não avalia e acusa. Inventário em `docs/inventario-fontes-v77.md`.
 - **Nunca edite `css/styles.css` direto**: ele é sobrescrito pelo `tools/montar-css.mjs`. Edite `css/src/` (v76).
-- **Documentos podem estar desatualizados.** Confirme no código antes de afirmar que um recurso existe (ex.: a importação `.ics` foi removida na v48, mas `ESCOPO_MVP.md` ainda a cita, item R7 do backlog).
+- **Documentos podem estar desatualizados.** Confirme no código antes de afirmar que um recurso existe (ex.: a importação `.ics` foi removida na v48, mas `docs/historico/ESCOPO_MVP.md` ainda a cita, item R7 do backlog).
 - **A 1ª escala do mês abre a agenda de lote sozinha (v81).** Teste de navegador que salva escala num mês vazio precisa fechar `#dialogLote` (`#loteFechar`) antes de seguir; com a janela aberta o resto da página fica inerte e o lembrete de backup não aparece.
 - **Revisão visual é obrigatória** em mudanças de UI: capturas em 390 px e 1280 px, temas claro e escuro (o harness de `tests/mobile-v55-check.mjs` serve de base).

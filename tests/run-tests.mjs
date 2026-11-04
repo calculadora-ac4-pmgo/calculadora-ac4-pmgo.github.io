@@ -615,4 +615,28 @@ const resultadoLote = await (async () => {
 })();
 rodar('Lançamento em lote', () => resultadoLote);
 
+/* Subprojeto 4: nenhum link relativo dos documentos (.md) pode apontar para arquivo inexistente.
+   Links externos (http, mailto), âncoras puras e blocos de código ficam de fora. */
+const resultadoLinksDocs = (() => {
+  const ignorar = new Set(['node_modules', '.git', 'artifacts', '.superpowers']);
+  const listarMd = (dir) => readdirSync(dir, { withFileTypes: true }).flatMap((ent) => {
+    if (ignorar.has(ent.name)) return [];
+    const caminho = join(dir, ent.name);
+    if (ent.isDirectory()) return listarMd(caminho);
+    return ent.name.endsWith('.md') ? [caminho] : [];
+  });
+  const quebrados = [];
+  for (const arquivo of listarMd(raiz)) {
+    const texto = readFileSync(arquivo, 'utf8').replace(/```[\s\S]*?```/g, '').replace(/`[^`\n]*`/g, '');
+    for (const m of texto.matchAll(/\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g)) {
+      const alvo = m[1].split('#')[0];
+      if (!alvo || /^[a-z]+:/i.test(alvo)) continue;
+      const resolvido = join(dirname(arquivo), decodeURIComponent(alvo));
+      if (!existsSync(resolvido)) quebrados.push(`${arquivo.slice(raiz.length + 1)} → ${m[1]}`);
+    }
+  }
+  return quebrados.length ? quebrados : 'LINKS DOS DOCUMENTOS OK';
+})();
+rodar('Links dos documentos', () => resultadoLinksDocs);
+
 process.exit(falhou ? 1 : 0);
