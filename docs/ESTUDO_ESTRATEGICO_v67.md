@@ -221,7 +221,7 @@ dependem de decisão ou ação humana fora do repositório.
 - [ ] **R3/R4 [gestão]** Patrocinador, responsável formal e encarregado de dados definidos.
 - [ ] **R4 [código + gestão]** Novo texto do `#dialogPrivacidade` (controlador, encarregado, finalidade, base legal, operadores, transferência internacional) após validação jurídica; ROPA registrado.
 - [ ] **[gestão]** Primeira rodada de usabilidade/acessibilidade com 5–8 policiais (tarefas e SUS acima).
-- [x] **R5 [código]** Tabela da Portaria em arquivo de dados versionado (fonte DOE), testes gerados do Anexo, versão da tabela impressa no PDF. *Parcial:* testes gerados do Anexo I feitos na **v71** (suíte "Conformidade com o Anexo I", 52 casos); concluído na **v73, PR #PRNUM**: `js/modules/portarias.mjs` e norma + DOE no PDF.
+- [x] **R5 [código]** Tabela da Portaria em arquivo de dados versionado (fonte DOE), testes gerados do Anexo, versão da tabela impressa no PDF. *Parcial:* testes gerados do Anexo I feitos na **v71** (suíte "Conformidade com o Anexo I", 52 casos); concluído na **v73, PR #77**: `js/modules/portarias.mjs` e norma + DOE no PDF.
 - [x] **[código]** Dividir `js/app.js` em módulos (item P3-2 da auditoria v67) — **v72**: 2.489 → ~1.860 linhas; `templates`, `relatorio`, `pwa` e `testes` (este sob demanda, só em localhost).
 - [ ] **R3 [gestão]** Segundo mantenedor com acesso ao repositório.
 
