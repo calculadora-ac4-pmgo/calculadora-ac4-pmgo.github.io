@@ -1,5 +1,14 @@
 # Changelog
 
+## v82 — Escalas na agenda do celular
+
+Pedido do usuário: conferir e melhorar o agendamento nos celulares (Google e iPhone).
+- **Lembrete 2 h antes** em cada evento do arquivo `.ics` (`VALARM`, `TRIGGER:-PT2H`; constante `LEMBRETE_ICS` em `js/modules/agenda.mjs`). O validador de `.ics` passa a exigir o lembrete. Os links do Google Agenda e do Outlook não aceitam lembrete: neles vale o alerta padrão da agenda da pessoa.
+- **iPhone:** a opção de arquivo vira **"Calendário do iPhone"** e **abre** o `.ics` (blob `text/calendar`) em vez de baixar para Arquivos. No iPhone, baixar ou compartilhar o arquivo mostra o evento sem a opção de adicionar; abrir pelo Safari é o caminho que oferece "Adicionar". Se o navegador bloquear a abertura, cai no download. Android e computador continuam com o download.
+- **Agenda de lote:** ao lançar, a janela mostra **"N escalas lançadas."** com **Adicionar à agenda** (abre a janela de agenda só com essas escalas), **Desfazer** e **Concluir**. O aviso com Desfazer continua.
+- Testes: suíte "Lembrete na agenda (.ics)"; roteiro do iPhone confere o rótulo, a abertura do arquivo e o lembrete; roteiro do lote cobre a tela de resultado. A fotografia de equivalência muda de propósito: o texto da agenda ganha o lembrete.
+- Aviso de novidades reaberto (`data-conteudo="82"`).
+
 ## v81 — Agenda direta: abre sozinha e troca o horário no próprio dia
 
 Ajuste pedido pelo usuário depois de usar a v79 ("ficou confuso"): o policial tem várias escalas no mês com horários de início diferentes.

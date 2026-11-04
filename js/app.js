@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Calculadora AC4 — v81
+   Calculadora AC4 — v82
    Módulo principal: estado, ligação dos módulos de interface (js/modules/ui/),
    render() e init(). Regras de negócio, formatação e agenda vivem em js/modules/.
    ========================================================================== */
@@ -43,7 +43,7 @@ import { criarAgendaDias } from './modules/ui/agenda-dias.mjs';
   /* Versão da aplicação (sincronizada pelo tools/bump-version.mjs). Serve para
      carimbar o log de erros e detectar clientes presos em cache antigo:
      se __ac4Version no console divergir do rodapé/CHANGELOG, o SW não atualizou. */
-  const APP_VERSION = '81';
+  const APP_VERSION = '82';
 
   const STORAGE = {
     escalas:   'pmgoEscalas',
@@ -121,7 +121,7 @@ import { criarAgendaDias } from './modules/ui/agenda-dias.mjs';
     clonarEscalas,
   });
   const { exportarCSV, imprimirRelatorio, agendarEscalas, agendarEscalaItem } = criarExportacoes({
-    $, estado, toast, haptic, escalasOrdenadas, aposProximoPaint,
+    $, estado, toast, haptic, escalasOrdenadas, aposProximoPaint, ehIOS,
     /* consts definidas mais abaixo: chamadas só no momento do uso */
     calcularEscala: (e) => calcularEscala(e), montarICS: (lista) => montarICS(lista),
     gerarLinkGoogleAgenda: (e) => gerarLinkGoogleAgenda(e),
@@ -156,7 +156,7 @@ import { criarAgendaDias } from './modules/ui/agenda-dias.mjs';
   });
   const { renderModelos } = modelosFavoritos;
   const agendaDias = criarAgendaDias({
-    $, on, estado, toast, salvar, haptic, clonarEscalas, aposProximoPaint, cancelarEdicao, render: () => render(),
+    $, on, estado, toast, salvar, haptic, clonarEscalas, aposProximoPaint, cancelarEdicao, agendarEscalas, render: () => render(),
   });
 
   /* -------------------------------------------- tabela de valores */

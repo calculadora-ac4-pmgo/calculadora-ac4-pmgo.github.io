@@ -10,13 +10,13 @@ import { escapeHTML, fmtDataHora } from '../formato.mjs';
  * Cria as exportações.
  * @param {Object} ctx Dependências de app.js: $, estado, toast, haptic, calcularEscala,
  *   escalasOrdenadas, montarICS, gerarLinkGoogleAgenda, gerarLinkOutlookAgenda,
- *   isMobileViewport e aposProximoPaint.
+ *   isMobileViewport, aposProximoPaint e ehIOS.
  * @returns {{exportarCSV:Function, imprimirRelatorio:Function, agendarEscalas:Function,
  *   baixarArquivoAgenda:Function, agendarEscalaItem:Function}}
  */
 export function criarExportacoes(ctx) {
   const { $, estado, toast, haptic, calcularEscala, escalasOrdenadas, montarICS,
-    gerarLinkGoogleAgenda, gerarLinkOutlookAgenda, isMobileViewport, aposProximoPaint } = ctx;
+    gerarLinkGoogleAgenda, gerarLinkOutlookAgenda, isMobileViewport, aposProximoPaint, ehIOS = () => false } = ctx;
 
   function baixarArquivoAgenda(lista, mensagem = 'Arquivo .ics gerado para importar na sua agenda.') {
     const arquivo = montarICS(lista);
@@ -93,10 +93,24 @@ export function criarExportacoes(ctx) {
     dlg.showModal();
   }
 
-  /* Alternativa universal: baixa o .ics (Apple Calendar, Samsung, etc.).
+  /* v82: no iPhone o Calendário só oferece "Adicionar" quando o Safari ABRE o
+     arquivo (baixar para Arquivos ou compartilhar mostra o evento sem adicionar).
+     Abre o .ics como blob text/calendar; se o navegador bloquear, cai no download. */
+  function abrirIcsNoIPhone(lista) {
+    const arquivo = montarICS(lista);
+    if (!arquivo.eventos) { toast('Não há escalas válidas para gerar o arquivo .ics.', { erro: true }); return; }
+    const url = URL.createObjectURL(new Blob([arquivo.conteudo], { type: 'text/calendar;charset=utf-8' }));
+    const janela = window.open(url, '_blank');
+    if (!janela) { baixarArquivoAgenda(lista, 'Arquivo .ics gerado — abra pelo Safari para adicionar ao Calendário.'); return; }
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+    toast('Toque em “Adicionar” no Calendário. Se não aparecer, abra o app pelo Safari.');
+  }
+
+  /* Alternativa universal: baixa o .ics (Samsung, Google pelo arquivo, etc.).
      No celular a mensagem orienta a abrir o arquivo; no desktop, a importar. */
   function baixarIcsDaAgenda(lista) {
     $('dialogAgenda')?.close();
+    if (ehIOS()) { abrirIcsNoIPhone(lista); return; }
     baixarArquivoAgenda(lista, isMobileViewport()
       ? 'Arquivo .ics gerado — toque nele (em Downloads) para abrir na agenda.'
       : 'Arquivo .ics gerado para importar na sua agenda.');
@@ -112,7 +126,7 @@ export function criarExportacoes(ctx) {
     body.innerHTML = `${provedores}
       <button class="agenda-prov agenda-prov--ics" data-prov="ics" type="button">
         <span class="agenda-prov-ico ics" aria-hidden="true">${ICONE_ICS}</span>
-        <span class="agenda-prov-txt">Baixar arquivo (.ics)<small>Apple, Samsung ou outra agenda</small></span>
+        <span class="agenda-prov-txt">${ehIOS() ? 'Calendário do iPhone<small>Abre no Calendário com lembrete 2 h antes</small>' : 'Baixar arquivo (.ics)<small>Samsung, Apple ou outra agenda; lembrete 2 h antes</small>'}</span>
       </button>`;
     body.querySelectorAll('.agenda-prov').forEach((btn) => {
       btn.addEventListener('click', () => {

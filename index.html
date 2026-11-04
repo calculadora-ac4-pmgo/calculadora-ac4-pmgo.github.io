@@ -15,8 +15,8 @@
   <!-- Preload da fonte principal — reduz reflow/CLS do font-swap da Inter -->
   <link rel="preload" href="assets/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 
-  <link rel="stylesheet" href="css/styles.css?v=81">
-  <script src="js/theme.js?v=81"></script>
+  <link rel="stylesheet" href="css/styles.css?v=82">
+  <script src="js/theme.js?v=82"></script>
 </head>
 <body>
 
@@ -479,7 +479,7 @@
         &copy; <span class="footer-year"></span> Weliton Pinheiro &mdash; Todos os direitos reservados.
       </p>
       <p class="site-footer-meta">
-        Calculadora AC4 &middot; PMGO &middot; v81 &middot;
+        Calculadora AC4 &middot; PMGO &middot; v82 &middot;
         <a href="#" id="footerNovidades" class="footer-link">Novidades</a> &middot;
         <a href="#" id="footerPrivacidade" class="footer-link">Privacidade</a> &middot;
         <a href="#" id="footerFeedback" class="footer-link">Feedback</a> &middot;
@@ -515,10 +515,10 @@
 
   <!-- Novidades: exibido uma única vez após cada atualização e sempre
        disponível pelo rodapé. A confirmação fica somente neste aparelho. -->
-  <dialog class="confirm-dialog whats-new-dialog" id="dialogNovidades" data-conteudo="81" aria-modal="true" aria-labelledby="novidadesTitle" aria-describedby="novidadesIntro">
+  <dialog class="confirm-dialog whats-new-dialog" id="dialogNovidades" data-conteudo="82" aria-modal="true" aria-labelledby="novidadesTitle" aria-describedby="novidadesIntro">
     <div class="whats-new-body">
       <div class="whats-new-topbar">
-        <span class="whats-new-badge">Nova versão <strong>v81</strong></span>
+        <span class="whats-new-badge">Nova versão <strong>v82</strong></span>
         <button class="btn-icon whats-new-close" id="novidadesFechar" type="button" aria-label="Fechar novidades">
           <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
         </button>
@@ -528,8 +528,8 @@
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3-1.7 4.3L6 9l4.3 1.7L12 15l1.7-4.3L18 9l-4.3-1.7L12 3Z"/><path d="m19 15-.8 2.2L16 18l2.2.8L19 21l.8-2.2L22 18l-2.2-.8L19 15Z"/></svg>
         </span>
         <div>
-          <h2 id="novidadesTitle">Lance várias escalas de uma vez</h2>
-          <p id="novidadesIntro">Ao lançar a primeira escala do mês, o calendário abre para você marcar os outros dias.</p>
+          <h2 id="novidadesTitle">Escalas na agenda do celular</h2>
+          <p id="novidadesIntro">Depois de lançar, coloque as escalas na agenda com um toque, já com lembrete.</p>
         </div>
       </div>
       <ul class="whats-new-list">
@@ -537,19 +537,19 @@
           <span class="whats-new-item-icon" aria-hidden="true">
             <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4M8 14h2M14 14h2M8 18h2"/></svg>
           </span>
-          <div><strong>Calendário na hora</strong><span>A primeira escala do mês abre o calendário. Toque nos dias: a hora e a duração são copiadas. Nas outras, use “Lançar em outros dias”.</span></div>
+          <div><strong>Lembrete 2 h antes</strong><span>O arquivo de agenda agora leva um alarme 2 horas antes de cada escala.</span></div>
         </li>
         <li>
           <span class="whats-new-item-icon" aria-hidden="true">
             <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
           </span>
-          <div><strong>Horário diferente num dia</strong><span>Cada dia marcado mostra a hora de início. Toque em “Alterar” para trocar o horário só daquele dia, ali mesmo.</span></div>
+          <div><strong>Calendário do iPhone</strong><span>No iPhone, a opção “Calendário do iPhone” abre as escalas direto no Calendário para adicionar.</span></div>
         </li>
         <li>
           <span class="whats-new-item-icon" aria-hidden="true">
             <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg>
           </span>
-          <div><strong>Sem escala repetida</strong><span>Dia que já tem escala no horário oferece “Escolher outro horário”. Lançou errado? Toque em “Desfazer”.</span></div>
+          <div><strong>Agenda logo depois de lançar</strong><span>Ao lançar em outros dias, toque em “Adicionar à agenda” para levar só essas escalas.</span></div>
         </li>
       </ul>
       <p class="whats-new-privacy">
@@ -679,7 +679,16 @@
           <button class="btn btn-ghost" id="loteEditarOk" type="button">Concluir</button>
         </div>
       </div>
-      <div class="lote-rodape">
+      <div class="lote-resultado hidden" id="loteResultado" role="status">
+        <p class="lote-resultado-texto" id="loteResultadoTexto"></p>
+        <p class="agenda-sub">Quer colocar na agenda do celular? O arquivo leva lembrete 2 h antes.</p>
+        <div class="lote-resultado-acoes">
+          <button class="btn btn-primary" id="loteAddAgenda" type="button">Adicionar à agenda</button>
+          <button class="btn btn-outline" id="loteDesfazer" type="button">Desfazer</button>
+          <button class="btn btn-ghost" id="loteConcluir" type="button">Concluir</button>
+        </div>
+      </div>
+      <div class="lote-rodape" id="loteRodape">
         <span class="lote-contador" id="loteContador" aria-live="polite">0 dias marcados</span>
         <button class="btn btn-primary" id="loteLancar" type="button" disabled>Lançar</button>
       </div>
@@ -810,7 +819,7 @@
     </div>
   </dialog>
 
-  <script type="module" src="js/app.js?v=81"></script>
+  <script type="module" src="js/app.js?v=82"></script>
 
   <!-- Relatório profissional de impressão — populado pelo JS antes de window.print() -->
   <section id="printReport">
