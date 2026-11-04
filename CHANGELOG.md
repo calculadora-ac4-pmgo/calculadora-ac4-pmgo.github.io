@@ -1,5 +1,20 @@
 # Changelog
 
+## v74 — Interface dividida em módulos (1ª entrega)
+
+Refatoração sem mudança para o usuário: `js/app.js` passou de 1.820 para 1.234 linhas.
+- **Nova pasta `js/modules/ui/`**, com um módulo por área da interface, cada um criado por uma fábrica `criarX(ctx)` (padrão do `pwa.mjs`):
+  - `avisos` (toast em fila única, confirmação, vibração);
+  - `observabilidade` (log local de erros e ganchos de suporte);
+  - `aparencia` (tema e aviso de novidades);
+  - `dados` (salvar/carregar, backup, restaurar, lembrete de backup);
+  - `exportacoes` (CSV, PDF, agenda e .ics);
+  - `compartilhar` (WhatsApp, cópia, compartilhar nativo, feedback).
+- **Objeto `estado`** no `app.js`: os módulos leem e gravam escalas, filtros, modelos e metas só por ele. Um módulo de interface nunca importa outro; o `app.js` faz a ligação.
+- **Teste de equivalência permanente** (`tests/equivalencia.mjs`, também no CI): abre o app com 20 escalas fixas em 390 px e 1280 px e compara 26 capturas com a referência da v73. Captura lista, totais, planejamento, CSV, PDF, texto compartilhado, links do Google/Outlook e o arquivo .ics. Todas idênticas.
+- **Novos testes:** cada módulo de `ui/` exporta a fábrica e as funções esperadas, sem tocar o DOM ao ser criado; a fila de toasts é única; restaurar backup grava no estado; textos exatos do backup e do lembrete; módulos de `ui/` no cache offline e na varredura de ganchos de teste.
+- A v75 conclui a divisão (formulário e planejamento).
+
 ## v73 — Tabela da Portaria como dado versionado (R5)
 
 Sem mudança visível na tela; o cálculo é o mesmo.
