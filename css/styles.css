@@ -23,6 +23,9 @@
 }
 
 :root {
+  --fs-rotulo: 0.75rem; /* 12px: rótulos (R6) */
+  --fs-leitura: 0.875rem; /* 14px: texto de leitura (R6) */
+
   --navy-950: #071426;
   --navy-900: #0b1f3a;
   --navy-800: #102d52;

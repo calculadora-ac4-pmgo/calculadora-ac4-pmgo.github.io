@@ -496,4 +496,16 @@ const resultadoCssBom = await (async () => {
 })();
 rodar('CSS: fonte com BOM é recusado', () => resultadoCssBom);
 
+/* v77 (R6): piso de fonte. Fora de @media print, rótulo ≥ 12 px e texto de
+   leitura ≥ 14 px (lista em tests/fixtures/fontes-leitura.json). Tamanho que o
+   verificador não consegue avaliar também falha. */
+const resultadoPisoFonte = await (async () => {
+  try {
+    const { verificarPiso } = await import(pathToFileURL(join(raiz, 'tools', 'piso-fonte.mjs')).href);
+    const { falhas, avaliadas } = verificarPiso(raiz);
+    return falhas.length === 0 && avaliadas > 0 ? 'PISO DE FONTE OK' : (falhas.length ? falhas : ['verificador não avaliou nenhuma regra']);
+  } catch (e) { return [`piso-fonte: ${e.message}`]; }
+})();
+rodar('Piso de fonte (R6)', () => resultadoPisoFonte);
+
 process.exit(falhou ? 1 : 0);
