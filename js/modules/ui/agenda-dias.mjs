@@ -21,7 +21,7 @@ const indiceMes = (a, m) => a * 12 + m;
  * Cria a janela "Lançar em outros dias".
  * @param {Object} ctx Dependências de app.js: $, on, estado, toast, salvar, render, haptic,
  *   clonarEscalas, aposProximoPaint, cancelarEdicao.
- * @returns {{abrir:Function, ligarEventos:Function}}
+ * @returns {{abrir:Function, fechar:Function, ligarEventos:Function}}
  */
 export function criarAgendaDias(ctx) {
   const { $, on, estado, toast, salvar, render, haptic, clonarEscalas, cancelarEdicao } = ctx;
@@ -274,5 +274,5 @@ export function criarAgendaDias(ctx) {
     on('loteLancar', 'click', lancar);
   }
 
-  return { abrir, ligarEventos };
+  return { abrir, fechar, ligarEventos };
 }

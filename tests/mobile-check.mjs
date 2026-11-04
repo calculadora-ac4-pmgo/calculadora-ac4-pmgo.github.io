@@ -759,6 +759,14 @@ const ROTEIRO_LOTE = `(async () => {
   }
   ok('editar não oferece o atalho', !!atualizada && !atualizada.querySelector('.toast-action'), atualizada?.textContent);
 
+  // v80 (M3): escalas trocadas em outra aba com a janela aberta → a janela fecha (a base pode ter sumido)
+  document.querySelector('.ec-more-menu [data-acao="lote"][data-id="' + recente?.id + '"]')?.click();
+  await espera(200);
+  const abertaAntes = dlg.open;
+  window.dispatchEvent(new StorageEvent('storage', { key: 'pmgoEscalas', newValue: '[]' }));
+  await espera(100);
+  ok('mudança vinda de outra aba fecha a janela do lote', abertaAntes && !dlg.open, abertaAntes + ' → ' + dlg.open);
+
   localStorage.removeItem('pmgoEscalas');
   return JSON.stringify(passos);
 })()`;

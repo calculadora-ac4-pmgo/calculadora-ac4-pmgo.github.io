@@ -370,6 +370,7 @@ import { criarAgendaDias } from './modules/ui/agenda-dias.mjs';
       if (ev.key !== STORAGE.escalas) return;
       escalas = desserializarEscalas(ev.newValue).escalas;
       cancelarEdicao();
+      agendaDias.fechar(); /* a escala de origem pode ter sumido (v80) */
       render();
       toast('Dados atualizados por outra aba.');
     });
