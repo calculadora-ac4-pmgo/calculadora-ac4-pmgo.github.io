@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Calculadora AC4 — v72
+   Calculadora AC4 — v73
    Módulo principal: estado, UI, persistência e exportações.
    Regras de negócio, formatação e agenda vivem em js/modules/.
    ========================================================================== */
@@ -9,7 +9,7 @@ import {
   calcularTerminoPorDuracao, validarIntervaloEscala, toInputMonth, fmtMesRef, escapeHTML,
 } from './modules/formato.mjs';
 import {
-  PORTARIA_ATUAL, VALORES_OFICIAIS, TABELA_OFICIAL, regraNormativaParaData, labelOrigem,
+  TABELA_OFICIAL, regraNormativaParaData, tabelaParaData, labelOrigem,
   calcularEscala as calcularEscalaBase, tabelaEscalaValida,
 } from './modules/calculo.mjs';
 import {
@@ -18,8 +18,9 @@ import {
   gerarLinkOutlookAgenda as gerarLinkOutlookAgendaBase,
 } from './modules/agenda.mjs';
 import {
-  STORAGE_SCHEMA_VERSION, STATUS_ESCALA, gerarIdEscala, desserializarEscalas, detectarConflitos,
+  STORAGE_SCHEMA_VERSION, STATUS_ESCALA, gerarIdEscala, desserializarEscalas, detectarConflitos, aplicarNorma,
 } from './modules/persistencia.mjs';
+import { normaAtual } from './modules/portarias.mjs';
 import {
   STATUS_INFO, statusEscala, rotuloQuantidadePm,
   botoesAcaoHTML, seletorStatusHTML, cardEscalaHTML,
@@ -36,11 +37,10 @@ import { criarPWA } from './modules/pwa.mjs';
   /* Versão da aplicação (sincronizada pelo tools/bump-version.mjs). Serve para
      carimbar o log de erros e detectar clientes presos em cache antigo:
      se __ac4Version no console divergir do rodapé/CHANGELOG, o SW não atualizou. */
-  const APP_VERSION = '72';
+  const APP_VERSION = '73';
 
   const STORAGE = {
     escalas:   'pmgoEscalas',
-    config:    'pmgoConfig',
     theme:     'pmgoTheme',
     pwaBanner: 'pmgoPwaBanner',
     pwaVisitas: 'pmgoPwaVisitas',
@@ -273,47 +273,17 @@ import { criarPWA } from './modules/pwa.mjs';
       }
       render();
       toast('Backup restaurado com sucesso.');
+      avisarRecalculadas(resultado.recalculadas);
     } catch {
       toast('Arquivo de backup inválido ou incompatível.', { erro: true });
     }
   }
 
   /* -------------------------------------------- tabela de valores */
-  const parseMoedaCampo = (id) => {
-    const campo = $(id);
-    const raw = String((campo ? campo.value : VALORES_OFICIAIS[id]) || '').trim().replace(',', '.');
-    if (!raw) return NaN;
-    const v = Number(raw);
-    return Number.isFinite(v) && v >= 0 ? Math.round(v * 100) : NaN;
-  };
-  const tabelaVazia = () => ({ portaria: '', valores: { AD: 0, AN: 0, VD: 0, VN: 0 } });
-
-  function lerTabelaAtual() {
-    return {
-      id: TABELA_OFICIAL.id,
-      portaria: PORTARIA_ATUAL,
-      vigenciaInicio: TABELA_OFICIAL.vigenciaInicio,
-      valores: { AD: parseMoedaCampo('valAD'), AN: parseMoedaCampo('valAN'), VD: parseMoedaCampo('valVD'), VN: parseMoedaCampo('valVN') },
-    };
-  }
-
-  function validarTabelaAtual() {
-    const tabela = lerTabelaAtual();
-    let ok = true;
-    const marca = (id, invalido) => {
-      const item = $(id) && $(id).closest('.field, .tariff-item');
-      if (item) item.classList.toggle('invalid', invalido);
-      if (invalido) ok = false;
-    };
-    Object.entries({ valAD: 'AD', valAN: 'AN', valVD: 'VD', valVN: 'VN' })
-      .forEach(([id, key]) => marca(id, !Number.isFinite(tabela.valores[key])));
-    if (!ok) { toast('Confira os valores da tabela antes de calcular.', { erro: true }); return null; }
-    return tabela;
-  }
-
-  const tabelaParaCalculo = () => {
-    const atual = lerTabelaAtual();
-    return Object.values(atual.valores).every(Number.isFinite) ? atual : tabelaVazia();
+  /* Valores somente leitura, vindos de portarias.mjs (fonte única, v73).
+     Escalas gravam a tabela da norma vigente na data de início. */
+  const avisarRecalculadas = (k) => {
+    if (k > 0) toast(`${k} escala${k === 1 ? '' : 's'} recalculada${k === 1 ? '' : 's'} pela ${normaAtual().norma}.`);
   };
 
   /* Pontes para os módulos — injetam a tabela vigente lida do DOM,
@@ -325,7 +295,7 @@ import { criarPWA } from './modules/pwa.mjs';
   const cacheCalculo = new Map();
   const LIMITE_CACHE_CALCULO = 5000;
   const calcularEscala = (e) => {
-    const vigente = tabelaParaCalculo();
+    const vigente = TABELA_OFICIAL;
     const t = tabelaEscalaValida(e.tabela) ? e.tabela : vigente;
     const v = t.valores;
     const chave = `${e.inicio}|${e.fim}|${v.AD}|${v.AN}|${v.VD}|${v.VN}|${t.portaria || ''}`;
@@ -337,9 +307,9 @@ import { criarPWA } from './modules/pwa.mjs';
     }
     return r;
   };
-  const montarICS = (lista) => montarICSBase(lista, tabelaParaCalculo());
-  const gerarLinkGoogleAgenda = (e) => gerarLinkGoogleAgendaBase(e, tabelaParaCalculo());
-  const gerarLinkOutlookAgenda = (e, corporativo) => gerarLinkOutlookAgendaBase(e, tabelaParaCalculo(), corporativo);
+  const montarICS = (lista) => montarICSBase(lista, TABELA_OFICIAL);
+  const gerarLinkGoogleAgenda = (e) => gerarLinkGoogleAgendaBase(e, TABELA_OFICIAL);
+  const gerarLinkOutlookAgenda = (e, corporativo) => gerarLinkOutlookAgendaBase(e, TABELA_OFICIAL, corporativo);
 
   /* --------------------------------------------- persistência */
   function salvar() {
@@ -352,15 +322,6 @@ import { criarPWA } from './modules/pwa.mjs';
       toast('Não foi possível salvar neste navegador. Exporte os dados e confira o espaço disponível.', { erro: true });
       return false;
     }
-  }
-
-  /* Só grava a configuração — quem precisar refletir a mudança na tela chama
-     render() no ponto de uso. Evita a renderização dupla no init() (CWV F-01). */
-  function salvarConfig() {
-    const val = (id) => ($(id) ? $(id).value : VALORES_OFICIAIS[id]);
-    try {
-      localStorage.setItem(STORAGE.config, JSON.stringify({ ad: val('valAD'), an: val('valAN'), vd: val('valVD'), vn: val('valVN') }));
-    } catch { /* configuração oficial continua disponível no DOM */ }
   }
 
   const normalizarModelos = (fonte) => Array.isArray(fonte)
@@ -380,8 +341,8 @@ import { criarPWA } from './modules/pwa.mjs';
   };
 
   function carregar() {
-    Object.entries(VALORES_OFICIAIS).forEach(([id, v]) => { if ($(id)) $(id).value = v; });
-    salvarConfig();
+    /* pmgoConfig guardava os valores dos antigos campos ocultos (até a v72). */
+    try { localStorage.removeItem('pmgoConfig'); } catch { /* sem acesso ao storage */ }
     try {
       const legado = sessionStorage.getItem(STORAGE.escalas);
       if (legado) { const p = JSON.parse(legado); if (Array.isArray(p) && p.length) localStorage.setItem(STORAGE.escalas, legado); sessionStorage.removeItem(STORAGE.escalas); }
@@ -389,7 +350,7 @@ import { criarPWA } from './modules/pwa.mjs';
       escalas = carregadas.escalas;
       /* Regrava o formato normalizado e registra a versão do schema. Registros
          inválidos são descartados antes de alcançar cálculo/renderização. */
-      salvar();
+      if (salvar()) avisarRecalculadas(carregadas.recalculadas);
       if (carregadas.rejeitadas) {
         registrarErro({ msg: `${carregadas.rejeitadas} registro(s) local(is) inválido(s) ignorado(s)`, src: 'storage', ln: 0, col: 0 });
       }
@@ -696,20 +657,18 @@ import { criarPWA } from './modules/pwa.mjs';
         if (!ok) return;
       }
 
-      const tabelaAtual = validarTabelaAtual();
-      if (!tabelaAtual) return;
-
       haptic(10);
       const escalasAntes = clonarEscalas();
 
       const novoRegistro = editandoId === null;
       if (!novoRegistro) {
         const idx = escalas.findIndex((e) => e.id === editandoId);
-        if (idx >= 0) escalas[idx] = { ...escalas[idx], ...dados, tabela: escalas[idx].tabela || tabelaAtual };
+        /* Data editada pode mudar de norma: reaplica a tabela da nova data. */
+        if (idx >= 0) escalas[idx] = aplicarNorma({ ...escalas[idx], ...dados }).escala;
         cancelarEdicao();
         toast('Escala atualizada.');
       } else {
-        escalas.push({ id: gerarIdEscala(), ...dados, status: 'planejada', tabela: tabelaAtual });
+        escalas.push({ id: gerarIdEscala(), ...dados, status: 'planejada', tabela: tabelaParaData(dados.inicio) || TABELA_OFICIAL });
         if ($('escalaDescricao')) $('escalaDescricao').value = '';
         if ($('escalaQtdPm'))    $('escalaQtdPm').value = '1';
         if ($('escalaOrigem'))   $('escalaOrigem').value = 'AC4';
@@ -1441,10 +1400,11 @@ import { criarPWA } from './modules/pwa.mjs';
   function imprimirRelatorio() {
     const lista = escalasOrdenadas();
     if (!lista.length) { toast('Adicione escalas antes de imprimir.', { erro: true }); return; }
-    const { resumoHTML, tabelaHTML } = montarRelatorioImpressao(lista.map((e) => ({ e, r: calcularEscala(e) })));
+    const { resumoHTML, tabelaHTML, normaTexto } = montarRelatorioImpressao(lista.map((e) => ({ e, r: calcularEscala(e) })));
     $('prDate').textContent = new Date().toLocaleString('pt-BR', {
       day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
     });
+    $('prNorma').textContent = normaTexto;
     $('prSummary').innerHTML = resumoHTML;
     $('prTableWrap').innerHTML = tabelaHTML;
     /* window.print() bloqueia a thread até o diálogo fechar; chamado no próprio
@@ -1847,7 +1807,7 @@ import { criarPWA } from './modules/pwa.mjs';
      não vai para o aparelho do usuário. tests/*.mjs aguardam esta promessa. */
   if (ambienteDeTeste) {
     window.__ac4TestesProntos = import('./modules/testes.mjs').then(({ instalarTestes }) => instalarTestes({
-      calcularEscala, lerTabelaAtual, tabelaParaCalculo, escalasOrdenadas, montarICS,
+      calcularEscala, escalasOrdenadas, montarICS,
       gerarLinkOutlookAgenda, salvar, render, $, STORAGE,
       estado: {
         get escalas() { return escalas; },

@@ -2,7 +2,7 @@
    Mantém compatibilidade com o array legado, mas valida e normaliza cada item
    antes que dados do navegador alcancem a regra de negócio ou a interface. */
 import { formatarDataHoraInput, validarIntervaloEscala } from './formato.mjs';
-import { tabelaEscalaValida } from './calculo.mjs';
+import { tabelaEscalaValida, tabelaParaData } from './calculo.mjs';
 
 export const STORAGE_SCHEMA_VERSION = '2';
 export const STATUS_ESCALA = Object.freeze(['planejada', 'realizada', 'conferida', 'recebida']);
@@ -46,12 +46,36 @@ export function normalizarEscala(item) {
   };
 }
 
+const CHAVES_TARIFA = ['AD', 'AN', 'VD', 'VN'];
+
+/**
+ * Grava na escala a tabela oficial da norma vigente na data de início.
+ * Sem norma para a data (antes da vigência): devolve a mesma escala.
+ * @param {Object} escala Escala já normalizada.
+ * @returns {{escala:Object, alterada:boolean, valorMudou:boolean}}
+ *   `valorMudou` só quando havia tabela válida com algum valor diferente.
+ */
+export function aplicarNorma(escala) {
+  const oficial = tabelaParaData(escala && escala.inicio);
+  if (!oficial) return { escala, alterada: false, valorMudou: false };
+  const atual = escala.tabela;
+  const tinhaTabela = tabelaEscalaValida(atual);
+  const valorMudou = tinhaTabela && CHAVES_TARIFA.some((k) => atual.valores[k] !== oficial.valores[k]);
+  const alterada = !tinhaTabela || valorMudou || atual.id !== oficial.id;
+  return { escala: alterada ? { ...escala, tabela: oficial } : escala, alterada, valorMudou };
+}
+
 export function desserializarEscalas(raw) {
   let fonte;
   try { fonte = JSON.parse(raw || '[]'); } catch { fonte = []; }
   if (!Array.isArray(fonte)) fonte = [];
-  const escalas = fonte.map(normalizarEscala).filter(Boolean);
-  return { escalas, rejeitadas: fonte.length - escalas.length };
+  let recalculadas = 0;
+  const escalas = fonte.map(normalizarEscala).filter(Boolean).map((item) => {
+    const r = aplicarNorma(item);
+    if (r.valorMudou) recalculadas++;
+    return r.escala;
+  });
+  return { escalas, rejeitadas: fonte.length - escalas.length, recalculadas };
 }
 
 export function detectarConflitos(lista, candidata, ignorarId = null) {

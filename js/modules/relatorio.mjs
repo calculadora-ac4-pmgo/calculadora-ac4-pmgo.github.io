@@ -8,6 +8,7 @@ import {
   fmtMoeda, fmtHoras, fmtDataHora, fmtData, fmtHora, escapeHTML, csvTextoSeguro,
 } from './formato.mjs';
 import { labelOrigem } from './calculo.mjs';
+import { NORMAS, normaAtual, citacaoNorma } from './portarias.mjs';
 import { STATUS_INFO, statusEscala } from './templates.mjs';
 
 const DIAS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
@@ -22,7 +23,8 @@ const totais = (resultados) => ({
 /**
  * Conteúdo do relatório de impressão (#printReport → PDF pelo navegador).
  * @param {Array<{e:Object, r:Object}>} resultados Escalas e seus cálculos.
- * @returns {{resumoHTML:string, tabelaHTML:string}}
+ * @returns {{resumoHTML:string, tabelaHTML:string, normaTexto:string}} `normaTexto` é
+ *   texto puro (usar com textContent): normas das tabelas usadas, ou a atual.
  */
 export function montarRelatorioImpressao(resultados) {
   const tot = totais(resultados);
@@ -86,7 +88,10 @@ export function montarRelatorioImpressao(resultados) {
         <tbody>${rows}</tbody>
         ${totalRow}
       </table>`;
-  return { resumoHTML, tabelaHTML };
+  const idsUsados = new Set(resultados.map(({ r }) => r.tabela && r.tabela.id));
+  const usadas = NORMAS.filter((n) => idsUsados.has(n.id));
+  const normaTexto = (usadas.length ? usadas : [normaAtual()]).map(citacaoNorma).join('; ');
+  return { resumoHTML, tabelaHTML, normaTexto };
 }
 
 /**
@@ -191,7 +196,7 @@ export function montarTextoResumo(resultados) {
     texto += `${SEP}\n`;
   }
 
-  texto += `\n⚠️ _Portaria SSP n.º 621/2026 · Valor simulado_\n`;
+  texto += `\n⚠️ _${normaAtual().norma} · Valor simulado_\n`;
   texto += `_Sujeito à conferência administrativa — AC4 PMGO_`;
   return texto;
 }
