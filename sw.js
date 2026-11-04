@@ -25,6 +25,7 @@ const SHELL = [
   './js/modules/ui/exportacoes.mjs',
   './js/modules/ui/compartilhar.mjs',
   './js/modules/ui/planejamento.mjs',
+  './js/modules/ui/formulario.mjs',
   './manifest.webmanifest',
   './assets/icon.svg',
   './assets/icon-maskable.svg',

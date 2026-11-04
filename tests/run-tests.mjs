@@ -337,6 +337,10 @@ const MODULOS_UI = {
     'restaurarBackup', 'pedirArmazenamentoPersistente', 'textoStatusBackup', 'lembrarBackup', 'ehIOS', 'rodandoInstalado'],
   exportacoes: ['exportarCSV', 'imprimirRelatorio', 'agendarEscalas', 'baixarArquivoAgenda', 'agendarEscalaItem'],
   compartilhar: ['abrirShareSheet', 'copiarResumo', 'compartilharWhatsApp', 'compartilharNativo', 'gerarTextoResumo', 'initFeedback'],
+  formulario: ['isMobileViewport', 'setDetalhesAvancados', 'abrirPainelLancamentoMobile', 'fecharPainelLancamentoMobile',
+    'validarFormulario', 'submeterFormulario', 'editarEscala', 'cancelarEdicao', 'atualizarResumoLancamento',
+    'sincronizarTodosControlesDataHora', 'aplicarPartesDataHora', 'atualizarChipsDuracao', 'duplicarEscala',
+    'removerEscala', 'limparTudo', 'atualizarStatusEscala', 'ligarEventos'],
   planejamento: ['atualizarSelectMes', 'renderPlanejamento', 'renderHistorico', 'mesPainelAtual', 'abrirMetaMensal', 'salvarMetaMensal', 'removerMetaMensal', 'ligarEventos'],
 };
 const resultadoModulosUI = await (async () => {
@@ -366,10 +370,13 @@ const resultadoModulosUI = await (async () => {
     /* Por linha: instrução que começa com `nome = …` (ou `nome += …`). O ESLint
        no-undef também acusa, mas esta mensagem diz o que fazer. */
     const m = readFileSync(join(raiz, 'js', 'modules', 'ui', f), 'utf8').split('\n')
-      .map((l) => l.match(/^\s*(escalas|editandoId|ultimaExcluida|filtroMes|filtroOrigem|filtroBusca|filtroStatus|limiteLista|modelos|metasMensais|versaoAnterior|submetendo|sheetAberto|fundoInerte)\s*[-+]?=(?!=)/))
+      .map((l) => l.match(/^\s*(escalas|editandoId|ultimaExcluida|filtroMes|filtroOrigem|filtroBusca|filtroStatus|limiteLista|modelos|metasMensais|versaoAnterior|submetendo|sheetAberto)\s*[-+]?=(?!=)/))
       .find(Boolean);
     if (m) falhas.push(`${f}: atribuição nua a ${m[1]} (use estado.${m[1]})`);
   });
+  const todosUI = readdirSync(join(raiz, 'js', 'modules', 'ui')).filter((f) => f.endsWith('.mjs'))
+    .map((f) => readFileSync(join(raiz, 'js', 'modules', 'ui', f), 'utf8')).join('\n') + app;
+  if ((todosUI.match(/document\.addEventListener\('keydown'/g) || []).length !== 1) falhas.push('listener keydown do documento deve existir exatamente uma vez');
   if ((app.match(/criarAvisos\(/g) || []).length !== 1) falhas.push('criarAvisos deve ser instanciado uma única vez (fila de toasts única)');
   return falhas.length ? falhas : 'MÓDULOS DE INTERFACE OK';
 })();
