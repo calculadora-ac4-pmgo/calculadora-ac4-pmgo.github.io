@@ -213,7 +213,7 @@ dependem de decisão ou ação humana fora do repositório.
 ### 30 dias — Proteger
 - [x] **R1 [código]** `navigator.storage.persist()` (após o primeiro lançamento, tolerando recusa); aviso do Safari/iOS fora do modo standalone; data do último backup visível no Compartilhar — **v70, PR #66**. O guia "Adicionar à Tela de Início" já existia (banner + Compartilhar → Instalar).
 - [ ] **R2 [código]** Compartilhamento enxuto por padrão em `gerarTextoResumo()` (só totais); opção explícita "incluir horários e unidade"; aviso curto antes de compartilhar detalhes.
-- [x] **R6 [código]** Piso de fonte: ≥ 12 px em rótulos secundários, ≥ 14 px em texto de leitura; começar por `.planning-history-value` (0.64rem) e pelos cards de escala. Conferir no teste mobile que nada quebra em 390 px. — **v77, PR #PR_V77** (inventário em `docs/inventario-fontes-v77.md`).
+- [x] **R6 [código]** Piso de fonte: ≥ 12 px em rótulos secundários, ≥ 14 px em texto de leitura; começar por `.planning-history-value` (0.64rem) e pelos cards de escala. Conferir no teste mobile que nada quebra em 390 px. — **v77, PR #82** (inventário em `docs/inventario-fontes-v77.md`).
 - [x] **R7 [código]** Corrigir `docs/ESCOPO_MVP.md` e `docs/CHECKLIST.md`: importação `.ics` removida na v48 — **PR de governança de 23/09/2026**.
 - [x] **[gestão]** Monitor de disponibilidade externo — **criado pelo gestor em 08/07/2026** (UptimeRobot, HTTP, 5 min; ver diário). *Pendente:* confirmar que o alerta por e-mail está ativo.
 
