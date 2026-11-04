@@ -1142,7 +1142,7 @@ textarea.control { min-height: 74px; resize: vertical; }
 .mobile-bar-total { line-height: 1.15; }
 .mobile-bar-total .label {
   color: var(--text-muted);
-  font-size: 0.68rem;
+  font-size: var(--fs-rotulo);
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -1185,7 +1185,7 @@ textarea.control { min-height: 74px; resize: vertical; }
   background: var(--navy-900);
   color: #fff;
   box-shadow: var(--shadow-lg);
-  font-size: 0.85rem;
+  font-size: var(--fs-leitura);
   font-weight: 600;
   animation: toastIn 0.25s ease-out;
 }
@@ -1251,7 +1251,7 @@ textarea.control { min-height: 74px; resize: vertical; }
   border-radius: 999px;
   background: var(--warn-soft);
   color: var(--warn-text);
-  font-size: 0.72rem;
+  font-size: var(--fs-rotulo);
   font-weight: 750;
   letter-spacing: 0.02em;
   text-transform: uppercase;
@@ -1271,7 +1271,7 @@ textarea.control { min-height: 74px; resize: vertical; }
 }
 .whats-new-icon .icon { width: 25px; height: 25px; }
 .whats-new-heading h2 { margin: 1px 0 5px; color: var(--text); font-size: 1.24rem; line-height: 1.18; }
-.whats-new-heading p { margin: 0; color: var(--text-muted); font-size: 0.86rem; line-height: 1.45; }
+.whats-new-heading p { margin: 0; color: var(--text-muted); font-size: var(--fs-leitura); line-height: 1.45; }
 .whats-new-list { display: grid; gap: 9px; margin: 0; padding: 0; list-style: none; }
 .whats-new-list li {
   align-items: flex-start;
@@ -1294,14 +1294,14 @@ textarea.control { min-height: 74px; resize: vertical; }
 /* Só o texto do item vira bloco — o ícone mantém display:grid (centralizado) */
 .whats-new-list div > strong,
 .whats-new-list div > span { display: block; }
-.whats-new-list strong { margin: 1px 0 3px; color: var(--text); font-size: 0.84rem; }
-.whats-new-list div > span { color: var(--text-muted); font-size: 0.76rem; line-height: 1.4; }
+.whats-new-list strong { margin: 1px 0 3px; color: var(--text); font-size: var(--fs-leitura); }
+.whats-new-list div > span { color: var(--text-muted); font-size: var(--fs-leitura); line-height: 1.4; }
 .whats-new-privacy {
   align-items: flex-start;
   gap: 8px;
   margin: 14px 2px 0;
   color: var(--text-muted);
-  font-size: 0.72rem;
+  font-size: var(--fs-leitura);
   line-height: 1.4;
 }
 .whats-new-privacy .icon { flex: 0 0 auto; margin-top: 1px; color: var(--green-700); }
@@ -1339,7 +1339,7 @@ textarea.control { min-height: 74px; resize: vertical; }
 .share-title { font-size: 1rem; font-weight: 800; }
 .share-backup-status {
   margin: 0 0 4px;
-  font-size: 0.8125rem;
+  font-size: var(--fs-leitura);
   line-height: 1.45;
   color: var(--text-muted);
 }
@@ -1361,7 +1361,7 @@ textarea.control { min-height: 74px; resize: vertical; }
   border-radius: var(--radius-lg);
   background: var(--surface-2);
   color: var(--text);
-  font-size: 0.74rem;
+  font-size: var(--fs-leitura);
   font-weight: 700;
   cursor: pointer;
   touch-action: manipulation;
@@ -1383,7 +1383,7 @@ textarea.control { min-height: 74px; resize: vertical; }
 /* ===== ESCOLHA DE AGENDA (desktop) ===== */
 .agenda-dialog { max-width: min(92vw, 430px); }
 .agenda-title { font-size: 1.05rem; margin: 0 0 4px; }
-.agenda-sub { color: var(--text-muted); font-size: 0.84rem; font-weight: 600; margin: 0 0 16px; }
+.agenda-sub { color: var(--text-muted); font-size: var(--fs-leitura); font-weight: 600; margin: 0 0 16px; }
 .agenda-body { display: grid; gap: 10px; margin-bottom: 18px; }
 .agenda-prov {
   display: flex;
@@ -1423,8 +1423,8 @@ textarea.control { min-height: 74px; resize: vertical; }
   border-top: 1px solid var(--border);
 }
 .agenda-prov { position: relative; }
-.agenda-prov-txt small { display: block; color: var(--text-muted); font-weight: 600; font-size: 0.76rem; margin-top: 2px; }
-.agenda-hint { color: var(--text-muted); font-size: 0.84rem; margin: 0 0 10px; line-height: 1.4; }
+.agenda-prov-txt small { display: block; color: var(--text-muted); font-weight: 600; font-size: var(--fs-leitura); margin-top: 2px; }
+.agenda-hint { color: var(--text-muted); font-size: var(--fs-leitura); margin: 0 0 10px; line-height: 1.4; }
 .agenda-lista { display: grid; gap: 8px; max-height: 40vh; overflow-y: auto; margin-bottom: 12px; }
 .agenda-item {
   display: flex;
@@ -1437,7 +1437,7 @@ textarea.control { min-height: 74px; resize: vertical; }
   background: var(--surface-2);
   color: var(--text);
   text-decoration: none;
-  font-size: 0.86rem;
+  font-size: var(--fs-leitura);
   font-weight: 600;
 }
 .agenda-item:hover { background: var(--surface-3); border-color: var(--border-strong); }
@@ -1501,7 +1501,7 @@ textarea.control { min-height: 74px; resize: vertical; }
 }
 .fb-textarea:focus-visible { outline: 2px solid var(--navy-900); outline-offset: 1px; }
 [data-theme="dark"] .fb-textarea:focus-visible { outline-color: var(--gold-500); }
-.fb-hint { font-size: 0.72rem; font-weight: 600; color: var(--text-faint); margin-top: 7px; }
+.fb-hint { font-size: var(--fs-leitura); font-weight: 600; color: var(--text-faint); margin-top: 7px; }
 .fb-actions { margin-top: 18px; }
 .fb-actions .btn { min-height: 44px; }
 .fb-copy {
@@ -1511,7 +1511,7 @@ textarea.control { min-height: 74px; resize: vertical; }
   border: none;
   background: none;
   color: var(--text-muted);
-  font-size: 0.76rem;
+  font-size: var(--fs-leitura);
   font-weight: 700;
   text-decoration: underline;
   cursor: pointer;
@@ -1579,7 +1579,7 @@ textarea.control { min-height: 74px; resize: vertical; }
   .planning-panel.is-expanded .planning-details { display: block; }
   .planning-status-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .planning-status { min-height: 64px; }
-  .planning-status span { font-size: 0.72rem; }
+  .planning-status span { font-size: var(--fs-rotulo); }
   .status-select { min-height: 44px; font-size: 0.76rem; }
   .planning-dialog .dialog-actions { flex-wrap: wrap; }
   .whats-new-dialog {
@@ -1630,7 +1630,7 @@ textarea.control { min-height: 74px; resize: vertical; }
   .escala-table td::before {
     content: attr(data-label);
     color: var(--text-muted);
-    font-size: 0.72rem;
+    font-size: var(--fs-rotulo);
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -1805,7 +1805,7 @@ textarea.control { min-height: 74px; resize: vertical; }
     display: block;
     margin-bottom: 6px;
     color: var(--text-faint);
-    font-size: 0.72rem;
+    font-size: var(--fs-rotulo);
     font-weight: 800;
     letter-spacing: 0.03em;
     text-transform: uppercase;
@@ -1865,7 +1865,7 @@ textarea.control { min-height: 74px; resize: vertical; }
     position: absolute;
     top: 4px;
     right: 7px;
-    font-size: 0.68rem;
+    font-size: var(--fs-rotulo);
     font-weight: 900;
   }
 
@@ -1875,11 +1875,11 @@ textarea.control { min-height: 74px; resize: vertical; }
     margin-left: 4px;
     color: var(--gold-500);
     font-weight: 800;
-    font-size: 0.68rem;
+    font-size: var(--fs-rotulo);
     text-transform: uppercase;
     letter-spacing: 0.05em;
   }
-  .fim-hint { display: block; margin-top: 6px; color: var(--text-faint); font-size: 0.74rem; font-weight: 600; }
+  .fim-hint { display: block; margin-top: 6px; color: var(--text-faint); font-size: var(--fs-leitura); font-weight: 600; }
 
   /* Stepper de Qtd. PM — largura total: [ − ]  input  [ + ] */
   .qtd-control { display: flex; align-items: stretch; gap: 10px; }
@@ -1944,7 +1944,7 @@ textarea.control { min-height: 74px; resize: vertical; }
     display: block;
     margin-top: 6px;
     color: var(--text-muted);
-    font-size: 0.82rem;
+    font-size: var(--fs-leitura);
     font-weight: 700;
     font-variant-numeric: tabular-nums;
   }
@@ -1988,7 +1988,7 @@ textarea.control { min-height: 74px; resize: vertical; }
   .ec-unit { font-weight: 700; }
   .ec-date-line {
     color: var(--warn-text);
-    font-size: 0.7rem;
+    font-size: var(--fs-leitura);
     font-weight: 800;
     letter-spacing: 0.07em;
   }
@@ -2007,7 +2007,7 @@ textarea.control { min-height: 74px; resize: vertical; }
   .ec-duration {
     margin-top: 3px;
     color: var(--text-muted);
-    font-size: 0.8rem;
+    font-size: var(--fs-leitura);
     font-weight: 650;
     font-variant-numeric: tabular-nums;
   }
@@ -2023,8 +2023,8 @@ textarea.control { min-height: 74px; resize: vertical; }
   }
   [data-theme="dark"] .ec-money,
   [data-theme="dark"] .ec-total { color: #34d399; }
-  .ec-qtd { margin-top: 4px; color: var(--text); font-size: 0.74rem; font-weight: 750; }
-  .ec-per-pm { margin-top: 1px; color: var(--text-muted); font-size: 0.72rem; font-weight: 600; white-space: nowrap; }
+  .ec-qtd { margin-top: 4px; color: var(--text); font-size: var(--fs-leitura); font-weight: 750; }
+  .ec-per-pm { margin-top: 1px; color: var(--text-muted); font-size: var(--fs-leitura); font-weight: 600; white-space: nowrap; }
   .ec-card-actions {
     margin-top: 12px;
     padding-top: 12px;
@@ -2129,7 +2129,7 @@ textarea.control { min-height: 74px; resize: vertical; }
 @media (max-width: 560px) {
   body { font-size: 14px; }
   .brand-text h1 { font-size: 1.12rem; }
-  .brand-text p { font-size: 0.74rem; }
+  .brand-text p { font-size: var(--fs-rotulo); }
   .metrics { grid-template-columns: 1fr; }
   .metric-card { min-height: 104px; }
   .launch-grid { grid-template-columns: 1fr; }
@@ -2176,12 +2176,12 @@ textarea.control { min-height: 74px; resize: vertical; }
 }
 .site-footer-copy {
   color: var(--text-muted);
-  font-size: 0.82rem;
+  font-size: var(--fs-leitura);
   font-weight: 600;
 }
 .site-footer-meta {
   color: var(--text-faint);
-  font-size: 0.78rem;
+  font-size: var(--fs-leitura);
   font-weight: 500;
 }
 .footer-link {
