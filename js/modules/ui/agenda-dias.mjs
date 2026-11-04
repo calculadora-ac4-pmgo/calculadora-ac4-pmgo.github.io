@@ -172,7 +172,10 @@ export function criarAgendaDias(ctx) {
   function trocarHorario({ hora, duracaoMin }) {
     if (!editando) return;
     const atual = marcados.get(editando) || { hora: base.inicio.slice(11, 16), duracaoMin: duracaoMinutos(base) };
-    marcados.set(editando, { hora: hora ?? atual.hora, duracaoMin: duracaoMin ?? atual.duracaoMin });
+    /* Campo Início apagado = sem mudança; repõe o valor no campo (v80, M2). */
+    const novaHora = hora || atual.hora;
+    marcados.set(editando, { hora: novaHora, duracaoMin: duracaoMin ?? atual.duracaoMin });
+    $('loteHora').value = novaHora;
     $('loteFim').value = intervaloEditado().fim;
     setAviso();
     renderRevisao();

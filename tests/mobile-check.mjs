@@ -659,6 +659,12 @@ const ROTEIRO_LOTE = `(async () => {
      textoItem(17) + ' / ' + problemaItem(17));
   document.querySelector('#loteEditar .lote-dur[data-horas="14"]')?.click(); await espera(50);
   ok('voltar a 14 h libera', problemaItem(17) === '' && problemaItem(19) === '' && !!$('loteLancar') && !$('loteLancar').disabled, textoItem(17));
+  // v80 (M2): apagar o campo Início não deixa campo e lista dessincronizados
+  const textoAntes = textoItem(17);
+  if ($('loteHora')) { $('loteHora').value = ''; $('loteHora').dispatchEvent(new Event('change', { bubbles: true })); }
+  await espera(50);
+  ok('Início apagado volta ao horário do dia', $('loteHora')?.value === textoAntes?.slice(12, 17) && textoItem(17) === textoAntes,
+     JSON.stringify($('loteHora')?.value) + ' / ' + textoItem(17) + ' / antes ' + textoAntes);
   ok('botão "Lançar 3 escalas"', $('loteLancar')?.textContent.trim() === 'Lançar 3 escalas', $('loteLancar')?.textContent);
   const pequenosRev = menoresQue12();
   ok('nenhum texto abaixo de 12 px na revisão', pequenosRev.length === 0, pequenosRev.join(' | '));
