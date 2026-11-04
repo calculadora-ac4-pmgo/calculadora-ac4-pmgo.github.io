@@ -116,6 +116,26 @@ const ROTEIRO_MOBILE = `(async () => {
   document.getElementById('btnSubmit').click();
   await espera(400);
 
+  /* v77 (R6): herança. O verificador de CSS olha regras, não elementos: um texto
+     sem font-size próprio pode herdar de um pai pequeno. Mede no navegador o
+     tamanho calculado de todo texto visível; o piso é 12 px. */
+  const menoresQue12 = () => {
+    const achados = new Set();
+    const andador = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    while (andador.nextNode()) {
+      const no = andador.currentNode;
+      if (!no.nodeValue.trim()) continue;
+      const el = no.parentElement;
+      if (!el || /^(SCRIPT|STYLE|NOSCRIPT|OPTION)$/.test(el.tagName)) continue;
+      const r = el.getBoundingClientRect();
+      const cs = getComputedStyle(el);
+      if (r.width < 2 || r.height < 2 || cs.visibility === 'hidden' || cs.display === 'none') continue;
+      const px = parseFloat(cs.fontSize);
+      if (px > 0 && px < 11.99) achados.add(el.tagName.toLowerCase() + (el.className && typeof el.className === 'string' ? '.' + el.className.trim().split(/\\s+/).join('.') : '') + ' ' + px + 'px');
+    }
+    return [...achados];
+  };
+
   // 1. barra fixa mobile visível e com ações ≥ 44px
   ok('Barra fixa mobile visível', visivel('.mobile-bar'));
   const share = rect('#mobileShare');
@@ -385,6 +405,9 @@ const ROTEIRO_MOBILE = `(async () => {
   ok('Título do sheet "Nova escala AC4"', document.getElementById('mobileLaunchTitle').textContent.trim() === 'Nova escala AC4');
   ok('Ícones dos campos visíveis no mobile', getComputedStyle(document.querySelector('#fieldInicio .field-ico')).display !== 'none');
 
+  const pequenosSheet = menoresQue12();
+  ok('Nenhum texto visível abaixo de 12 px com o sheet aberto (inclui herança)', pequenosSheet.length === 0, pequenosSheet.join(' | '));
+
   document.getElementById('mobileLaunchClose').click();
   await espera(350);
   ok('Botão fechar recolhe o sheet', !painel.classList.contains('is-open'));
@@ -397,6 +420,19 @@ const ROTEIRO_MOBILE = `(async () => {
   ok('Compartilhar tem uma única opção de agenda', !document.getElementById('shareGoogleOpt') && !!document.getElementById('shareIcsOpt') && document.getElementById('shareIcsOpt').textContent.includes('Agenda'));
   const inst = document.getElementById('shareInstallOpt');
   ok('Opção "Instalar" disponível no Compartilhar', !!inst && !inst.classList.contains('hidden'));
+
+  // v77 (R6): lista com o painel do mês expandido e o diálogo Compartilhar aberto
+  const pequenosLista = menoresQue12();
+  ok('Nenhum texto visível abaixo de 12 px na lista (inclui herança)', pequenosLista.length === 0, pequenosLista.join(' | '));
+  document.getElementById('planningToggle')?.click();
+  await espera(250);
+  const pequenosPainel = menoresQue12();
+  ok('Nenhum texto visível abaixo de 12 px com o painel do mês expandido', pequenosPainel.length === 0, pequenosPainel.join(' | '));
+  document.getElementById('mobileShare').click();
+  await espera(350);
+  const pequenosShare = menoresQue12();
+  ok('Nenhum texto visível abaixo de 12 px no diálogo Compartilhar', pequenosShare.length === 0, pequenosShare.join(' | '));
+  document.getElementById('dialogShare').close();
 
   localStorage.removeItem('pmgoEscalas');
   return JSON.stringify(passos);
@@ -456,6 +492,7 @@ const ROTEIRO_320 = `(async () => {
   document.getElementById('planningToggle')?.click();
   await espera(300);
   const historico = document.getElementById('planningHistory');
+  for (let i = 0; i < 20 && historico?.classList.contains('hidden'); i++) await espera(100);
   const valores = () => [...document.querySelectorAll('.planning-history-value')];
   const cabe = (e) => e.scrollWidth <= e.clientWidth + 1;
   ok('320px: histórico de 6 meses visível (2+ meses com escalas)', historico && !historico.classList.contains('hidden') && valores().length === 6);

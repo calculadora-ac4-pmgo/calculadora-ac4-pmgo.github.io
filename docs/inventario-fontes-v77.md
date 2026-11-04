@@ -110,3 +110,17 @@ Cada ajuste de espaço ou quebra de linha feito para o aumento caber em 320–39
    sem aviso. Ajuste mínimo: `gap` da grade `.planning-history-bars` de 6 px para 3 px **só em até 360 px**
    (`90-responsivo.css`). A coluna passa a ter 41 px e o valor cabe. Acima de 360 px nada mudou.
    Coberto por 3 verificações novas em `tests/mobile-check.mjs` (valores reais, pior caso, sem rolagem horizontal).
+
+## Revisão visual (capturas antes × depois)
+
+`node tests/capturas-fontes.mjs <pasta> [--raiz <checkout>]` gera 24 imagens por versão (320, 390 e 1280 px × claro e
+escuro × início, painel do mês, lançamento e Compartilhar). Comparadas v76 × v77, sem texto cortado, sobreposição
+nem rolagem horizontal. O que muda de verdade, e foi aceito:
+
+- A página fica mais alta: cerca de 4 % no celular e 5 % no desktop (texto maior).
+- Em 320 px, "↓ 90 % em relação a Agosto de 2026" (`.planning-comparison`) passa a quebrar em duas linhas dentro do
+  chip. Já tinha `white-space: normal`, então só ocupa mais altura.
+- Em 320 px, a descrição do card de escala ("12 horas · Operação Noturna") quebra mais cedo e às vezes deixa o "·"
+  no fim da linha. Legível; não foi alterado para não mexer no layout.
+- Histórico de 6 meses em 320 px: os valores ("2,5 mil  3,7 mil") ficam próximos, mas separados e sem corte.
+- Já eram assim na v76 e não mudam: os campos de filtro mostram o texto cortado ("Todos os me…") em 320 px.

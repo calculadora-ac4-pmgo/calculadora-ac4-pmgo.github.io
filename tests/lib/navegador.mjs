@@ -23,13 +23,14 @@ export const MIME = {
   '.md': 'text/markdown; charset=utf-8',
 };
 
-export function iniciarServidor() {
+/** @param {string} [raizServida] Pasta servida (padrão: a raiz deste repositório). */
+export function iniciarServidor(raizServida = raiz) {
   return new Promise((resolve) => {
     const srv = createServer(async (req, res) => {
       try {
         let caminho = new URL(req.url, 'http://localhost').pathname;
         if (caminho === '/') caminho = '/index.html';
-        const arquivo = join(raiz, caminho.replace(/^\/+/, ''));
+        const arquivo = join(raizServida, caminho.replace(/^\/+/, ''));
         const corpo = await readFile(arquivo);
         res.writeHead(200, { 'Content-Type': MIME[extname(arquivo)] || 'application/octet-stream' });
         res.end(corpo);
