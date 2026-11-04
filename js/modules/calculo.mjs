@@ -1,6 +1,6 @@
 /* ==========================================================================
    Calculadora AC4 — módulo de regras de negócio
-   Regras (Portaria SSP nº 621/2026):
+   Regras (Portaria vigente — ver portarias.mjs):
    - Vermelha: dia operacional do minuto é sex/sáb/dom.
    - Noturno: [22:00, 05:00) minuto a minuto.
    - Minutos entre 00:00 e 04:59 usam o dia operacional anterior.
@@ -9,29 +9,46 @@
    Funções puras, sem acesso ao DOM.
    ========================================================================== */
 import { parseDateTimeLocal } from './formato.mjs';
+import { NORMAS, normaParaData, normaAtual } from './portarias.mjs';
 
-export const PORTARIA_ATUAL = 'Portaria SSP nº 621/2026';
-export const VALORES_OFICIAIS = { valAD: '30', valAN: '33', valVD: '40', valVN: '45' };
-export const REGRA_NORMATIVA_ATUAL_ID = 'ssp-621-2026-07-01';
-
-/* Tabela oficial em centavos por hora — fallback quando nenhuma tabela
-   vigente é injetada (testes, contexto sem DOM). */
-export const TABELA_OFICIAL = Object.freeze({
-  id: REGRA_NORMATIVA_ATUAL_ID,
-  portaria: PORTARIA_ATUAL,
-  vigenciaInicio: '2026-07-01',
-  valores: Object.freeze({ AD: 3000, AN: 3300, VD: 4000, VN: 4500 }),
+/**
+ * Converte uma norma de portarias.mjs no formato de tabela gravado nas escalas.
+ * @param {Object} n Norma.
+ * @returns {Tabela} Tabela congelada `{ id, portaria, vigenciaInicio, valores }`.
+ */
+export const tabelaDaNorma = (n) => Object.freeze({
+  id: n.id,
+  portaria: n.norma,
+  vigenciaInicio: n.vigenciaInicio,
+  ...(n.vigenciaFim ? { vigenciaFim: n.vigenciaFim } : {}),
+  valores: Object.freeze({ ...n.valores }),
 });
 
-/* Registro imutável e efetivo por data. Novas normas devem ser acrescentadas
-   sem editar entradas históricas; assim relatórios preservam a regra aplicada. */
-export const REGRAS_NORMATIVAS = Object.freeze([TABELA_OFICIAL]);
+/* Registro imutável e efetivo por data, derivado de portarias.mjs (fonte única).
+   Relatórios preservam a regra aplicada porque cada escala grava sua tabela. */
+export const REGRAS_NORMATIVAS = Object.freeze(NORMAS.map(tabelaDaNorma));
 
-export function regraNormativaParaData(valor, regras = REGRAS_NORMATIVAS) {
-  const data = String(valor || '').slice(0, 10);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) return null;
-  return [...regras].reverse().find((regra) =>
-    data >= regra.vigenciaInicio && (!regra.vigenciaFim || data <= regra.vigenciaFim)) || null;
+/* Tabela da norma mais recente — fallback quando nenhuma tabela é informada
+   (testes, escala sem tabela gravada). */
+export const TABELA_OFICIAL = REGRAS_NORMATIVAS[REGRAS_NORMATIVAS.length - 1];
+export const PORTARIA_ATUAL = TABELA_OFICIAL.portaria;
+export const REGRA_NORMATIVA_ATUAL_ID = TABELA_OFICIAL.id;
+/* Valores em texto (R$) — usados só até a remoção dos campos ocultos (v73, tarefa 4). */
+export const VALORES_OFICIAIS = Object.freeze(Object.fromEntries(
+  ['AD', 'AN', 'VD', 'VN'].map((k) => [`val${k}`, String(normaAtual().valores[k] / 100)])));
+
+/**
+ * Tabela oficial vigente na data (início da escala).
+ * @param {string} valor Data ISO, com ou sem hora.
+ * @returns {Tabela|null} `null` quando não há norma para a data.
+ */
+export function tabelaParaData(valor) {
+  const n = normaParaData(valor);
+  return n ? REGRAS_NORMATIVAS.find((t) => t.id === n.id) : null;
+}
+
+export function regraNormativaParaData(valor) {
+  return tabelaParaData(valor);
 }
 
 /**
@@ -73,7 +90,7 @@ function diaReferenciaOperacional(data, minutoDoDia, noturno) {
 
 /**
  * Calcula minutos por categoria (AD/AN/VD/VN) e o valor de uma escala,
- * classificando minuto a minuto conforme a Portaria SSP nº 621/2026. O valor
+ * classificando minuto a minuto conforme a Portaria vigente. O valor
  * paga só as horas inteiras de cada categoria (a fração de hora é descartada).
  * Usa a tabela congelada no lançamento (`e.tabela`) quando válida — preserva o
  * histórico se a Portaria mudar; caso contrário usa a tabela vigente.
