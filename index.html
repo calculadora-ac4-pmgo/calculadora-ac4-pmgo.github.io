@@ -15,8 +15,8 @@
   <!-- Preload da fonte principal — reduz reflow/CLS do font-swap da Inter -->
   <link rel="preload" href="assets/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 
-  <link rel="stylesheet" href="css/styles.css?v=78">
-  <script src="js/theme.js?v=78"></script>
+  <link rel="stylesheet" href="css/styles.css?v=79">
+  <script src="js/theme.js?v=79"></script>
 </head>
 <body>
 
@@ -479,7 +479,7 @@
         &copy; <span class="footer-year"></span> Weliton Pinheiro &mdash; Todos os direitos reservados.
       </p>
       <p class="site-footer-meta">
-        Calculadora AC4 &middot; PMGO &middot; v78 &middot;
+        Calculadora AC4 &middot; PMGO &middot; v79 &middot;
         <a href="#" id="footerNovidades" class="footer-link">Novidades</a> &middot;
         <a href="#" id="footerPrivacidade" class="footer-link">Privacidade</a> &middot;
         <a href="#" id="footerFeedback" class="footer-link">Feedback</a> &middot;
@@ -515,10 +515,10 @@
 
   <!-- Novidades: exibido uma única vez após cada atualização e sempre
        disponível pelo rodapé. A confirmação fica somente neste aparelho. -->
-  <dialog class="confirm-dialog whats-new-dialog" id="dialogNovidades" data-conteudo="77" aria-modal="true" aria-labelledby="novidadesTitle" aria-describedby="novidadesIntro">
+  <dialog class="confirm-dialog whats-new-dialog" id="dialogNovidades" data-conteudo="79" aria-modal="true" aria-labelledby="novidadesTitle" aria-describedby="novidadesIntro">
     <div class="whats-new-body">
       <div class="whats-new-topbar">
-        <span class="whats-new-badge">Nova versão <strong>v78</strong></span>
+        <span class="whats-new-badge">Nova versão <strong>v79</strong></span>
         <button class="btn-icon whats-new-close" id="novidadesFechar" type="button" aria-label="Fechar novidades">
           <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
         </button>
@@ -528,28 +528,28 @@
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3-1.7 4.3L6 9l4.3 1.7L12 15l1.7-4.3L18 9l-4.3-1.7L12 3Z"/><path d="m19 15-.8 2.2L16 18l2.2.8L19 21l.8-2.2L22 18l-2.2-.8L19 15Z"/></svg>
         </span>
         <div>
-          <h2 id="novidadesTitle">Letras maiores e mais fáceis de ler</h2>
-          <p id="novidadesIntro">Os textos pequenos ficaram maiores, sem mudar a organização da tela.</p>
+          <h2 id="novidadesTitle">Lance várias escalas de uma vez</h2>
+          <p id="novidadesIntro">Marque os dias no calendário e o app cria as escalas com o mesmo horário.</p>
         </div>
       </div>
       <ul class="whats-new-list">
         <li>
           <span class="whats-new-item-icon" aria-hidden="true">
-            <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 19 8 5l5 14"/><path d="M5 14h6"/><path d="m15 19 3-8 3 8"/><path d="M16 17h4"/></svg>
+            <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4M8 14h2M14 14h2M8 18h2"/></svg>
           </span>
-          <div><strong>Letras maiores e mais fáceis de ler, principalmente no celular</strong><span>Dicas, avisos e informações das escalas ficaram maiores. A tela continua organizada do mesmo jeito.</span></div>
-        </li>
-        <li>
-          <span class="whats-new-item-icon" aria-hidden="true">
-            <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg>
-          </span>
-          <div><strong>Só horas inteiras</strong><span>Minutos que não completam uma hora em cada faixa de valor não entram no cálculo. Escalas em hora cheia não mudam.</span></div>
+          <div><strong>Lançar em outros dias</strong><span>Depois de salvar uma escala, toque em “Lançar em outros dias” e marque os dias no calendário. A hora e a duração são copiadas.</span></div>
         </li>
         <li>
           <span class="whats-new-item-icon" aria-hidden="true">
             <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
           </span>
-          <div><strong>Lista mais rápida</strong><span>Com muitas escalas, a lista mostra as 30 mais recentes e o botão “Mostrar escalas anteriores”.</span></div>
+          <div><strong>Horário diferente num dia</strong><span>Antes de lançar, a lista mostra cada dia. Toque num item para trocar o horário só daquele dia.</span></div>
+        </li>
+        <li>
+          <span class="whats-new-item-icon" aria-hidden="true">
+            <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg>
+          </span>
+          <div><strong>Sem escala repetida</strong><span>Dias que já têm escala no mesmo horário ficam bloqueados. Lançou errado? Toque em “Desfazer”.</span></div>
         </li>
       </ul>
       <p class="whats-new-privacy">
@@ -632,6 +632,59 @@
         <button class="btn btn-primary" id="templateSave" type="submit">Salvar</button>
       </div>
     </form>
+  </dialog>
+
+  <!-- v79: lançar em outros dias (lote a partir de uma escala salva) -->
+  <dialog class="confirm-dialog lote-dialog" id="dialogLote" aria-modal="true" aria-labelledby="loteTitulo">
+    <div class="dialog-body lote-body">
+      <div class="lote-topo">
+        <h3 class="agenda-title" id="loteTitulo">Lançar em outros dias</h3>
+        <button class="btn-icon lote-fechar" id="loteFechar" type="button" aria-label="Fechar">
+          <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <p class="agenda-sub" id="loteBase"></p>
+      <p class="lote-aviso" id="loteAviso" role="status" aria-live="polite"></p>
+      <div class="lote-calendario" id="loteCalendario">
+        <div class="lote-mes-nav">
+          <button class="btn-icon" id="lotePrev" type="button" aria-label="Mês anterior">
+            <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+          </button>
+          <strong class="lote-mes" id="loteMes" aria-live="polite"></strong>
+          <button class="btn-icon" id="loteNext" type="button" aria-label="Próximo mês">
+            <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+          </button>
+        </div>
+        <div class="lote-semana" aria-hidden="true"><span>Seg</span><span>Ter</span><span>Qua</span><span>Qui</span><span>Sex</span><span>Sáb</span><span>Dom</span></div>
+        <div class="lote-grade" id="loteGrade" role="group" aria-label="Dias do mês"></div>
+        <div class="lote-rodape">
+          <span class="lote-contador" id="loteContador" aria-live="polite">0 dias marcados</span>
+          <button class="btn btn-primary" id="loteRevisar" type="button" disabled>Revisar</button>
+        </div>
+      </div>
+      <div class="lote-revisao hidden" id="loteRevisao">
+        <ul class="lote-lista" id="loteLista"></ul>
+        <div class="lote-editar hidden" id="loteEditar">
+          <p class="lote-editar-titulo" id="loteEditarTitulo"></p>
+          <div class="lote-editar-campos">
+            <label class="fb-label" for="loteHora">Início</label>
+            <input class="control" id="loteHora" type="time">
+            <div class="lote-durs" role="group" aria-label="Duração">
+              <button class="lote-dur" type="button" data-horas="12">12h</button>
+              <button class="lote-dur" type="button" data-horas="14">14h</button>
+              <button class="lote-dur" type="button" data-horas="24">24h</button>
+            </div>
+            <label class="fb-label" for="loteFim">Término</label>
+            <input class="control" id="loteFim" type="datetime-local">
+          </div>
+          <button class="btn btn-ghost" id="loteEditarOk" type="button">Concluir</button>
+        </div>
+        <div class="lote-rodape">
+          <button class="btn btn-ghost" id="loteVoltar" type="button">Voltar ao calendário</button>
+          <button class="btn btn-primary" id="loteLancar" type="button">Lançar</button>
+        </div>
+      </div>
+    </div>
   </dialog>
 
   <!-- Meta mensal: permanece somente no navegador -->
@@ -758,7 +811,7 @@
     </div>
   </dialog>
 
-  <script type="module" src="js/app.js?v=78"></script>
+  <script type="module" src="js/app.js?v=79"></script>
 
   <!-- Relatório profissional de impressão — populado pelo JS antes de window.print() -->
   <section id="printReport">

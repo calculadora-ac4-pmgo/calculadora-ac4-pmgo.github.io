@@ -96,6 +96,24 @@ const conectarCDP = (wsUrl) => new Promise((resolve, reject) => {
 });
 
 /* Medições feitas dentro da página em viewport mobile (393×852). */
+/* v77/v79: medida de herança de fonte, compartilhada pelos roteiros. */
+const FN_MENORES_QUE_12 = `const menoresQue12 = () => {
+    const achados = new Set();
+    const andador = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    while (andador.nextNode()) {
+      const no = andador.currentNode;
+      if (!no.nodeValue.trim()) continue;
+      const el = no.parentElement;
+      if (!el || /^(SCRIPT|STYLE|NOSCRIPT|OPTION)$/.test(el.tagName)) continue;
+      const r = el.getBoundingClientRect();
+      const cs = getComputedStyle(el);
+      if (r.width < 2 || r.height < 2 || cs.visibility === 'hidden' || cs.display === 'none') continue;
+      const px = parseFloat(cs.fontSize);
+      if (px > 0 && px < 11.99) achados.add(el.tagName.toLowerCase() + (el.className && typeof el.className === 'string' ? '.' + el.className.trim().split(/\\s+/).join('.') : '') + ' ' + px + 'px');
+    }
+    return [...achados];
+  };`;
+
 const ROTEIRO_MOBILE = `(async () => {
   const passos = [];
   const ok = (nome, cond, detalhe = '') => passos.push({ nome, ok: !!cond, detalhe: String(detalhe) });
@@ -119,22 +137,7 @@ const ROTEIRO_MOBILE = `(async () => {
   /* v77 (R6): herança. O verificador de CSS olha regras, não elementos: um texto
      sem font-size próprio pode herdar de um pai pequeno. Mede no navegador o
      tamanho calculado de todo texto visível; o piso é 12 px. */
-  const menoresQue12 = () => {
-    const achados = new Set();
-    const andador = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-    while (andador.nextNode()) {
-      const no = andador.currentNode;
-      if (!no.nodeValue.trim()) continue;
-      const el = no.parentElement;
-      if (!el || /^(SCRIPT|STYLE|NOSCRIPT|OPTION)$/.test(el.tagName)) continue;
-      const r = el.getBoundingClientRect();
-      const cs = getComputedStyle(el);
-      if (r.width < 2 || r.height < 2 || cs.visibility === 'hidden' || cs.display === 'none') continue;
-      const px = parseFloat(cs.fontSize);
-      if (px > 0 && px < 11.99) achados.add(el.tagName.toLowerCase() + (el.className && typeof el.className === 'string' ? '.' + el.className.trim().split(/\\s+/).join('.') : '') + ' ' + px + 'px');
-    }
-    return [...achados];
-  };
+  ${FN_MENORES_QUE_12}
 
   // 1. barra fixa mobile visível e com ações ≥ 44px
   ok('Barra fixa mobile visível', visivel('.mobile-bar'));
@@ -265,8 +268,8 @@ const ROTEIRO_MOBILE = `(async () => {
      }).join(' | '));
   document.querySelector('.escala-card .ec-more > summary').click();
   const menuAcoes = [...document.querySelectorAll('.escala-card .ec-more-menu button')];
-  ok('Menu contém agenda, duplicação e exclusão',
-     menuAcoes.length === 3 && menuAcoes.every((b) => b.getBoundingClientRect().height >= 44),
+  ok('Menu contém agenda, duplicação, lançar em outros dias e exclusão',
+     menuAcoes.length === 4 && menuAcoes.every((b) => b.getBoundingClientRect().height >= 44),
      menuAcoes.map((b) => b.textContent.trim()).join(' | '));
   document.querySelector('.escala-card .ec-more').removeAttribute('open');
 
@@ -549,6 +552,200 @@ const roteiroHistorico = (textos) => `(async () => {
   return JSON.stringify(passos);
 })()`;
 
+/* v79: lançar em outros dias — calendário do lote (abrir, grade, marcar, bloqueio). */
+const ROTEIRO_LOTE = `(async () => {
+  const passos = [];
+  const ok = (nome, cond, detalhe = '') => passos.push({ nome, ok: !!cond, detalhe: String(detalhe) });
+  const espera = (ms) => new Promise((r) => setTimeout(r, ms));
+  const $ = (id) => document.getElementById(id);
+  ${FN_MENORES_QUE_12}
+  for (let i = 0; i < 50 && !$('formEscala'); i++) await espera(100);
+  localStorage.removeItem('pmgoEscalas');
+  const lancar = async (inicio, { duracao = '', fim = '' } = {}) => {
+    $('escalaInicio').value = inicio;
+    $('escalaInicio').dispatchEvent(new Event('change', { bubbles: true }));
+    if (duracao) { $('escalaDuracao').value = duracao; $('escalaDuracao').dispatchEvent(new Event('change', { bubbles: true })); }
+    if (fim) { $('escalaFim').value = fim; $('escalaFim').dispatchEvent(new Event('change', { bubbles: true })); }
+    $('btnSubmit').click();
+    await espera(400);
+  };
+  await lancar('2026-11-10T18:00', { duracao: '14' });
+  await lancar('2026-11-15T07:00', { fim: '2026-11-15T12:00' });
+  const salvas = JSON.parse(localStorage.getItem('pmgoEscalas') || '[]');
+  const lista = Array.isArray(salvas) ? salvas : (salvas.escalas || []);
+  const base = lista.find((e) => e.inicio === '2026-11-10T18:00');
+  const outra = lista.find((e) => e.inicio === '2026-11-15T07:00');
+  ok('duas escalas de partida salvas', base && outra, lista.length);
+
+  // editar a outra escala antes de abrir a agenda: a edição não pode mudar (Review Focus 5)
+  document.querySelector('[data-acao="editar"][data-id="' + outra.id + '"]').click();
+  await espera(200);
+  const inicioEdicao = $('escalaInicio').value;
+
+  const btnLote = document.querySelector('.ec-more-menu [data-acao="lote"][data-id="' + base.id + '"]');
+  ok('menu da escala tem "Lançar em outros dias"', btnLote && btnLote.textContent.trim() === 'Lançar em outros dias',
+     btnLote && btnLote.textContent);
+  btnLote?.click();
+  await espera(200);
+  const dlg = $('dialogLote');
+  ok('janela do lote aberta', dlg && dlg.open);
+  ok('mês da base no título', $('loteMes')?.textContent.trim() === 'novembro de 2026', $('loteMes')?.textContent);
+  const grade = $('loteGrade');
+  const filhos = grade ? [...grade.children] : [];
+  const dia = (n) => grade?.querySelector('.lote-dia[data-data="2026-11-' + String(n).padStart(2, '0') + '"]');
+  ok('mês que começa no domingo: dia 1 na 7ª coluna', filhos.length >= 7 && filhos[6] === dia(1) &&
+     filhos.slice(0, 6).every((f) => f.classList.contains('lote-vazio')), filhos.slice(0, 7).map((f) => f.className).join(','));
+  ok('dia da base bloqueado', dia(10)?.getAttribute('aria-disabled') === 'true', dia(10)?.title);
+  ok('dia 14 bloqueado (sobrepõe 15/11 07:00)', dia(14)?.getAttribute('aria-disabled') === 'true' &&
+     dia(14)?.title === 'Já existe escala neste horário.', dia(14)?.title);
+  ok('dia 15 livre', dia(15) && dia(15).getAttribute('aria-disabled') !== 'true');
+  for (const n of [15, 17, 19]) { dia(n)?.click(); await espera(30); }
+  ok('marcar 3 dias', [15, 17, 19].every((n) => dia(n)?.getAttribute('aria-pressed') === 'true') &&
+     $('loteContador')?.textContent.trim() === '3 dias marcados', $('loteContador')?.textContent);
+  dia(19)?.click(); await espera(30);
+  ok('segundo toque desmarca', dia(19)?.getAttribute('aria-pressed') === 'false' &&
+     $('loteContador')?.textContent.trim() === '2 dias marcados', $('loteContador')?.textContent);
+  dia(14)?.click(); await espera(30);
+  ok('dia bloqueado não marca', dia(14)?.getAttribute('aria-pressed') !== 'true' &&
+     $('loteContador')?.textContent.trim() === '2 dias marcados');
+  ok('"Revisar" ativo com dias marcados', $('loteRevisar') && !$('loteRevisar').disabled);
+  const alvos = [...(grade?.querySelectorAll('.lote-dia') || [])].map((b) => b.getBoundingClientRect());
+  ok('dias com alvo de toque ≥ 44 px', alvos.length >= 28 && alvos.every((r) => r.width >= 44 && r.height >= 44),
+     alvos.slice(0, 3).map((r) => Math.round(r.width) + 'x' + Math.round(r.height)).join(' '));
+  ok('janela sem rolagem horizontal', document.documentElement.scrollWidth <= window.innerWidth + 1 &&
+     !!dlg && dlg.scrollWidth <= dlg.clientWidth + 1, dlg && (dlg.scrollWidth + '/' + dlg.clientWidth));
+  const pequenos = menoresQue12();
+  ok('nenhum texto abaixo de 12 px com a janela aberta', pequenos.length === 0, pequenos.join(' | '));
+  for (let i = 0; i < 3; i++) { $('loteNext')?.click(); await espera(30); }
+  ok('navega até 3 meses à frente e para', $('loteMes')?.textContent.trim() === 'fevereiro de 2027' && $('loteNext')?.disabled,
+     $('loteMes')?.textContent);
+  ok('dias marcados mantidos ao navegar', $('loteContador')?.textContent.trim() === '2 dias marcados');
+  $('loteFechar')?.click();
+  await espera(100);
+  ok('fechar a janela', !!dlg && !dlg.open);
+  ok('edição em curso intacta', $('escalaInicio').value === inicioEdicao && !$('btnCancelEdit').classList.contains('hidden'),
+     $('escalaInicio').value + ' vs ' + inicioEdicao);
+  $('btnCancelEdit').click();
+  await espera(100);
+
+  // aviso dentro da janela (o toast fica atrás do modal)
+  document.querySelector('.ec-more-menu [data-acao="lote"][data-id="' + base.id + '"]').click();
+  await espera(200);
+  dia(14)?.click(); await espera(30);
+  ok('motivo do dia bloqueado aparece na janela', $('loteAviso')?.textContent.trim() === 'Já existe escala neste horário.',
+     $('loteAviso')?.textContent);
+
+  // revisão
+  for (const n of [15, 17, 19]) { dia(n)?.click(); await espera(30); }
+  $('loteRevisar')?.click(); await espera(80);
+  const itens = () => [...document.querySelectorAll('#loteLista li[data-data]')];
+  const textoItem = (n) => itens().find((li) => li.dataset.data === '2026-11-' + n)?.querySelector('.lote-item-texto')?.textContent.trim();
+  const problemaItem = (n) => itens().find((li) => li.dataset.data === '2026-11-' + n)?.querySelector('.lote-problema')?.textContent.trim() || '';
+  ok('revisão lista 3 dias em ordem', itens().map((li) => li.dataset.data).join(',') === '2026-11-15,2026-11-17,2026-11-19',
+     itens().map((li) => li.dataset.data).join(','));
+  ok('texto do item', textoItem(15) === 'Dom 15/11 · 18:00 → 08:00', textoItem(15));
+  ok('calendário oculto na revisão', $('loteCalendario').classList.contains('hidden') && !!$('loteRevisao') && !$('loteRevisao').classList.contains('hidden'));
+  itens()[1]?.querySelector('.lote-item')?.click(); await espera(50);
+  ok('editar horário do dia 17', !!$('loteEditar') && !$('loteEditar').classList.contains('hidden') && $('loteHora')?.value === '18:00', $('loteHora')?.value);
+  document.querySelector('#loteEditar .lote-dur[data-horas="24"]')?.click(); await espera(50);
+  ok('24 h no dia 17', textoItem(17) === 'Ter 17/11 · 18:00 → 18:00' && problemaItem(17) === '', textoItem(17) + ' / ' + problemaItem(17));
+  if ($('loteHora') && $('loteFim')) {
+    $('loteHora').value = '06:00'; $('loteHora').dispatchEvent(new Event('change', { bubbles: true }));
+    $('loteFim').value = '2026-11-19T20:00'; $('loteFim').dispatchEvent(new Event('change', { bubbles: true }));
+  }
+  await espera(50);
+  ok('término 2 dias depois mostra a data', textoItem(17) === 'Ter 17/11 · 06:00 → 19/11 20:00', textoItem(17));
+  ok('dia 17 sobrepondo o 19 bloqueia o lançamento', problemaItem(17) === 'Sobrepõe outro dia deste lote.' && !!$('loteLancar')?.disabled,
+     textoItem(17) + ' / ' + problemaItem(17));
+  document.querySelector('#loteEditar .lote-dur[data-horas="14"]')?.click(); await espera(50);
+  ok('voltar a 14 h libera', problemaItem(17) === '' && problemaItem(19) === '' && !!$('loteLancar') && !$('loteLancar').disabled, textoItem(17));
+  ok('botão "Lançar 3 escalas"', $('loteLancar')?.textContent.trim() === 'Lançar 3 escalas', $('loteLancar')?.textContent);
+  const pequenosRev = menoresQue12();
+  ok('nenhum texto abaixo de 12 px na revisão', pequenosRev.length === 0, pequenosRev.join(' | '));
+  ok('revisão sem rolagem horizontal', dlg.scrollWidth <= dlg.clientWidth + 1, dlg.scrollWidth + '/' + dlg.clientWidth);
+
+  // falha de gravação: nada é salvo
+  const setOriginal = Storage.prototype.setItem;
+  Storage.prototype.setItem = function () { throw new Error('cheio'); };
+  $('loteLancar')?.click(); await espera(80);
+  Storage.prototype.setItem = setOriginal;
+  ok('falha ao gravar não lança nada', document.querySelectorAll('.escala-card').length === 2 && dlg.open,
+     document.querySelectorAll('.escala-card').length);
+
+  // toque duplo lança uma vez
+  $('loteLancar')?.click(); $('loteLancar')?.click();
+  await espera(300);
+  const cards = () => document.querySelectorAll('.escala-card').length;
+  ok('toque duplo lança exatamente 3', cards() === 5, cards());
+  ok('janela fecha após lançar', !dlg.open);
+  const salvasDepois = JSON.parse(localStorage.getItem('pmgoEscalas') || '[]');
+  const lancadas = salvasDepois.filter((e) => ['2026-11-15T18:00', '2026-11-17T06:00', '2026-11-19T18:00'].includes(e.inicio));
+  ok('escalas lançadas com dados da base', lancadas.length === 3 && lancadas.every((e) => e.status === 'planejada' && e.qtdPm === base.qtdPm),
+     salvasDepois.map((e) => e.inicio).join(','));
+
+  // desfazer depois de editar uma das lançadas (Review Focus 4)
+  let botaoDesfazer = null;
+  for (let i = 0; i < 150 && !botaoDesfazer; i++) {
+    botaoDesfazer = [...document.querySelectorAll('#toastRegion .toast-action')].find((b) => b.textContent.trim() === 'Desfazer' &&
+      b.closest('.toast')?.textContent.includes('3 escalas lançadas.'));
+    if (!botaoDesfazer) await espera(100);
+  }
+  ok('toast "3 escalas lançadas." com Desfazer', !!botaoDesfazer);
+  botaoDesfazer?.click();
+  await espera(200);
+  const restantes = JSON.parse(localStorage.getItem('pmgoEscalas') || '[]');
+  ok('Desfazer remove só as 3 do lote', cards() === 2 && restantes.length === 2 &&
+     restantes.some((e) => e.id === base.id) && restantes.some((e) => e.id === outra.id), restantes.map((e) => e.inicio).join(','));
+
+  // revalidação: escala nova ocupa o dia 19 com a janela aberta
+  document.querySelector('.ec-more-menu [data-acao="lote"][data-id="' + base.id + '"]').click();
+  await espera(200);
+  for (const n of [15, 19]) { dia(n)?.click(); await espera(30); }
+  $('loteRevisar')?.click(); await espera(80);
+  $('escalaInicio').value = '2026-11-19T20:00'; $('escalaInicio').dispatchEvent(new Event('change', { bubbles: true }));
+  $('escalaFim').value = '2026-11-19T22:00'; $('escalaFim').dispatchEvent(new Event('change', { bubbles: true }));
+  $('formEscala').requestSubmit(); await espera(400);
+  const antesReval = cards();
+  $('loteLancar')?.click(); await espera(100);
+  ok('revalidação tira o dia que ficou ocupado e pede novo toque', cards() === antesReval && dlg.open &&
+     itens().map((li) => li.dataset.data).join(',') === '2026-11-15' && $('loteAviso')?.textContent.trim() !== '',
+     cards() + ' / ' + itens().map((li) => li.dataset.data).join(',') + ' / ' + $('loteAviso')?.textContent);
+  $('loteLancar')?.click(); await espera(200);
+  ok('novo toque lança o restante', cards() === antesReval + 1 && !dlg.open, cards());
+
+  // atalho no aviso de escala adicionada (Task 4)
+  localStorage.removeItem('pmgoEscalas');
+  // espera a fila de avisos anteriores esvaziar (toasts são enfileirados, ~3,8 s cada)
+  for (let i = 0; i < 300 && document.querySelector('#toastRegion .toast'); i++) await espera(100);
+  await lancar('2026-11-24T19:00', { duracao: '12' });
+  let atalho = null;
+  for (let i = 0; i < 150 && !atalho; i++) {
+    atalho = [...document.querySelectorAll('#toastRegion .toast-action')].find((b) => b.textContent.trim() === 'Lançar em outros dias' &&
+      b.closest('.toast')?.textContent.includes('Escala adicionada.'));
+    if (!atalho) await espera(100);
+  }
+  ok('aviso "Escala adicionada." tem "Lançar em outros dias"', !!atalho);
+  atalho?.click();
+  await espera(200);
+  ok('atalho abre a agenda com a escala recém-salva como base', dlg.open && $('loteMes')?.textContent.trim() === 'novembro de 2026' &&
+     dia(24)?.classList.contains('is-base'), $('loteMes')?.textContent);
+  $('loteFechar')?.click();
+  await espera(100);
+  const recente = JSON.parse(localStorage.getItem('pmgoEscalas') || '[]').find((e) => e.inicio === '2026-11-24T19:00');
+  document.querySelector('[data-acao="editar"][data-id="' + recente?.id + '"]')?.click();
+  await espera(200);
+  $('btnSubmit').click();
+  let atualizada = null;
+  for (let i = 0; i < 150 && !atualizada; i++) {
+    atualizada = [...document.querySelectorAll('#toastRegion .toast')].find((t) => t.textContent.includes('Escala atualizada.'));
+    if (!atualizada) await espera(100);
+  }
+  ok('editar não oferece o atalho', !!atualizada && !atualizada.querySelector('.toast-action'), atualizada?.textContent);
+
+  localStorage.removeItem('pmgoEscalas');
+  return JSON.stringify(passos);
+})()`;
+
 const servidor = await iniciarServidor();
 const porta = servidor.address().port;
 const perfil = await mkdtemp(join(tmpdir(), 'ac4-mob-'));
@@ -587,6 +784,7 @@ try {
   await rodarViewport(cdp, sessionId, porta, 360, 640, roteiroHistorico(['8,8 mil', '12,5 mil']), 'Histórico 360 px');
   await rodarViewport(cdp, sessionId, porta, 375, 667, roteiroHistorico(['12,5 mil', '125,3 mil']), 'Histórico 375 px');
   await rodarViewport(cdp, sessionId, porta, 393, 852, roteiroHistorico(['12,5 mil', '125,3 mil']), 'Histórico 393 px');
+  await rodarViewport(cdp, sessionId, porta, 390, 844, ROTEIRO_LOTE, 'Lançar em outros dias — calendário (390 px)');
 
   /* iPhone: força o User-Agent de iOS para validar o fluxo de instalação do Safari. */
   await cdp.enviar('Emulation.setUserAgentOverride', {

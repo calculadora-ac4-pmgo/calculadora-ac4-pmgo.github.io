@@ -39,7 +39,15 @@
     ".ec-qtd",
     ".ec-per-pm",
     ".site-footer-copy",
-    ".site-footer-meta"
+    ".site-footer-meta",
+    ".lote-mes",
+    ".lote-dia",
+    ".lote-contador",
+    ".lote-aviso",
+    ".lote-item-texto",
+    ".lote-problema",
+    ".lote-editar-titulo",
+    ".lote-dur"
   ],
   "naoAvaliaveisAceitos": []
 }

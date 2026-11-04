@@ -313,3 +313,57 @@
 }
 .fb-copy:hover { color: var(--text); }
 
+
+/* ===== LANÇAR EM OUTROS DIAS (v79) ===== */
+.lote-dialog { max-width: min(96vw, 440px); margin: auto; } /* `* { margin: 0 }` anula o centro padrão do <dialog> */
+.lote-body { padding: 18px 16px; }
+.lote-topo { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.lote-fechar { width: 44px; height: 44px; flex: 0 0 44px; }
+.lote-mes-nav { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.lote-mes-nav .btn-icon { width: 44px; height: 44px; }
+.lote-mes-nav .btn-icon:disabled { opacity: 0.35; cursor: default; }
+.lote-mes { display: inline-block; font-size: var(--fs-leitura); font-weight: 750; }
+.lote-mes::first-letter { text-transform: uppercase; }
+.lote-semana,
+.lote-grade { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.lote-semana { margin-bottom: 4px; }
+.lote-semana span { text-align: center; color: var(--text-muted); font-size: var(--fs-rotulo); font-weight: 700; }
+.lote-dia {
+  min-height: 44px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-leitura);
+  font-weight: 700;
+  cursor: pointer;
+}
+.lote-dia.is-hoje { border-color: var(--gold-500); }
+.lote-dia[aria-pressed="true"] { background: var(--gold-500); border-color: color-mix(in srgb, var(--gold-500) 70%, #7a5a14); color: #0b1f3a; }
+.lote-dia[aria-disabled="true"] { background: transparent; color: var(--text-faint); text-decoration: line-through; cursor: not-allowed; }
+.lote-dia.is-base { text-decoration: none; border-style: dashed; color: var(--text-muted); }
+.lote-dia:focus-visible { outline: 2px solid var(--gold-500); outline-offset: 2px; }
+.lote-rodape { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; }
+.lote-contador { color: var(--text-muted); font-size: var(--fs-leitura); font-weight: 650; }
+.lote-aviso:empty { display: none; }
+.lote-aviso { margin: 0 0 10px; padding: 8px 10px; border-radius: var(--radius-sm); background: var(--warn-soft); color: var(--warn-text); font-size: var(--fs-leitura); font-weight: 650; }
+.lote-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; max-height: 40vh; overflow-y: auto; }
+.lote-item {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+  width: 100%; min-height: 44px; padding: 8px 12px;
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--surface-2); color: var(--text); font: inherit; text-align: left; cursor: pointer;
+}
+.lote-lista li.is-editando .lote-item { border-color: var(--gold-500); }
+.lote-item-texto { font-size: var(--fs-leitura); font-weight: 700; font-variant-numeric: tabular-nums; }
+.lote-problema { color: var(--danger); font-size: var(--fs-leitura); font-weight: 650; }
+.lote-editar { margin-top: 12px; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-2); }
+.lote-editar-titulo { margin: 0 0 8px; font-size: var(--fs-leitura); font-weight: 750; }
+.lote-editar-campos { display: grid; gap: 6px; margin-bottom: 10px; }
+.lote-durs { display: flex; gap: 6px; }
+.lote-dur {
+  flex: 1; min-height: 44px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--surface); color: var(--text); font: inherit; font-size: var(--fs-leitura); font-weight: 700; cursor: pointer;
+}
+.lote-revisao .lote-rodape { flex-wrap: wrap; }

@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Calculadora AC4 — v78
+   Calculadora AC4 — v79
    Módulo principal: estado, ligação dos módulos de interface (js/modules/ui/),
    render() e init(). Regras de negócio, formatação e agenda vivem em js/modules/.
    ========================================================================== */
@@ -32,6 +32,7 @@ import { criarCompartilhar } from './modules/ui/compartilhar.mjs';
 import { criarPlanejamento } from './modules/ui/planejamento.mjs';
 import { criarFormulario } from './modules/ui/formulario.mjs';
 import { criarModelos } from './modules/ui/modelos.mjs';
+import { criarAgendaDias } from './modules/ui/agenda-dias.mjs';
 
 (() => {
   'use strict';
@@ -42,7 +43,7 @@ import { criarModelos } from './modules/ui/modelos.mjs';
   /* Versão da aplicação (sincronizada pelo tools/bump-version.mjs). Serve para
      carimbar o log de erros e detectar clientes presos em cache antigo:
      se __ac4Version no console divergir do rodapé/CHANGELOG, o SW não atualizou. */
-  const APP_VERSION = '78';
+  const APP_VERSION = '79';
 
   const STORAGE = {
     escalas:   'pmgoEscalas',
@@ -141,6 +142,7 @@ import { criarModelos } from './modules/ui/modelos.mjs';
     /* definidos mais abaixo: chamadas só no momento do uso */
     render: () => render(), calcularEscala: (e) => calcularEscala(e),
     mostrarInstalacaoAposConversao: () => pwa.mostrarInstalacaoAposConversao(),
+    abrirLote: (id) => agendaDias.abrir(id),
   });
   const {
     isMobileViewport, setDetalhesAvancados, abrirPainelLancamentoMobile, cancelarEdicao,
@@ -153,6 +155,9 @@ import { criarModelos } from './modules/ui/modelos.mjs';
     lerQtdPm: formulario.lerQtdPm,
   });
   const { renderModelos } = modelosFavoritos;
+  const agendaDias = criarAgendaDias({
+    $, on, estado, toast, salvar, haptic, clonarEscalas, aposProximoPaint, render: () => render(),
+  });
 
   /* -------------------------------------------- tabela de valores */
   /* Pontes para os módulos — injetam a tabela vigente lida do DOM,
@@ -330,6 +335,7 @@ import { criarModelos } from './modules/ui/modelos.mjs';
 
     formulario.ligarEventos();
     modelosFavoritos.ligarEventos();
+    agendaDias.ligarEventos();
     planejamento.ligarEventos();
 
     on('btnTheme', 'click', () =>
