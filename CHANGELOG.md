@@ -1,5 +1,14 @@
 # Changelog
 
+## v80 — Janelas centralizadas e ajustes do lote
+
+Correções, sem novidade no aviso (`data-conteudo` continua "79").
+- **Janelas centralizadas:** as janelas (`.confirm-dialog`: privacidade, feedback, confirmação, modelo, meta mensal, agenda e lote) ficavam coladas no canto superior esquerdo, no computador e no celular. O `* { margin: 0 }` anulava o centro padrão do `<dialog>`; `.confirm-dialog` ganha `margin: auto`. No celular, a de novidades continua como folha inferior. Teste novo em `tests/mobile-check.mjs` (390 e 1280 px).
+- **Desfazer do lote** cancela a edição em andamento de uma das escalas removidas (antes, salvar depois mostrava "Escala atualizada." sem gravar nada). O teste da v79 que dizia cobrir "Desfazer depois de editar" agora edita de fato.
+- **Troca de horário de um dia:** apagar o campo Início não deixa mais o campo vazio com a lista mostrando outro horário.
+- **Outra aba:** se as escalas mudarem em outra aba com a janela do lote aberta, a janela fecha (a escala de origem pode ter sumido).
+- **"Escala adicionada." / "Escala atualizada."** só aparecem depois de gravar; se a gravação falhar, só aparece o aviso de erro.
+
 ## v79 — Lançar em outros dias
 
 Novidade pedida pelo usuário: lançar várias escalas iguais com poucos toques no celular.

@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Calculadora AC4 — v79
+   Calculadora AC4 — v80
    Módulo principal: estado, ligação dos módulos de interface (js/modules/ui/),
    render() e init(). Regras de negócio, formatação e agenda vivem em js/modules/.
    ========================================================================== */
@@ -43,7 +43,7 @@ import { criarAgendaDias } from './modules/ui/agenda-dias.mjs';
   /* Versão da aplicação (sincronizada pelo tools/bump-version.mjs). Serve para
      carimbar o log de erros e detectar clientes presos em cache antigo:
      se __ac4Version no console divergir do rodapé/CHANGELOG, o SW não atualizou. */
-  const APP_VERSION = '79';
+  const APP_VERSION = '80';
 
   const STORAGE = {
     escalas:   'pmgoEscalas',
@@ -156,7 +156,7 @@ import { criarAgendaDias } from './modules/ui/agenda-dias.mjs';
   });
   const { renderModelos } = modelosFavoritos;
   const agendaDias = criarAgendaDias({
-    $, on, estado, toast, salvar, haptic, clonarEscalas, aposProximoPaint, render: () => render(),
+    $, on, estado, toast, salvar, haptic, clonarEscalas, aposProximoPaint, cancelarEdicao, render: () => render(),
   });
 
   /* -------------------------------------------- tabela de valores */
@@ -370,6 +370,7 @@ import { criarAgendaDias } from './modules/ui/agenda-dias.mjs';
       if (ev.key !== STORAGE.escalas) return;
       escalas = desserializarEscalas(ev.newValue).escalas;
       cancelarEdicao();
+      agendaDias.fechar(); /* a escala de origem pode ter sumido (v80) */
       render();
       toast('Dados atualizados por outra aba.');
     });

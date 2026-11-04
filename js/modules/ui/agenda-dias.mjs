@@ -20,11 +20,11 @@ const indiceMes = (a, m) => a * 12 + m;
 /**
  * Cria a janela "Lançar em outros dias".
  * @param {Object} ctx Dependências de app.js: $, on, estado, toast, salvar, render, haptic,
- *   clonarEscalas, aposProximoPaint.
- * @returns {{abrir:Function, ligarEventos:Function}}
+ *   clonarEscalas, aposProximoPaint, cancelarEdicao.
+ * @returns {{abrir:Function, fechar:Function, ligarEventos:Function}}
  */
 export function criarAgendaDias(ctx) {
-  const { $, on, estado, toast, salvar, render, haptic, clonarEscalas } = ctx;
+  const { $, on, estado, toast, salvar, render, haptic, clonarEscalas, cancelarEdicao } = ctx;
 
   let base = null;
   let mesBase = 0;      // índice ano*12+mês do mês da base
@@ -172,7 +172,10 @@ export function criarAgendaDias(ctx) {
   function trocarHorario({ hora, duracaoMin }) {
     if (!editando) return;
     const atual = marcados.get(editando) || { hora: base.inicio.slice(11, 16), duracaoMin: duracaoMinutos(base) };
-    marcados.set(editando, { hora: hora ?? atual.hora, duracaoMin: duracaoMin ?? atual.duracaoMin });
+    /* Campo Início apagado = sem mudança; repõe o valor no campo (v80, M2). */
+    const novaHora = hora || atual.hora;
+    marcados.set(editando, { hora: novaHora, duracaoMin: duracaoMin ?? atual.duracaoMin });
+    $('loteHora').value = novaHora;
     $('loteFim').value = intervaloEditado().fim;
     setAviso();
     renderRevisao();
@@ -218,7 +221,9 @@ export function criarAgendaDias(ctx) {
         if (restantes.length === estado.escalas.length) return;
         const antesDesfazer = clonarEscalas();
         estado.escalas = restantes;
-        if (!salvar()) { estado.escalas = antesDesfazer; }
+        if (!salvar()) { estado.escalas = antesDesfazer; render(); return; }
+        /* Escala removida não pode continuar em edição (v80, M1). */
+        if (estado.editandoId !== null && ids.has(estado.editandoId)) cancelarEdicao();
         render();
       } },
     });
@@ -269,5 +274,5 @@ export function criarAgendaDias(ctx) {
     on('loteLancar', 'click', lancar);
   }
 
-  return { abrir, ligarEventos };
+  return { abrir, fechar, ligarEventos };
 }

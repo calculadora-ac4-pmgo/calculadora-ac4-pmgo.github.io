@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Calculadora AC4 — v79
+   Calculadora AC4 — v80
    Arquivo gerado por tools/montar-css.mjs — edite css/src/ e rode o script.
    ========================================================================== */
 
@@ -1212,6 +1212,7 @@ textarea.control { min-height: 74px; resize: vertical; }
   box-shadow: var(--shadow-lg);
   max-width: min(90vw, 380px);
   width: 100%;
+  margin: auto; /* `* { margin: 0 }` anula o centro padrão do <dialog> (v80) */
   color: var(--text);
 }
 .confirm-dialog::backdrop {
@@ -1520,7 +1521,7 @@ textarea.control { min-height: 74px; resize: vertical; }
 
 
 /* ===== LANÇAR EM OUTROS DIAS (v79) ===== */
-.lote-dialog { max-width: min(96vw, 440px); margin: auto; } /* `* { margin: 0 }` anula o centro padrão do <dialog> */
+.lote-dialog { max-width: min(96vw, 440px); }
 .lote-body { padding: 18px 16px; }
 .lote-topo { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .lote-fechar { width: 44px; height: 44px; flex: 0 0 44px; }

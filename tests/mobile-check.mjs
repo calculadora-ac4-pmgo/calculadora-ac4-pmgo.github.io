@@ -659,6 +659,12 @@ const ROTEIRO_LOTE = `(async () => {
      textoItem(17) + ' / ' + problemaItem(17));
   document.querySelector('#loteEditar .lote-dur[data-horas="14"]')?.click(); await espera(50);
   ok('voltar a 14 h libera', problemaItem(17) === '' && problemaItem(19) === '' && !!$('loteLancar') && !$('loteLancar').disabled, textoItem(17));
+  // v80 (M2): apagar o campo Início não deixa campo e lista dessincronizados
+  const textoAntes = textoItem(17);
+  if ($('loteHora')) { $('loteHora').value = ''; $('loteHora').dispatchEvent(new Event('change', { bubbles: true })); }
+  await espera(50);
+  ok('Início apagado volta ao horário do dia', $('loteHora')?.value === textoAntes?.slice(12, 17) && textoItem(17) === textoAntes,
+     JSON.stringify($('loteHora')?.value) + ' / ' + textoItem(17) + ' / antes ' + textoAntes);
   ok('botão "Lançar 3 escalas"', $('loteLancar')?.textContent.trim() === 'Lançar 3 escalas', $('loteLancar')?.textContent);
   const pequenosRev = menoresQue12();
   ok('nenhum texto abaixo de 12 px na revisão', pequenosRev.length === 0, pequenosRev.join(' | '));
@@ -691,11 +697,22 @@ const ROTEIRO_LOTE = `(async () => {
     if (!botaoDesfazer) await espera(100);
   }
   ok('toast "3 escalas lançadas." com Desfazer', !!botaoDesfazer);
+  // edita e salva uma das lançadas (mantém o id) e deixa outra em edição antes do Desfazer (v80, M1)
+  document.querySelector('[data-acao="editar"][data-id="' + lancadas[0]?.id + '"]')?.click();
+  await espera(150);
+  $('escalaDescricao').value = 'Editada';
+  $('btnSubmit').click();
+  await espera(300);
+  ok('escala lançada editada e salva', JSON.parse(localStorage.getItem('pmgoEscalas') || '[]').some((e) => e.id === lancadas[0]?.id && e.descricao === 'Editada'));
+  document.querySelector('[data-acao="editar"][data-id="' + lancadas[1]?.id + '"]')?.click();
+  await espera(150);
+  ok('outra lançada em edição antes do Desfazer', !$('btnCancelEdit').classList.contains('hidden'));
   botaoDesfazer?.click();
   await espera(200);
   const restantes = JSON.parse(localStorage.getItem('pmgoEscalas') || '[]');
-  ok('Desfazer remove só as 3 do lote', cards() === 2 && restantes.length === 2 &&
+  ok('Desfazer remove só as 3 do lote (inclusive a editada)', cards() === 2 && restantes.length === 2 &&
      restantes.some((e) => e.id === base.id) && restantes.some((e) => e.id === outra.id), restantes.map((e) => e.inicio).join(','));
+  ok('Desfazer cancela a edição de uma escala removida', $('btnCancelEdit').classList.contains('hidden'));
 
   // revalidação: escala nova ocupa o dia 19 com a janela aberta
   document.querySelector('.ec-more-menu [data-acao="lote"][data-id="' + base.id + '"]').click();
@@ -742,7 +759,55 @@ const ROTEIRO_LOTE = `(async () => {
   }
   ok('editar não oferece o atalho', !!atualizada && !atualizada.querySelector('.toast-action'), atualizada?.textContent);
 
+  // v80 (M3): escalas trocadas em outra aba com a janela aberta → a janela fecha (a base pode ter sumido)
+  document.querySelector('.ec-more-menu [data-acao="lote"][data-id="' + recente?.id + '"]')?.click();
+  await espera(200);
+  const abertaAntes = dlg.open;
+  window.dispatchEvent(new StorageEvent('storage', { key: 'pmgoEscalas', newValue: '[]' }));
+  await espera(100);
+  ok('mudança vinda de outra aba fecha a janela do lote', abertaAntes && !dlg.open, abertaAntes + ' → ' + dlg.open);
+
+  // v80 (M4): "Escala adicionada." só depois de gravar de verdade
+  for (let i = 0; i < 300 && document.querySelector('#toastRegion .toast'); i++) await espera(100);
+  const setOrig = Storage.prototype.setItem;
+  Storage.prototype.setItem = function () { throw new Error('cheio'); };
+  await lancar('2026-11-26T19:00', { duracao: '12' });
+  Storage.prototype.setItem = setOrig;
+  const vistos = [];
+  for (let i = 0; i < 90; i++) {
+    const t = document.querySelector('#toastRegion .toast span')?.textContent;
+    if (t && !vistos.includes(t)) vistos.push(t);
+    await espera(100);
+  }
+  ok('falha ao gravar não anuncia "Escala adicionada."', vistos.length > 0 && !vistos.includes('Escala adicionada.') &&
+     vistos[0].startsWith('Não foi possível salvar'), vistos.join(' | '));
+
   localStorage.removeItem('pmgoEscalas');
+  return JSON.stringify(passos);
+})()`;
+
+/* v80: janelas (.confirm-dialog) centralizadas — `* { margin: 0 }` anulava o centro padrão do <dialog>.
+   No celular a de novidades é folha inferior (ancorada no rodapé). */
+const roteiroJanelas = (mobile) => `(async () => {
+  const passos = [];
+  const ok = (nome, cond, detalhe = '') => passos.push({ nome, ok: !!cond, detalhe: String(detalhe) });
+  const espera = (ms) => new Promise((r) => setTimeout(r, ms));
+  for (let i = 0; i < 50 && !document.getElementById('formEscala'); i++) await espera(100);
+  document.querySelectorAll('dialog[open]').forEach((d) => d.close());
+  for (const d of document.querySelectorAll('dialog.confirm-dialog')) {
+    d.showModal();
+    await espera(320);
+    const r = d.getBoundingClientRect();
+    const folha = ${mobile} && d.id === 'dialogNovidades';
+    if (folha) {
+      ok(d.id + ': folha ancorada no rodapé', Math.abs(r.bottom - innerHeight) <= 2 && r.left <= 1, Math.round(r.left) + ',' + Math.round(r.bottom) + '/' + innerHeight);
+    } else {
+      const h = Math.abs(r.left - (innerWidth - r.right));
+      const v = r.height < innerHeight - 4 ? Math.abs(r.top - (innerHeight - r.bottom)) : 0;
+      ok(d.id + ': centralizada', h <= 2 && v <= 2, 'h=' + Math.round(h) + ' v=' + Math.round(v) + ' (' + Math.round(r.left) + ',' + Math.round(r.top) + ' ' + Math.round(r.width) + 'x' + Math.round(r.height) + ')');
+    }
+    d.close();
+  }
   return JSON.stringify(passos);
 })()`;
 
@@ -784,6 +849,8 @@ try {
   await rodarViewport(cdp, sessionId, porta, 360, 640, roteiroHistorico(['8,8 mil', '12,5 mil']), 'Histórico 360 px');
   await rodarViewport(cdp, sessionId, porta, 375, 667, roteiroHistorico(['12,5 mil', '125,3 mil']), 'Histórico 375 px');
   await rodarViewport(cdp, sessionId, porta, 393, 852, roteiroHistorico(['12,5 mil', '125,3 mil']), 'Histórico 393 px');
+  await rodarViewport(cdp, sessionId, porta, 390, 844, roteiroJanelas(true), 'Janelas centralizadas (390 px)');
+  await rodarViewport(cdp, sessionId, porta, 1280, 900, roteiroJanelas(false), 'Janelas centralizadas (1280 px)');
   await rodarViewport(cdp, sessionId, porta, 390, 844, ROTEIRO_LOTE, 'Lançar em outros dias — calendário (390 px)');
 
   /* iPhone: força o User-Agent de iOS para validar o fluxo de instalação do Safari. */
