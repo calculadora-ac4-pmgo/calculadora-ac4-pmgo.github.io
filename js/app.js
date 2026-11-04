@@ -1,7 +1,7 @@
 /* ==========================================================================
    Calculadora AC4 — v74
-   Módulo principal: estado, UI, persistência e exportações.
-   Regras de negócio, formatação e agenda vivem em js/modules/.
+   Módulo principal: estado, ligação dos módulos de interface (js/modules/ui/),
+   render() e init(). Regras de negócio, formatação e agenda vivem em js/modules/.
    ========================================================================== */
 import {
   fmtMoeda, fmtHoras, fmtData, fmtDiaSemana, fmtHora,

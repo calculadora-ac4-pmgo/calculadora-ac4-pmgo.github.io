@@ -360,10 +360,20 @@ const resultadoModulosUI = await (async () => {
   }
   try {
     const { criarObservabilidade } = await import(pathToFileURL(join(raiz, 'js', 'modules', 'ui', 'observabilidade.mjs')).href);
+    /* Guarda e restaura os globais que o teste altera (não vazam para outras suítes). */
+    const originais = { addEventListener: globalThis.addEventListener, erros: globalThis.__ac4Erros,
+      limpar: globalThis.__ac4LimparErros, versao: globalThis.__ac4Version };
     delete globalThis.__ac4Erros;
     globalThis.addEventListener ??= () => {};
-    criarObservabilidade({ STORAGE: { erros: 'eqErros', versao: 'eqVersao' }, APP_VERSION: '0', estado: {} }).initObservabilidade();
-    if (typeof globalThis.__ac4Erros !== 'function') falhas.push('initObservabilidade não expõe __ac4Erros');
+    try {
+      criarObservabilidade({ STORAGE: { erros: 'eqErros', versao: 'eqVersao' }, APP_VERSION: '0', estado: {} }).initObservabilidade();
+      if (typeof globalThis.__ac4Erros !== 'function') falhas.push('initObservabilidade não expõe __ac4Erros');
+    } finally {
+      globalThis.addEventListener = originais.addEventListener;
+      globalThis.__ac4Erros = originais.erros;
+      globalThis.__ac4LimparErros = originais.limpar;
+      globalThis.__ac4Version = originais.versao;
+    }
   } catch (e) { falhas.push(`observabilidade: ${e.message}`); }
   if (!/function init\(\) \{\s*initObservabilidade\(\);/.test(app)) falhas.push('initObservabilidade deixou de ser a primeira chamada do init()');
   /* v75: estado só via `estado.` — nenhuma atribuição nua nos módulos de UI. */
@@ -411,6 +421,7 @@ const resultadoRestaurar = await (async () => {
     const dados2 = criarDados({ estado: { escalas: [1, 2, 3], sheetAberto: false }, STORAGE, APP_VERSION: '0', lerLocal: () => null,
       toast: (m) => avisos.push(m), dialogConfirmar: async () => true, registrarErro: () => {}, render: () => {},
       renderModelos: () => {}, cancelarEdicao: () => {}, clonarEscalas: () => [] });
+    const querySelectorOriginal = globalThis.document.querySelector;
     globalThis.document.querySelector = () => null;
     dados2.lembrarBackup(Date.parse('2026-08-10T12:00:00Z'));
     if (avisos[0] !== 'Suas escalas ficam só neste aparelho. Salve uma cópia de segurança.') falhas.push(`lembrete sem backup alterado: ${avisos[0]}`);
@@ -420,6 +431,7 @@ const resultadoRestaurar = await (async () => {
       renderModelos: () => {}, cancelarEdicao: () => {}, clonarEscalas: () => [] });
     dados3.lembrarBackup(Date.parse('2026-08-10T12:00:00Z'));
     if (avisos[1] !== 'Último backup há 70 dias. Salve uma cópia das suas escalas.') falhas.push(`lembrete com backup antigo alterado: ${avisos[1]}`);
+    globalThis.document.querySelector = querySelectorOriginal;
     return falhas.length ? falhas : 'RESTAURAR GRAVA NO ESTADO OK';
   } catch (e) { return [`dados: ${e.message}`]; }
 })();
