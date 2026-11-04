@@ -718,7 +718,7 @@ textarea.control { min-height: 74px; resize: vertical; }
 }
 .tariff-strip-label {
   color: var(--text-muted);
-  font-size: 0.7rem;
+  font-size: var(--fs-rotulo);
   font-weight: 750;
   letter-spacing: 0.03em;
   white-space: nowrap;
@@ -737,7 +737,7 @@ textarea.control { min-height: 74px; resize: vertical; }
   align-items: center;
   gap: 6px;
   color: var(--text);
-  font-size: 0.74rem;
+  font-size: var(--fs-rotulo);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -758,15 +758,15 @@ textarea.control { min-height: 74px; resize: vertical; }
   box-shadow: var(--shadow-md);
 }
 .planning-header { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
-.planning-eyebrow { color: var(--warn-text); font-size: 0.7rem; font-weight: 850; letter-spacing: 0.07em; text-transform: uppercase; }
+.planning-eyebrow { color: var(--warn-text); font-size: var(--fs-rotulo); font-weight: 850; letter-spacing: 0.07em; text-transform: uppercase; }
 .planning-header h2 { margin-top: 3px; color: var(--text); font-size: 1.05rem; font-weight: 850; }
 .planning-goal-btn { flex-shrink: 0; min-width: 104px; }
 .planning-main { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 18px; margin-top: 20px; }
 .planning-total { min-width: 0; }
 .planning-total span { display: block; color: var(--text-muted); font-size: 0.75rem; font-weight: 750; }
 .planning-total strong { display: block; margin-top: 3px; color: var(--green-600); font-size: clamp(1.65rem, 4vw, 2.25rem); font-weight: 900; line-height: 1.05; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-.planning-total small { display: block; margin-top: 6px; color: var(--text-muted); font-size: 0.8rem; font-weight: 700; }
-.planning-comparison { padding: 8px 10px; border-radius: 999px; background: var(--surface-2); color: var(--text-muted); font-size: 0.74rem; font-weight: 750; white-space: nowrap; }
+.planning-total small { display: block; margin-top: 6px; color: var(--text-muted); font-size: var(--fs-leitura); font-weight: 700; }
+.planning-comparison { padding: 8px 10px; border-radius: 999px; background: var(--surface-2); color: var(--text-muted); font-size: var(--fs-leitura); font-weight: 750; white-space: nowrap; }
 .planning-comparison.is-up { background: color-mix(in srgb, var(--green-600) 13%, var(--surface)); color: var(--green-700); }
 .planning-comparison.is-down { background: var(--info-soft); color: var(--info-text); }
 .planning-toggle { display: none; }
@@ -779,18 +779,18 @@ textarea.control { min-height: 74px; resize: vertical; }
 .planning-hours-bar { display: flex; height: 8px; overflow: hidden; border-radius: 999px; background: var(--surface-3); }
 .planning-day { background: #f4b942; }
 .planning-night { background: #2536a8; }
-.planning-hours-labels { display: flex; justify-content: space-between; gap: 10px; margin-top: 7px; color: var(--text-muted); font-size: 0.7rem; font-weight: 750; }
+.planning-hours-labels { display: flex; justify-content: space-between; gap: 10px; margin-top: 7px; color: var(--text-muted); font-size: var(--fs-rotulo); font-weight: 750; }
 /* Histórico de 6 meses: altura fixa (sem CLS ao popular), barras via CSSOM. */
 .planning-history { margin: 18px 0 0; }
 .planning-history-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--text-muted); font-size: 0.76rem; font-weight: 750; }
 .planning-history-head strong { color: var(--text); font-variant-numeric: tabular-nums; }
 .planning-history-bars { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; height: 132px; margin: 10px 0 0; padding: 0; list-style: none; }
 .planning-history-col { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 4px; min-width: 0; text-align: center; }
-.planning-history-value { overflow: hidden; color: var(--text-muted); font-size: 0.64rem; font-weight: 750; font-variant-numeric: tabular-nums; text-overflow: ellipsis; white-space: nowrap; }
+.planning-history-value { overflow: hidden; color: var(--text-muted); font-size: var(--fs-rotulo); font-weight: 750; font-variant-numeric: tabular-nums; text-overflow: ellipsis; white-space: nowrap; }
 .planning-history-track { display: flex; align-items: flex-end; justify-self: center; width: min(100%, 64px); border-radius: 6px; background: var(--surface-3); }
 .planning-history-bar { display: block; width: 100%; height: 0; min-height: 2px; border-radius: 6px; background: color-mix(in srgb, var(--blue-600) 55%, var(--surface-3)); }
 .planning-history-col.is-empty .planning-history-bar { min-height: 0; }
-.planning-history-month { color: var(--text-muted); font-size: 0.68rem; font-weight: 750; text-transform: capitalize; }
+.planning-history-month { color: var(--text-muted); font-size: var(--fs-rotulo); font-weight: 750; text-transform: capitalize; }
 .planning-history-col.is-current .planning-history-bar { background: var(--green-600); }
 .planning-history-col.is-current .planning-history-value,
 .planning-history-col.is-current .planning-history-month { color: var(--text); }
@@ -807,7 +807,7 @@ textarea.control { min-height: 74px; resize: vertical; }
   cursor: pointer;
 }
 .planning-status strong { display: block; font-size: 1.05rem; font-weight: 900; font-variant-numeric: tabular-nums; }
-.planning-status span { display: block; margin-top: 2px; color: var(--text-muted); font-size: 0.68rem; font-weight: 750; overflow: hidden; text-overflow: ellipsis; }
+.planning-status span { display: block; margin-top: 2px; color: var(--text-muted); font-size: var(--fs-rotulo); font-weight: 750; overflow: hidden; text-overflow: ellipsis; }
 .planning-status--planejada { border-left: 4px solid var(--gold-500); }
 .planning-status--realizada { border-left: 4px solid var(--blue-600); }
 .planning-status--conferida { border-left: 4px solid var(--green-600); }
@@ -821,7 +821,7 @@ textarea.control { min-height: 74px; resize: vertical; }
   border-radius: var(--radius-sm);
   background: var(--warn-soft);
   color: var(--warn-text);
-  font-size: 0.76rem;
+  font-size: var(--fs-leitura);
   font-weight: 800;
   text-align: left;
   cursor: pointer;
@@ -837,7 +837,7 @@ textarea.control { min-height: 74px; resize: vertical; }
   border-radius: 999px;
   background: var(--surface-2);
   color: var(--text);
-  font-size: 0.72rem;
+  font-size: var(--fs-rotulo);
   font-weight: 850;
   cursor: pointer;
 }
@@ -894,7 +894,7 @@ textarea.control { min-height: 74px; resize: vertical; }
 .tariff-period {
   display: block;
   color: var(--text-faint);
-  font-size: 0.72rem;
+  font-size: var(--fs-rotulo);
   font-weight: 600;
   margin-top: 2px;
 }
@@ -907,7 +907,7 @@ textarea.control { min-height: 74px; resize: vertical; }
   flex-shrink: 0;
 }
 .tariff-value small {
-  font-size: 0.72rem;
+  font-size: var(--fs-rotulo);
   font-weight: 600;
   color: var(--text-muted);
 }
@@ -919,7 +919,7 @@ textarea.control { min-height: 74px; resize: vertical; }
   border-radius: var(--radius-sm);
   background: var(--warn-soft);
   color: var(--warn-text);
-  font-size: 0.78rem;
+  font-size: var(--fs-leitura);
   font-weight: 600;
   line-height: 1.5;
 }
@@ -971,7 +971,7 @@ textarea.control { min-height: 74px; resize: vertical; }
 }
 .metric-label {
   color: var(--text-muted);
-  font-size: 0.7rem;
+  font-size: var(--fs-rotulo);
   font-weight: 750;
   letter-spacing: 0.07em;
   text-transform: uppercase;
@@ -1000,7 +1000,7 @@ textarea.control { min-height: 74px; resize: vertical; }
   text-overflow: ellipsis;
 }
 .metric-card.highlight .metric-value { color: #fff; }
-.metric-sub { margin-top: 6px; color: var(--text-muted); font-size: 0.74rem; font-weight: 600; }
+.metric-sub { margin-top: 6px; color: var(--text-muted); font-size: var(--fs-leitura); font-weight: 600; }
 
 /* ===== FEED ===== */
 .feed { margin-top: 20px; }
@@ -1044,7 +1044,7 @@ textarea.control { min-height: 74px; resize: vertical; }
   align-items: center;
   gap: 6px 12px;
   padding: 12px 14px;
-  font-size: 0.8125rem;
+  font-size: var(--fs-leitura);
   color: var(--text-muted);
 }
 .escala-table {
@@ -1055,7 +1055,7 @@ textarea.control { min-height: 74px; resize: vertical; }
 .escala-table th {
   background: color-mix(in srgb, var(--glass-soft) 78%, var(--surface-2));
   color: var(--text-muted);
-  font-size: 0.72rem;
+  font-size: var(--fs-rotulo);
   font-weight: 800;
   letter-spacing: 0.06em;
   text-align: left;
@@ -1067,14 +1067,14 @@ textarea.control { min-height: 74px; resize: vertical; }
   padding: 15px 16px;
   border-bottom: 1px solid var(--border);
   color: var(--text);
-  font-size: 0.86rem;
+  font-size: var(--fs-leitura);
   vertical-align: middle;
 }
 .escala-table tbody tr { transition: background-color 0.15s; }
 .escala-table tbody tr:hover { background: color-mix(in srgb, var(--surface-2) 74%, transparent); }
-.table-total-row td { background: var(--surface-2); font-weight: 700; border-top: 2px solid var(--border); font-size: 0.82rem; }
+.table-total-row td { background: var(--surface-2); font-weight: 700; border-top: 2px solid var(--border); font-size: var(--fs-leitura); }
 .escala-table strong { display: block; font-size: 0.9rem; overflow-wrap: anywhere; }
-.table-note { display: block; margin-top: 3px; color: var(--text-faint); font-size: 0.72rem; }
+.table-note { display: block; margin-top: 3px; color: var(--text-faint); font-size: var(--fs-leitura); }
 .value-cell { color: var(--green-600) !important; font-weight: 800; white-space: nowrap; }
 .chips { display: flex; gap: 6px; flex-wrap: wrap; }
 .chip {
@@ -1083,7 +1083,7 @@ textarea.control { min-height: 74px; resize: vertical; }
   min-height: 24px;
   padding: 3px 9px;
   border-radius: 999px;
-  font-size: 0.69rem;
+  font-size: var(--fs-rotulo);
   font-weight: 800;
   white-space: nowrap;
 }
@@ -1109,7 +1109,7 @@ textarea.control { min-height: 74px; resize: vertical; }
 }
 .empty-state .icon { width: 44px; height: 44px; margin: 0 auto 16px; color: var(--text-faint); }
 .empty-state h3 { color: var(--text); font-size: 1rem; font-weight: 800; margin-bottom: 6px; }
-.empty-state p { font-size: 0.85rem; }
+.empty-state p { font-size: var(--fs-leitura); }
 
 .legal-alert {
   margin-top: 16px;
@@ -1118,7 +1118,7 @@ textarea.control { min-height: 74px; resize: vertical; }
   border-radius: var(--radius-lg);
   background: color-mix(in srgb, var(--warn-soft) 78%, var(--glass));
   color: var(--warn-text);
-  font-size: 0.84rem;
+  font-size: var(--fs-leitura);
   font-weight: 700;
   backdrop-filter: blur(18px) saturate(145%);
   -webkit-backdrop-filter: blur(18px) saturate(145%);
@@ -2154,6 +2154,8 @@ textarea.control { min-height: 74px; resize: vertical; }
   .mobile-bar { gap: 8px; padding-inline: 10px; }
   .mobile-bar-actions { gap: 6px; }
   .mobile-bar-total .value { font-size: 0.92rem; letter-spacing: -0.02em; }
+  /* v77: com a letra em 12 px, "8,8 mil" não cabia na coluna do histórico (40 px em 38). */
+  .planning-history-bars { gap: 3px; }
 }
 
 /* ===== SITE FOOTER ===== */

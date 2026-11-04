@@ -103,4 +103,10 @@ Gerado a partir de `css/src/` por `tools/piso-fonte.mjs`. Lista as **86 regras d
 
 ## Ajustes de layout
 
-(Nenhum até agora. Cada ajuste de espaço ou quebra de linha feito para o aumento caber em 320–390 px entra aqui, com o motivo.)
+Cada ajuste de espaço ou quebra de linha feito para o aumento caber em 320–390 px entra aqui, com o motivo.
+
+1. **Histórico de 6 meses em 320 px** (`.planning-history-value`, 10,24 px → 12 px). Com 12 px o pior caso realista
+   ("8,8 mil", 7 caracteres) precisava de 40 px e a coluna tinha 38 px: o valor seria cortado com reticências,
+   sem aviso. Ajuste mínimo: `gap` da grade `.planning-history-bars` de 6 px para 3 px **só em até 360 px**
+   (`90-responsivo.css`). A coluna passa a ter 41 px e o valor cabe. Acima de 360 px nada mudou.
+   Coberto por 3 verificações novas em `tests/mobile-check.mjs` (valores reais, pior caso, sem rolagem horizontal).

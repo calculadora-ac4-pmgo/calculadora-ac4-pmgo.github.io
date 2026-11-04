@@ -441,6 +441,32 @@ const ROTEIRO_320 = `(async () => {
   ok('320px: ações continuam tocáveis',
      acoes.length === 2 && acoes.every((b) => b.getBoundingClientRect().height >= 44),
      acoes.map((b) => Math.round(b.getBoundingClientRect().width) + '×' + Math.round(b.getBoundingClientRect().height)).join(' | '));
+
+  /* v77 (R6): o valor de cada coluna do histórico de 6 meses usa overflow:hidden
+     com reticências — se não couber, é cortado sem aviso. Confere os valores
+     reais e o pior caso realista ("8,8 mil", 7 caracteres) em 320px. */
+  for (const d of ['2026-08-10T07:00', '2026-09-14T07:00']) {
+    ini.value = d;
+    ini.dispatchEvent(new Event('change', { bubbles: true }));
+    dur.value = '24';
+    dur.dispatchEvent(new Event('change', { bubbles: true }));
+    document.getElementById('btnSubmit').click();
+    await espera(400);
+  }
+  document.getElementById('planningToggle')?.click();
+  await espera(300);
+  const historico = document.getElementById('planningHistory');
+  const valores = () => [...document.querySelectorAll('.planning-history-value')];
+  const cabe = (e) => e.scrollWidth <= e.clientWidth + 1;
+  ok('320px: histórico de 6 meses visível (2+ meses com escalas)', historico && !historico.classList.contains('hidden') && valores().length === 6);
+  ok('320px: valores do histórico cabem na coluna', valores().length === 6 && valores().every(cabe),
+     valores().map((e) => e.textContent + ':' + e.scrollWidth + '/' + e.clientWidth).join(' '));
+  valores().forEach((e) => { e.textContent = '8,8 mil'; });
+  await espera(100);
+  ok('320px: pior caso do histórico ("8,8 mil") cabe na coluna', valores().every(cabe),
+     valores().map((e) => e.scrollWidth + '/' + e.clientWidth).join(' '));
+  ok('320px: histórico sem rolagem horizontal', document.documentElement.scrollWidth <= window.innerWidth + 1);
+
   localStorage.removeItem('pmgoEscalas');
   return JSON.stringify(passos);
 })()`;
