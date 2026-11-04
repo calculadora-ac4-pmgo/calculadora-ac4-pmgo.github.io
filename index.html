@@ -15,8 +15,8 @@
   <!-- Preload da fonte principal — reduz reflow/CLS do font-swap da Inter -->
   <link rel="preload" href="assets/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 
-  <link rel="stylesheet" href="css/styles.css?v=76">
-  <script src="js/theme.js?v=76"></script>
+  <link rel="stylesheet" href="css/styles.css?v=77">
+  <script src="js/theme.js?v=77"></script>
 </head>
 <body>
 
@@ -479,7 +479,7 @@
         &copy; <span class="footer-year"></span> Weliton Pinheiro &mdash; Todos os direitos reservados.
       </p>
       <p class="site-footer-meta">
-        Calculadora AC4 &middot; PMGO &middot; v76 &middot;
+        Calculadora AC4 &middot; PMGO &middot; v77 &middot;
         <a href="#" id="footerNovidades" class="footer-link">Novidades</a> &middot;
         <a href="#" id="footerPrivacidade" class="footer-link">Privacidade</a> &middot;
         <a href="#" id="footerFeedback" class="footer-link">Feedback</a> &middot;
@@ -515,10 +515,10 @@
 
   <!-- Novidades: exibido uma única vez após cada atualização e sempre
        disponível pelo rodapé. A confirmação fica somente neste aparelho. -->
-  <dialog class="confirm-dialog whats-new-dialog" id="dialogNovidades" data-conteudo="71" aria-modal="true" aria-labelledby="novidadesTitle" aria-describedby="novidadesIntro">
+  <dialog class="confirm-dialog whats-new-dialog" id="dialogNovidades" data-conteudo="77" aria-modal="true" aria-labelledby="novidadesTitle" aria-describedby="novidadesIntro">
     <div class="whats-new-body">
       <div class="whats-new-topbar">
-        <span class="whats-new-badge">Nova versão <strong>v76</strong></span>
+        <span class="whats-new-badge">Nova versão <strong>v77</strong></span>
         <button class="btn-icon whats-new-close" id="novidadesFechar" type="button" aria-label="Fechar novidades">
           <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
         </button>
@@ -528,11 +528,17 @@
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3-1.7 4.3L6 9l4.3 1.7L12 15l1.7-4.3L18 9l-4.3-1.7L12 3Z"/><path d="m19 15-.8 2.2L16 18l2.2.8L19 21l.8-2.2L22 18l-2.2-.8L19 15Z"/></svg>
         </span>
         <div>
-          <h2 id="novidadesTitle">Valores em horas inteiras</h2>
-          <p id="novidadesIntro">O cálculo agora segue a forma de pagamento: só horas completas.</p>
+          <h2 id="novidadesTitle">Letras maiores e mais fáceis de ler</h2>
+          <p id="novidadesIntro">Os textos pequenos ficaram maiores, sem mudar a organização da tela.</p>
         </div>
       </div>
       <ul class="whats-new-list">
+        <li>
+          <span class="whats-new-item-icon" aria-hidden="true">
+            <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 19 8 5l5 14"/><path d="M5 14h6"/><path d="m15 19 3-8 3 8"/><path d="M16 17h4"/></svg>
+          </span>
+          <div><strong>Letras maiores e mais fáceis de ler, principalmente no celular</strong><span>Dicas, avisos e informações das escalas ficaram maiores. A tela continua organizada do mesmo jeito.</span></div>
+        </li>
         <li>
           <span class="whats-new-item-icon" aria-hidden="true">
             <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg>
@@ -544,12 +550,6 @@
             <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
           </span>
           <div><strong>Lista mais rápida</strong><span>Com muitas escalas, a lista mostra as 30 mais recentes e o botão “Mostrar escalas anteriores”.</span></div>
-        </li>
-        <li>
-          <span class="whats-new-item-icon" aria-hidden="true">
-            <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>
-          </span>
-          <div><strong>Totais completos</strong><span>Os totais do período continuam somando todas as escalas, mesmo as fora da lista.</span></div>
         </li>
       </ul>
       <p class="whats-new-privacy">
@@ -758,7 +758,7 @@
     </div>
   </dialog>
 
-  <script type="module" src="js/app.js?v=76"></script>
+  <script type="module" src="js/app.js?v=77"></script>
 
   <!-- Relatório profissional de impressão — populado pelo JS antes de window.print() -->
   <section id="printReport">

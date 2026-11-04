@@ -1,5 +1,18 @@
 # Changelog
 
+## v77 — Letras maiores (piso de fonte, R6)
+
+Mudança visível: nenhum texto de tela fica menor que **12 px** (rótulos) e os textos de leitura (dicas, avisos, mensagens, informações dos cards) têm no mínimo **14 px**. O layout é o mesmo.
+- **86 regras de tela estavam abaixo de 14 px, 36 delas abaixo de 12 px.** 63 subiram para o mínimo da sua classe (rótulo 12 px, leitura 14 px); as outras 23 já estavam no mínimo ou acima e não foram tocadas. `@media print` (PDF) ficou fora.
+- **Duas variáveis em `css/src/00-base.css`:** `--fs-rotulo` (0,75 rem) e `--fs-leitura` (0,875 rem), a fonte única dos mínimos.
+- **`tools/piso-fonte.mjs`** confere os fontes de `css/src/` e acusa qualquer tamanho abaixo do mínimo ou que não consiga avaliar. Os seletores de leitura ficam em `tests/fixtures/fontes-leitura.json`. **Teste novo "Piso de fonte (R6)"** no `npm run test:unit`.
+- **Inventário** de todas as regras, com a classe de cada uma e as decisões: `docs/inventario-fontes-v77.md`.
+- **Histórico de 6 meses em 320 px:** com 12 px, "8,8 mil" não cabia na coluna (40 px em 38). O espaço entre as barras cai de 6 para 3 px, só em telas de até 360 px.
+- **`tests/mobile-check.mjs`:** verificação de herança (nenhum texto visível abaixo de 12 px, medido no navegador, com sheet aberto, lista, painel do mês e Compartilhar) e 3 verificações do histórico em 320 px.
+- **`tests/capturas-fontes.mjs`** (apoio, fora do `npm test`): capturas em 320, 390 e 1280 px, claro e escuro, para comparar versões. Antes × depois sem texto cortado nem rolagem horizontal; as páginas ficam ~4–5 % mais altas.
+- Aviso de novidades reaberto uma vez (`data-conteudo="77"`): letras maiores, só horas inteiras, lista mais rápida.
+- Equivalência (26 capturas) e textos preservados continuam idênticos: só CSS e o aviso de novidades mudaram.
+
 ## v76 — CSS organizado em css/src/
 
 Sem mudança para o usuário: o `css/styles.css` publicado é idêntico ao da v75, exceto pelo comentário de cabeçalho.

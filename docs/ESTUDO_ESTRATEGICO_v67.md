@@ -213,7 +213,7 @@ dependem de decisão ou ação humana fora do repositório.
 ### 30 dias — Proteger
 - [x] **R1 [código]** `navigator.storage.persist()` (após o primeiro lançamento, tolerando recusa); aviso do Safari/iOS fora do modo standalone; data do último backup visível no Compartilhar — **v70, PR #66**. O guia "Adicionar à Tela de Início" já existia (banner + Compartilhar → Instalar).
 - [ ] **R2 [código]** Compartilhamento enxuto por padrão em `gerarTextoResumo()` (só totais); opção explícita "incluir horários e unidade"; aviso curto antes de compartilhar detalhes.
-- [ ] **R6 [código]** Piso de fonte: ≥ 12 px em rótulos secundários, ≥ 14 px em texto de leitura; começar por `.planning-history-value` (0.64rem) e pelos cards de escala. Conferir no teste mobile que nada quebra em 390 px.
+- [x] **R6 [código]** Piso de fonte: ≥ 12 px em rótulos secundários, ≥ 14 px em texto de leitura; começar por `.planning-history-value` (0.64rem) e pelos cards de escala. Conferir no teste mobile que nada quebra em 390 px. — **v77, PR #PR_V77** (inventário em `docs/inventario-fontes-v77.md`).
 - [x] **R7 [código]** Corrigir `docs/ESCOPO_MVP.md` e `docs/CHECKLIST.md`: importação `.ics` removida na v48 — **PR de governança de 23/09/2026**.
 - [x] **[gestão]** Monitor de disponibilidade externo — **criado pelo gestor em 08/07/2026** (UptimeRobot, HTTP, 5 min; ver diário). *Pendente:* confirmar que o alerta por e-mail está ativo.
 
@@ -223,7 +223,7 @@ dependem de decisão ou ação humana fora do repositório.
 - [ ] **[gestão]** Primeira rodada de usabilidade/acessibilidade com 5–8 policiais (tarefas e SUS acima).
 - [x] **R5 [código]** Tabela da Portaria em arquivo de dados versionado (fonte DOE), testes gerados do Anexo, versão da tabela impressa no PDF. *Parcial:* testes gerados do Anexo I feitos na **v71** (suíte "Conformidade com o Anexo I", 52 casos); concluído na **v73, PR #77**: `js/modules/portarias.mjs` e norma + DOE no PDF.
 - [x] **[código]** Dividir `js/app.js` em módulos (item P3-2 da auditoria v67) — **v72**: 2.489 → ~1.860 linhas; `templates`, `relatorio`, `pwa` e `testes` (este sob demanda, só em localhost). **v74, PR #79**: 1ª entrega da divisão em `js/modules/ui/` (avisos, observabilidade, aparência, dados, exportações, compartilhar), 1.820 → 1.234 linhas, com teste de equivalência permanente; **v75, PR #80**: divisão concluída (planejamento, formulário, modelos), `app.js` com 408 linhas, teste de textos preservados.
-- [x] **[código]** CSS dividido por área em `css/src/`, montado num único `styles.css` (subprojeto 3 da refatoração) — **v76, PR #81**. O piso de fonte (R6) vem na v77.
+- [x] **[código]** CSS dividido por área em `css/src/`, montado num único `styles.css` (subprojeto 3 da refatoração) — **v76, PR #81**. O piso de fonte (R6) veio na v77.
 - [ ] **R3 [gestão]** Segundo mantenedor com acesso ao repositório.
 
 ### 12 meses — Escalar

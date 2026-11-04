@@ -45,8 +45,11 @@ Inter variável, hospedada no próprio site (`assets/fonts`).
 | Valor hero | 1.85–2rem | 800 | `letter-spacing: -0.025em`, `tabular-nums` |
 | Resultado do lançamento | 2.3rem (desktop) / até 3.15rem (sheet) | 900 | |
 | Título de seção | ~1.02rem | 750 | `letter-spacing: -0.01em` |
-| Rótulo (eyebrow) | 0.7rem | 750–800 | Maiúsculas, `letter-spacing: 0.07em` |
+| Rótulo (eyebrow, chip, mês, unidade) | ≥ 0.75rem (`--fs-rotulo`, 12px) | 750–800 | Maiúsculas, `letter-spacing: 0.07em` |
+| Leitura (dica, aviso, mensagem, info de card) | ≥ 0.875rem (`--fs-leitura`, 14px) | 400–700 | Texto em forma de frase |
 | Corpo | 15px (14px < 560px) | 400–600 | |
+
+**Piso de fonte (v77, R6):** nada na tela abaixo de 12px; texto de leitura nunca abaixo de 14px. Fora do `@media print`, o teste "Piso de fonte (R6)" bloqueia letra menor. Texto de leitura novo entra em `tests/fixtures/fontes-leitura.json`; use `var(--fs-rotulo)` / `var(--fs-leitura)` no CSS novo. Decisões regra a regra: `docs/inventario-fontes-v77.md`.
 
 Todo número monetário ou de horas usa `font-variant-numeric: tabular-nums`.
 
