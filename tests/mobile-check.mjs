@@ -626,6 +626,92 @@ const ROTEIRO_LOTE = `(async () => {
   ok('edição em curso intacta', $('escalaInicio').value === inicioEdicao && !$('btnCancelEdit').classList.contains('hidden'),
      $('escalaInicio').value + ' vs ' + inicioEdicao);
   $('btnCancelEdit').click();
+  await espera(100);
+
+  // aviso dentro da janela (o toast fica atrás do modal)
+  document.querySelector('.ec-more-menu [data-acao="lote"][data-id="' + base.id + '"]').click();
+  await espera(200);
+  dia(14)?.click(); await espera(30);
+  ok('motivo do dia bloqueado aparece na janela', $('loteAviso')?.textContent.trim() === 'Já existe escala neste horário.',
+     $('loteAviso')?.textContent);
+
+  // revisão
+  for (const n of [15, 17, 19]) { dia(n)?.click(); await espera(30); }
+  $('loteRevisar')?.click(); await espera(80);
+  const itens = () => [...document.querySelectorAll('#loteLista li[data-data]')];
+  const textoItem = (n) => itens().find((li) => li.dataset.data === '2026-11-' + n)?.querySelector('.lote-item-texto')?.textContent.trim();
+  const problemaItem = (n) => itens().find((li) => li.dataset.data === '2026-11-' + n)?.querySelector('.lote-problema')?.textContent.trim() || '';
+  ok('revisão lista 3 dias em ordem', itens().map((li) => li.dataset.data).join(',') === '2026-11-15,2026-11-17,2026-11-19',
+     itens().map((li) => li.dataset.data).join(','));
+  ok('texto do item', textoItem(15) === 'Dom 15/11 · 18:00 → 08:00', textoItem(15));
+  ok('calendário oculto na revisão', $('loteCalendario').classList.contains('hidden') && !!$('loteRevisao') && !$('loteRevisao').classList.contains('hidden'));
+  itens()[1]?.querySelector('.lote-item')?.click(); await espera(50);
+  ok('editar horário do dia 17', !!$('loteEditar') && !$('loteEditar').classList.contains('hidden') && $('loteHora')?.value === '18:00', $('loteHora')?.value);
+  document.querySelector('#loteEditar .lote-dur[data-horas="24"]')?.click(); await espera(50);
+  ok('24 h no dia 17', textoItem(17) === 'Ter 17/11 · 18:00 → 18:00' && problemaItem(17) === '', textoItem(17) + ' / ' + problemaItem(17));
+  if ($('loteHora') && $('loteFim')) {
+    $('loteHora').value = '06:00'; $('loteHora').dispatchEvent(new Event('change', { bubbles: true }));
+    $('loteFim').value = '2026-11-19T20:00'; $('loteFim').dispatchEvent(new Event('change', { bubbles: true }));
+  }
+  await espera(50);
+  ok('dia 17 sobrepondo o 19 bloqueia o lançamento', problemaItem(17) === 'Sobrepõe outro dia deste lote.' && !!$('loteLancar')?.disabled,
+     textoItem(17) + ' / ' + problemaItem(17));
+  document.querySelector('#loteEditar .lote-dur[data-horas="14"]')?.click(); await espera(50);
+  ok('voltar a 14 h libera', problemaItem(17) === '' && problemaItem(19) === '' && !!$('loteLancar') && !$('loteLancar').disabled, textoItem(17));
+  ok('botão "Lançar 3 escalas"', $('loteLancar')?.textContent.trim() === 'Lançar 3 escalas', $('loteLancar')?.textContent);
+  const pequenosRev = menoresQue12();
+  ok('nenhum texto abaixo de 12 px na revisão', pequenosRev.length === 0, pequenosRev.join(' | '));
+  ok('revisão sem rolagem horizontal', dlg.scrollWidth <= dlg.clientWidth + 1, dlg.scrollWidth + '/' + dlg.clientWidth);
+
+  // falha de gravação: nada é salvo
+  const setOriginal = Storage.prototype.setItem;
+  Storage.prototype.setItem = function () { throw new Error('cheio'); };
+  $('loteLancar')?.click(); await espera(80);
+  Storage.prototype.setItem = setOriginal;
+  ok('falha ao gravar não lança nada', document.querySelectorAll('.escala-card').length === 2 && dlg.open,
+     document.querySelectorAll('.escala-card').length);
+
+  // toque duplo lança uma vez
+  $('loteLancar')?.click(); $('loteLancar')?.click();
+  await espera(300);
+  const cards = () => document.querySelectorAll('.escala-card').length;
+  ok('toque duplo lança exatamente 3', cards() === 5, cards());
+  ok('janela fecha após lançar', !dlg.open);
+  const salvasDepois = JSON.parse(localStorage.getItem('pmgoEscalas') || '[]');
+  const lancadas = salvasDepois.filter((e) => ['2026-11-15T18:00', '2026-11-17T06:00', '2026-11-19T18:00'].includes(e.inicio));
+  ok('escalas lançadas com dados da base', lancadas.length === 3 && lancadas.every((e) => e.status === 'planejada' && e.qtdPm === base.qtdPm),
+     salvasDepois.map((e) => e.inicio).join(','));
+
+  // desfazer depois de editar uma das lançadas (Review Focus 4)
+  let botaoDesfazer = null;
+  for (let i = 0; i < 150 && !botaoDesfazer; i++) {
+    botaoDesfazer = [...document.querySelectorAll('#toastRegion .toast-action')].find((b) => b.textContent.trim() === 'Desfazer' &&
+      b.closest('.toast')?.textContent.includes('3 escalas lançadas.'));
+    if (!botaoDesfazer) await espera(100);
+  }
+  ok('toast "3 escalas lançadas." com Desfazer', !!botaoDesfazer);
+  botaoDesfazer?.click();
+  await espera(200);
+  const restantes = JSON.parse(localStorage.getItem('pmgoEscalas') || '[]');
+  ok('Desfazer remove só as 3 do lote', cards() === 2 && restantes.length === 2 &&
+     restantes.some((e) => e.id === base.id) && restantes.some((e) => e.id === outra.id), restantes.map((e) => e.inicio).join(','));
+
+  // revalidação: escala nova ocupa o dia 19 com a janela aberta
+  document.querySelector('.ec-more-menu [data-acao="lote"][data-id="' + base.id + '"]').click();
+  await espera(200);
+  for (const n of [15, 19]) { dia(n)?.click(); await espera(30); }
+  $('loteRevisar')?.click(); await espera(80);
+  $('escalaInicio').value = '2026-11-19T20:00'; $('escalaInicio').dispatchEvent(new Event('change', { bubbles: true }));
+  $('escalaFim').value = '2026-11-19T22:00'; $('escalaFim').dispatchEvent(new Event('change', { bubbles: true }));
+  $('formEscala').requestSubmit(); await espera(400);
+  const antesReval = cards();
+  $('loteLancar')?.click(); await espera(100);
+  ok('revalidação tira o dia que ficou ocupado e pede novo toque', cards() === antesReval && dlg.open &&
+     itens().map((li) => li.dataset.data).join(',') === '2026-11-15' && $('loteAviso')?.textContent.trim() !== '',
+     cards() + ' / ' + itens().map((li) => li.dataset.data).join(',') + ' / ' + $('loteAviso')?.textContent);
+  $('loteLancar')?.click(); await espera(200);
+  ok('novo toque lança o restante', cards() === antesReval + 1 && !dlg.open, cards());
+
   localStorage.removeItem('pmgoEscalas');
   return JSON.stringify(passos);
 })()`;

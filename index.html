@@ -644,6 +644,7 @@
         </button>
       </div>
       <p class="agenda-sub" id="loteBase"></p>
+      <p class="lote-aviso" id="loteAviso" role="status" aria-live="polite"></p>
       <div class="lote-calendario" id="loteCalendario">
         <div class="lote-mes-nav">
           <button class="btn-icon" id="lotePrev" type="button" aria-label="Mês anterior">
@@ -659,6 +660,28 @@
         <div class="lote-rodape">
           <span class="lote-contador" id="loteContador" aria-live="polite">0 dias marcados</span>
           <button class="btn btn-primary" id="loteRevisar" type="button" disabled>Revisar</button>
+        </div>
+      </div>
+      <div class="lote-revisao hidden" id="loteRevisao">
+        <ul class="lote-lista" id="loteLista"></ul>
+        <div class="lote-editar hidden" id="loteEditar">
+          <p class="lote-editar-titulo" id="loteEditarTitulo"></p>
+          <div class="lote-editar-campos">
+            <label class="fb-label" for="loteHora">Início</label>
+            <input class="control" id="loteHora" type="time">
+            <div class="lote-durs" role="group" aria-label="Duração">
+              <button class="lote-dur" type="button" data-horas="12">12h</button>
+              <button class="lote-dur" type="button" data-horas="14">14h</button>
+              <button class="lote-dur" type="button" data-horas="24">24h</button>
+            </div>
+            <label class="fb-label" for="loteFim">Término</label>
+            <input class="control" id="loteFim" type="datetime-local">
+          </div>
+          <button class="btn btn-ghost" id="loteEditarOk" type="button">Concluir</button>
+        </div>
+        <div class="lote-rodape">
+          <button class="btn btn-ghost" id="loteVoltar" type="button">Voltar ao calendário</button>
+          <button class="btn btn-primary" id="loteLancar" type="button">Lançar</button>
         </div>
       </div>
     </div>

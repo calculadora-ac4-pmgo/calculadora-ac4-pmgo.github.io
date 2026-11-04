@@ -42,7 +42,12 @@
     ".site-footer-meta",
     ".lote-mes",
     ".lote-dia",
-    ".lote-contador"
+    ".lote-contador",
+    ".lote-aviso",
+    ".lote-item-texto",
+    ".lote-problema",
+    ".lote-editar-titulo",
+    ".lote-dur"
   ],
   "naoAvaliaveisAceitos": []
 }
