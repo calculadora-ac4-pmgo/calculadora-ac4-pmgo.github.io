@@ -104,3 +104,12 @@ export function gerarEscalasLote(base, dias) {
     };
   });
 }
+
+/**
+ * Verdadeiro se `escala` é a única do mês do seu início (v81: a agenda abre sozinha).
+ * O mês é o do início; uma escala que só termina no mês não conta.
+ */
+export function primeiraDoMes(escalas, escala) {
+  const mes = escala.inicio.slice(0, 7);
+  return !escalas.some((e) => String(e.id) !== String(escala.id) && String(e.inicio).slice(0, 7) === mes);
+}

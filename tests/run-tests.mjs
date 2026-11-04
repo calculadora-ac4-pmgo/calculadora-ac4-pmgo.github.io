@@ -602,6 +602,12 @@ const resultadoLote = await (async () => {
      !validarLote([baseNoite], baseNoite, [{ data: '2026-07-21', horario: { hora: '06:00', duracaoMin: 720 } }]).ok);
   const baseLonga = { ...base, id: 'b3', inicio: '2026-07-20T07:00', fim: '2026-07-21T08:00' };
   ok('base com mais de 24 h bloqueia o dia seguinte', situacaoDoDia([baseLonga], baseLonga, '2026-07-21').estado === 'ocupado');
+  // v81: a agenda abre sozinha na 1ª escala do mês
+  const { primeiraDoMes } = lote;
+  const nov = { id: 'n1', inicio: '2026-11-10T18:00', fim: '2026-11-11T08:00' };
+  ok('primeiraDoMes: sozinha no mês', primeiraDoMes([nov], nov) === true);
+  ok('primeiraDoMes: outra no mesmo mês', primeiraDoMes([nov, { id: 'n2', inicio: '2026-11-25T07:00', fim: '2026-11-25T19:00' }], nov) === false);
+  ok('primeiraDoMes: só de outro mês (término no mês não conta)', primeiraDoMes([nov, { id: 'o1', inicio: '2026-10-31T19:00', fim: '2026-11-01T07:00' }], nov) === true);
   let lancou = false;
   try { gerarEscalasLote(base, [{ data: '2026-06-20' }]); } catch { lancou = true; }
   ok('gerar fora da vigência lança erro', lancou);

@@ -133,6 +133,11 @@ const ROTEIRO_MOBILE = `(async () => {
   dur.dispatchEvent(new Event('change', { bubbles: true }));
   document.getElementById('btnSubmit').click();
   await espera(400);
+  /* v81: a 1ª escala do mês abre a agenda de lote sozinha; fecha para seguir o roteiro. */
+  for (let i = 0; i < 60 && !document.getElementById('dialogLote')?.open; i++) await espera(50);
+  ok('1ª escala do mês abre a agenda de lote', document.getElementById('dialogLote')?.open);
+  document.getElementById('loteFechar')?.click();
+  await espera(100);
 
   /* v77 (R6): herança. O verificador de CSS olha regras, não elementos: um texto
      sem font-size próprio pode herdar de um pai pequeno. Mede no navegador o
@@ -567,49 +572,95 @@ const ROTEIRO_LOTE = `(async () => {
     if (duracao) { $('escalaDuracao').value = duracao; $('escalaDuracao').dispatchEvent(new Event('change', { bubbles: true })); }
     if (fim) { $('escalaFim').value = fim; $('escalaFim').dispatchEvent(new Event('change', { bubbles: true })); }
     $('btnSubmit').click();
-    await espera(400);
+    await espera(500);
   };
+  const dlg = $('dialogLote');
+  const diaEm = (data) => $('loteGrade')?.querySelector('.lote-dia[data-data="' + data + '"]');
+  const dia = (n) => diaEm('2026-11-' + String(n).padStart(2, '0'));
+  const horaDia = (n) => dia(n)?.querySelector('.lote-dia-hora')?.textContent.trim() || '';
+  const painel = () => $('loteDiaTexto')?.textContent.trim() || '';
+  const problema = () => $('loteDiaProblema')?.textContent.trim() || '';
+
+  // v81: a 1ª escala do mês abre a agenda sozinha; a 2ª não
   await lancar('2026-11-10T18:00', { duracao: '14' });
+  for (let i = 0; i < 60 && !dlg?.open; i++) await espera(50);
+  ok('1ª escala do mês abre a agenda sozinha', !!dlg && dlg.open && dia(10)?.classList.contains('is-base'), dlg && dlg.open);
+  $('loteFechar')?.click(); await espera(100);
   await lancar('2026-11-15T07:00', { fim: '2026-11-15T12:00' });
+  ok('2ª escala do mês não abre a agenda', !!dlg && !dlg.open);
   const salvas = JSON.parse(localStorage.getItem('pmgoEscalas') || '[]');
-  const lista = Array.isArray(salvas) ? salvas : (salvas.escalas || []);
-  const base = lista.find((e) => e.inicio === '2026-11-10T18:00');
-  const outra = lista.find((e) => e.inicio === '2026-11-15T07:00');
-  ok('duas escalas de partida salvas', base && outra, lista.length);
+  const base = salvas.find((e) => e.inicio === '2026-11-10T18:00');
+  const outra = salvas.find((e) => e.inicio === '2026-11-15T07:00');
+  ok('duas escalas de partida salvas', base && outra, salvas.length);
 
   // editar a outra escala antes de abrir a agenda: a edição não pode mudar (Review Focus 5)
   document.querySelector('[data-acao="editar"][data-id="' + outra.id + '"]').click();
   await espera(200);
   const inicioEdicao = $('escalaInicio').value;
-
   const btnLote = document.querySelector('.ec-more-menu [data-acao="lote"][data-id="' + base.id + '"]');
-  ok('menu da escala tem "Lançar em outros dias"', btnLote && btnLote.textContent.trim() === 'Lançar em outros dias',
-     btnLote && btnLote.textContent);
+  ok('menu da escala tem "Lançar em outros dias"', btnLote && btnLote.textContent.trim() === 'Lançar em outros dias', btnLote && btnLote.textContent);
   btnLote?.click();
   await espera(200);
-  const dlg = $('dialogLote');
-  ok('janela do lote aberta', dlg && dlg.open);
+  ok('janela do lote aberta', !!dlg && dlg.open);
   ok('mês da base no título', $('loteMes')?.textContent.trim() === 'novembro de 2026', $('loteMes')?.textContent);
-  const grade = $('loteGrade');
-  const filhos = grade ? [...grade.children] : [];
-  const dia = (n) => grade?.querySelector('.lote-dia[data-data="2026-11-' + String(n).padStart(2, '0') + '"]');
+  const filhos = [...($('loteGrade')?.children || [])];
   ok('mês que começa no domingo: dia 1 na 7ª coluna', filhos.length >= 7 && filhos[6] === dia(1) &&
      filhos.slice(0, 6).every((f) => f.classList.contains('lote-vazio')), filhos.slice(0, 7).map((f) => f.className).join(','));
   ok('dia da base bloqueado', dia(10)?.getAttribute('aria-disabled') === 'true', dia(10)?.title);
-  ok('dia 14 bloqueado (sobrepõe 15/11 07:00)', dia(14)?.getAttribute('aria-disabled') === 'true' &&
-     dia(14)?.title === 'Já existe escala neste horário.', dia(14)?.title);
-  ok('dia 15 livre', dia(15) && dia(15).getAttribute('aria-disabled') !== 'true');
+  ok('dia 14 ocupado no horário da base, mas tocável', dia(14)?.classList.contains('is-ocupado') &&
+     dia(14)?.getAttribute('aria-disabled') !== 'true', dia(14)?.className);
+  ok('sem lançar nada, "Lançar" desativado', !!$('loteLancar')?.disabled);
+
+  // marcar mostra a hora no dia e o painel do dia tocado
   for (const n of [15, 17, 19]) { dia(n)?.click(); await espera(30); }
   ok('marcar 3 dias', [15, 17, 19].every((n) => dia(n)?.getAttribute('aria-pressed') === 'true') &&
      $('loteContador')?.textContent.trim() === '3 dias marcados', $('loteContador')?.textContent);
+  ok('dia marcado mostra a hora de início', horaDia(15) === '18h', horaDia(15));
+  ok('painel mostra o último dia tocado', painel() === 'Qui 19/11 · 18:00 → 08:00' && problema() === '', painel());
+  ok('painel oferece "Alterar"', $('loteAlterar')?.textContent.trim() === 'Alterar', $('loteAlterar')?.textContent);
   dia(19)?.click(); await espera(30);
-  ok('segundo toque desmarca', dia(19)?.getAttribute('aria-pressed') === 'false' &&
+  ok('tocar de novo no dia selecionado desmarca', dia(19)?.getAttribute('aria-pressed') === 'false' &&
      $('loteContador')?.textContent.trim() === '2 dias marcados', $('loteContador')?.textContent);
+  dia(17)?.click(); await espera(30);
+  ok('tocar num dia marcado não selecionado só seleciona', dia(17)?.getAttribute('aria-pressed') === 'true' &&
+     painel() === 'Ter 17/11 · 18:00 → 08:00', painel());
+
+  // dia ocupado no horário da base: escolher outro horário
   dia(14)?.click(); await espera(30);
-  ok('dia bloqueado não marca', dia(14)?.getAttribute('aria-pressed') !== 'true' &&
-     $('loteContador')?.textContent.trim() === '2 dias marcados');
-  ok('"Revisar" ativo com dias marcados', $('loteRevisar') && !$('loteRevisar').disabled);
-  const alvos = [...(grade?.querySelectorAll('.lote-dia') || [])].map((b) => b.getBoundingClientRect());
+  ok('dia ocupado não marca e explica', dia(14)?.getAttribute('aria-pressed') !== 'true' &&
+     problema() === 'Já existe escala às 18:00 neste dia.' && $('loteAlterar')?.textContent.trim() === 'Escolher outro horário',
+     problema() + ' / ' + $('loteAlterar')?.textContent);
+  $('loteAlterar')?.click(); await espera(50);
+  ok('abre a troca de horário ali mesmo', !!$('loteEditar') && !$('loteEditar').classList.contains('hidden') &&
+     $('loteHora')?.value === '18:00' && !$('loteCalendario')?.classList.contains('hidden'), $('loteHora')?.value);
+  if ($('loteHora')) { $('loteHora').value = '13:00'; $('loteHora').dispatchEvent(new Event('change', { bubbles: true })); }
+  await espera(50);
+  ok('horário livre marca o dia ocupado', dia(14)?.getAttribute('aria-pressed') === 'true' && horaDia(14) === '13h' &&
+     problema() === '' && $('loteContador')?.textContent.trim() === '3 dias marcados', horaDia(14) + ' / ' + problema());
+
+  // troca de horário de um dia marcado
+  dia(19)?.click(); await espera(30);
+  dia(17)?.click(); await espera(30);
+  $('loteAlterar')?.click(); await espera(50);
+  document.querySelector('#loteEditar .lote-dur[data-horas="24"]')?.click(); await espera(50);
+  ok('24 h no dia 17', painel() === 'Ter 17/11 · 18:00 → 18:00' && problema() === '', painel() + ' / ' + problema());
+  if ($('loteHora') && $('loteFim')) {
+    $('loteHora').value = '06:00'; $('loteHora').dispatchEvent(new Event('change', { bubbles: true }));
+    $('loteFim').value = '2026-11-19T20:00'; $('loteFim').dispatchEvent(new Event('change', { bubbles: true }));
+  }
+  await espera(50);
+  ok('término 2 dias depois mostra a data', painel() === 'Ter 17/11 · 06:00 → 19/11 20:00', painel());
+  ok('dia 17 sobrepondo o 19 bloqueia o lançamento', problema() === 'Sobrepõe outro dia deste lote.' &&
+     dia(17)?.classList.contains('is-problema') && !!$('loteLancar')?.disabled, problema());
+  document.querySelector('#loteEditar .lote-dur[data-horas="14"]')?.click(); await espera(50);
+  ok('voltar a 14 h libera', problema() === '' && !dia(17)?.classList.contains('is-problema') && !$('loteLancar')?.disabled, painel());
+  const painelAntes = painel();
+  if ($('loteHora')) { $('loteHora').value = ''; $('loteHora').dispatchEvent(new Event('change', { bubbles: true })); }
+  await espera(50);
+  ok('Início apagado volta ao horário do dia', $('loteHora')?.value === '06:00' && painel() === painelAntes,
+     JSON.stringify($('loteHora')?.value) + ' / ' + painel());
+  ok('botão "Lançar 4 escalas"', $('loteLancar')?.textContent.trim() === 'Lançar 4 escalas', $('loteLancar')?.textContent);
+  const alvos = [...($('loteGrade')?.querySelectorAll('.lote-dia') || [])].map((b) => b.getBoundingClientRect());
   ok('dias com alvo de toque ≥ 44 px', alvos.length >= 28 && alvos.every((r) => r.width >= 44 && r.height >= 44),
      alvos.slice(0, 3).map((r) => Math.round(r.width) + 'x' + Math.round(r.height)).join(' '));
   ok('janela sem rolagem horizontal', document.documentElement.scrollWidth <= window.innerWidth + 1 &&
@@ -619,85 +670,39 @@ const ROTEIRO_LOTE = `(async () => {
   for (let i = 0; i < 3; i++) { $('loteNext')?.click(); await espera(30); }
   ok('navega até 3 meses à frente e para', $('loteMes')?.textContent.trim() === 'fevereiro de 2027' && $('loteNext')?.disabled,
      $('loteMes')?.textContent);
-  ok('dias marcados mantidos ao navegar', $('loteContador')?.textContent.trim() === '2 dias marcados');
-  $('loteFechar')?.click();
-  await espera(100);
-  ok('fechar a janela', !!dlg && !dlg.open);
-  ok('edição em curso intacta', $('escalaInicio').value === inicioEdicao && !$('btnCancelEdit').classList.contains('hidden'),
-     $('escalaInicio').value + ' vs ' + inicioEdicao);
-  $('btnCancelEdit').click();
-  await espera(100);
-
-  // aviso dentro da janela (o toast fica atrás do modal)
-  document.querySelector('.ec-more-menu [data-acao="lote"][data-id="' + base.id + '"]').click();
-  await espera(200);
-  dia(14)?.click(); await espera(30);
-  ok('motivo do dia bloqueado aparece na janela', $('loteAviso')?.textContent.trim() === 'Já existe escala neste horário.',
-     $('loteAviso')?.textContent);
-
-  // revisão
-  for (const n of [15, 17, 19]) { dia(n)?.click(); await espera(30); }
-  $('loteRevisar')?.click(); await espera(80);
-  const itens = () => [...document.querySelectorAll('#loteLista li[data-data]')];
-  const textoItem = (n) => itens().find((li) => li.dataset.data === '2026-11-' + n)?.querySelector('.lote-item-texto')?.textContent.trim();
-  const problemaItem = (n) => itens().find((li) => li.dataset.data === '2026-11-' + n)?.querySelector('.lote-problema')?.textContent.trim() || '';
-  ok('revisão lista 3 dias em ordem', itens().map((li) => li.dataset.data).join(',') === '2026-11-15,2026-11-17,2026-11-19',
-     itens().map((li) => li.dataset.data).join(','));
-  ok('texto do item', textoItem(15) === 'Dom 15/11 · 18:00 → 08:00', textoItem(15));
-  ok('calendário oculto na revisão', $('loteCalendario').classList.contains('hidden') && !!$('loteRevisao') && !$('loteRevisao').classList.contains('hidden'));
-  itens()[1]?.querySelector('.lote-item')?.click(); await espera(50);
-  ok('editar horário do dia 17', !!$('loteEditar') && !$('loteEditar').classList.contains('hidden') && $('loteHora')?.value === '18:00', $('loteHora')?.value);
-  document.querySelector('#loteEditar .lote-dur[data-horas="24"]')?.click(); await espera(50);
-  ok('24 h no dia 17', textoItem(17) === 'Ter 17/11 · 18:00 → 18:00' && problemaItem(17) === '', textoItem(17) + ' / ' + problemaItem(17));
-  if ($('loteHora') && $('loteFim')) {
-    $('loteHora').value = '06:00'; $('loteHora').dispatchEvent(new Event('change', { bubbles: true }));
-    $('loteFim').value = '2026-11-19T20:00'; $('loteFim').dispatchEvent(new Event('change', { bubbles: true }));
-  }
-  await espera(50);
-  ok('término 2 dias depois mostra a data', textoItem(17) === 'Ter 17/11 · 06:00 → 19/11 20:00', textoItem(17));
-  ok('dia 17 sobrepondo o 19 bloqueia o lançamento', problemaItem(17) === 'Sobrepõe outro dia deste lote.' && !!$('loteLancar')?.disabled,
-     textoItem(17) + ' / ' + problemaItem(17));
-  document.querySelector('#loteEditar .lote-dur[data-horas="14"]')?.click(); await espera(50);
-  ok('voltar a 14 h libera', problemaItem(17) === '' && problemaItem(19) === '' && !!$('loteLancar') && !$('loteLancar').disabled, textoItem(17));
-  // v80 (M2): apagar o campo Início não deixa campo e lista dessincronizados
-  const textoAntes = textoItem(17);
-  if ($('loteHora')) { $('loteHora').value = ''; $('loteHora').dispatchEvent(new Event('change', { bubbles: true })); }
-  await espera(50);
-  ok('Início apagado volta ao horário do dia', $('loteHora')?.value === textoAntes?.slice(12, 17) && textoItem(17) === textoAntes,
-     JSON.stringify($('loteHora')?.value) + ' / ' + textoItem(17) + ' / antes ' + textoAntes);
-  ok('botão "Lançar 3 escalas"', $('loteLancar')?.textContent.trim() === 'Lançar 3 escalas', $('loteLancar')?.textContent);
-  const pequenosRev = menoresQue12();
-  ok('nenhum texto abaixo de 12 px na revisão', pequenosRev.length === 0, pequenosRev.join(' | '));
-  ok('revisão sem rolagem horizontal', dlg.scrollWidth <= dlg.clientWidth + 1, dlg.scrollWidth + '/' + dlg.clientWidth);
+  ok('dias marcados mantidos ao navegar', $('loteContador')?.textContent.trim() === '4 dias marcados');
+  for (let i = 0; i < 3; i++) { $('lotePrev')?.click(); await espera(30); }
 
   // falha de gravação: nada é salvo
+  const cards = () => document.querySelectorAll('.escala-card').length;
   const setOriginal = Storage.prototype.setItem;
   Storage.prototype.setItem = function () { throw new Error('cheio'); };
   $('loteLancar')?.click(); await espera(80);
   Storage.prototype.setItem = setOriginal;
-  ok('falha ao gravar não lança nada', document.querySelectorAll('.escala-card').length === 2 && dlg.open,
-     document.querySelectorAll('.escala-card').length);
+  ok('falha ao gravar não lança nada', cards() === 2 && dlg.open, cards());
 
   // toque duplo lança uma vez
   $('loteLancar')?.click(); $('loteLancar')?.click();
   await espera(300);
-  const cards = () => document.querySelectorAll('.escala-card').length;
-  ok('toque duplo lança exatamente 3', cards() === 5, cards());
+  ok('toque duplo lança exatamente 4', cards() === 6, cards());
   ok('janela fecha após lançar', !dlg.open);
   const salvasDepois = JSON.parse(localStorage.getItem('pmgoEscalas') || '[]');
-  const lancadas = salvasDepois.filter((e) => ['2026-11-15T18:00', '2026-11-17T06:00', '2026-11-19T18:00'].includes(e.inicio));
-  ok('escalas lançadas com dados da base', lancadas.length === 3 && lancadas.every((e) => e.status === 'planejada' && e.qtdPm === base.qtdPm),
+  const lancadas = salvasDepois.filter((e) => ['2026-11-14T13:00', '2026-11-15T18:00', '2026-11-17T06:00', '2026-11-19T18:00'].includes(e.inicio));
+  ok('escalas lançadas com dados da base', lancadas.length === 4 && lancadas.every((e) => e.status === 'planejada' && e.qtdPm === base.qtdPm),
      salvasDepois.map((e) => e.inicio).join(','));
+  ok('edição em curso intacta (Review Focus 5)', $('escalaInicio').value === inicioEdicao && !$('btnCancelEdit').classList.contains('hidden'),
+     $('escalaInicio').value + ' vs ' + inicioEdicao);
+  $('btnCancelEdit').click();
+  await espera(100);
 
-  // desfazer depois de editar uma das lançadas (Review Focus 4)
+  // desfazer depois de editar uma das lançadas (v80, M1)
   let botaoDesfazer = null;
   for (let i = 0; i < 150 && !botaoDesfazer; i++) {
     botaoDesfazer = [...document.querySelectorAll('#toastRegion .toast-action')].find((b) => b.textContent.trim() === 'Desfazer' &&
-      b.closest('.toast')?.textContent.includes('3 escalas lançadas.'));
+      b.closest('.toast')?.textContent.includes('4 escalas lançadas.'));
     if (!botaoDesfazer) await espera(100);
   }
-  ok('toast "3 escalas lançadas." com Desfazer', !!botaoDesfazer);
-  // edita e salva uma das lançadas (mantém o id) e deixa outra em edição antes do Desfazer (v80, M1)
+  ok('toast "4 escalas lançadas." com Desfazer', !!botaoDesfazer);
   document.querySelector('[data-acao="editar"][data-id="' + lancadas[0]?.id + '"]')?.click();
   await espera(150);
   $('escalaDescricao').value = 'Editada';
@@ -710,7 +715,7 @@ const ROTEIRO_LOTE = `(async () => {
   botaoDesfazer?.click();
   await espera(200);
   const restantes = JSON.parse(localStorage.getItem('pmgoEscalas') || '[]');
-  ok('Desfazer remove só as 3 do lote (inclusive a editada)', cards() === 2 && restantes.length === 2 &&
+  ok('Desfazer remove só as 4 do lote (inclusive a editada)', cards() === 2 && restantes.length === 2 &&
      restantes.some((e) => e.id === base.id) && restantes.some((e) => e.id === outra.id), restantes.map((e) => e.inicio).join(','));
   ok('Desfazer cancela a edição de uma escala removida', $('btnCancelEdit').classList.contains('hidden'));
 
@@ -718,23 +723,21 @@ const ROTEIRO_LOTE = `(async () => {
   document.querySelector('.ec-more-menu [data-acao="lote"][data-id="' + base.id + '"]').click();
   await espera(200);
   for (const n of [15, 19]) { dia(n)?.click(); await espera(30); }
-  $('loteRevisar')?.click(); await espera(80);
   $('escalaInicio').value = '2026-11-19T20:00'; $('escalaInicio').dispatchEvent(new Event('change', { bubbles: true }));
   $('escalaFim').value = '2026-11-19T22:00'; $('escalaFim').dispatchEvent(new Event('change', { bubbles: true }));
   $('formEscala').requestSubmit(); await espera(400);
   const antesReval = cards();
   $('loteLancar')?.click(); await espera(100);
   ok('revalidação tira o dia que ficou ocupado e pede novo toque', cards() === antesReval && dlg.open &&
-     itens().map((li) => li.dataset.data).join(',') === '2026-11-15' && $('loteAviso')?.textContent.trim() !== '',
-     cards() + ' / ' + itens().map((li) => li.dataset.data).join(',') + ' / ' + $('loteAviso')?.textContent);
+     dia(19)?.getAttribute('aria-pressed') !== 'true' && dia(15)?.getAttribute('aria-pressed') === 'true' && $('loteAviso')?.textContent.trim() !== '',
+     cards() + ' / ' + $('loteAviso')?.textContent);
   $('loteLancar')?.click(); await espera(200);
   ok('novo toque lança o restante', cards() === antesReval + 1 && !dlg.open, cards());
 
-  // atalho no aviso de escala adicionada (Task 4)
-  localStorage.removeItem('pmgoEscalas');
-  // espera a fila de avisos anteriores esvaziar (toasts são enfileirados, ~3,8 s cada)
+  // atalho no aviso de escala adicionada (fora da 1ª do mês)
   for (let i = 0; i < 300 && document.querySelector('#toastRegion .toast'); i++) await espera(100);
   await lancar('2026-11-24T19:00', { duracao: '12' });
+  ok('escala que não é a 1ª do mês não abre sozinha', !dlg.open);
   let atalho = null;
   for (let i = 0; i < 150 && !atalho; i++) {
     atalho = [...document.querySelectorAll('#toastRegion .toast-action')].find((b) => b.textContent.trim() === 'Lançar em outros dias' &&
@@ -744,14 +747,15 @@ const ROTEIRO_LOTE = `(async () => {
   ok('aviso "Escala adicionada." tem "Lançar em outros dias"', !!atalho);
   atalho?.click();
   await espera(200);
-  ok('atalho abre a agenda com a escala recém-salva como base', dlg.open && $('loteMes')?.textContent.trim() === 'novembro de 2026' &&
-     dia(24)?.classList.contains('is-base'), $('loteMes')?.textContent);
+  ok('atalho abre a agenda com a escala recém-salva como base', dlg.open && dia(24)?.classList.contains('is-base'), $('loteMes')?.textContent);
   $('loteFechar')?.click();
   await espera(100);
   const recente = JSON.parse(localStorage.getItem('pmgoEscalas') || '[]').find((e) => e.inicio === '2026-11-24T19:00');
   document.querySelector('[data-acao="editar"][data-id="' + recente?.id + '"]')?.click();
   await espera(200);
   $('btnSubmit').click();
+  await espera(400);
+  ok('editar não abre a agenda', !dlg.open);
   let atualizada = null;
   for (let i = 0; i < 150 && !atualizada; i++) {
     atualizada = [...document.querySelectorAll('#toastRegion .toast')].find((t) => t.textContent.includes('Escala atualizada.'));
@@ -759,7 +763,7 @@ const ROTEIRO_LOTE = `(async () => {
   }
   ok('editar não oferece o atalho', !!atualizada && !atualizada.querySelector('.toast-action'), atualizada?.textContent);
 
-  // v80 (M3): escalas trocadas em outra aba com a janela aberta → a janela fecha (a base pode ter sumido)
+  // v80 (M3): escalas trocadas em outra aba com a janela aberta → a janela fecha
   document.querySelector('.ec-more-menu [data-acao="lote"][data-id="' + recente?.id + '"]')?.click();
   await espera(200);
   const abertaAntes = dlg.open;
@@ -767,12 +771,13 @@ const ROTEIRO_LOTE = `(async () => {
   await espera(100);
   ok('mudança vinda de outra aba fecha a janela do lote', abertaAntes && !dlg.open, abertaAntes + ' → ' + dlg.open);
 
-  // v80 (M4): "Escala adicionada." só depois de gravar de verdade
+  // v80 (M4): "Escala adicionada." só depois de gravar; v81: e a agenda não abre
   for (let i = 0; i < 300 && document.querySelector('#toastRegion .toast'); i++) await espera(100);
   const setOrig = Storage.prototype.setItem;
   Storage.prototype.setItem = function () { throw new Error('cheio'); };
   await lancar('2026-11-26T19:00', { duracao: '12' });
   Storage.prototype.setItem = setOrig;
+  ok('falha ao gravar não abre a agenda', !dlg.open);
   const vistos = [];
   for (let i = 0; i < 90; i++) {
     const t = document.querySelector('#toastRegion .toast span')?.textContent;
@@ -781,6 +786,15 @@ const ROTEIRO_LOTE = `(async () => {
   }
   ok('falha ao gravar não anuncia "Escala adicionada."', vistos.length > 0 && !vistos.includes('Escala adicionada.') &&
      vistos[0].startsWith('Não foi possível salvar'), vistos.join(' | '));
+
+  // v81: 1ª escala de outro mês abre a agenda naquele mês
+  await lancar('2026-12-05T07:00', { duracao: '12' });
+  for (let i = 0; i < 60 && !dlg.open; i++) await espera(50);
+  ok('1ª escala de dezembro abre a agenda em dezembro', dlg.open && $('loteMes')?.textContent.trim() === 'dezembro de 2026' &&
+     diaEm('2026-12-05')?.classList.contains('is-base'), $('loteMes')?.textContent);
+  $('loteFechar')?.click(); await espera(100);
+  await lancar('2026-12-09T07:00', { duracao: '12' });
+  ok('2ª escala de dezembro não abre', !dlg.open);
 
   localStorage.removeItem('pmgoEscalas');
   return JSON.stringify(passos);
