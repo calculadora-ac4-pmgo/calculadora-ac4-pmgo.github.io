@@ -1,9 +1,11 @@
 /* ==========================================================================
    Calculadora AC4 — exportações (v74)
-   Planilha CSV, relatório de impressão (PDF pelo navegador) e agenda: diálogo
-   de provedores (Google, Outlook pessoal/corporativo) e arquivo .ics.
+   Planilha CSV, relatório de impressão (PDF pelo navegador; no iPhone e no iPad,
+   arquivo PDF gerado no aparelho, v86) e agenda: diálogo de provedores (Google,
+   Outlook pessoal/corporativo) e arquivo .ics.
    ========================================================================== */
-import { montarRelatorioImpressao, descreverFiltros, montarCSV, baixarArquivo } from '../relatorio.mjs';
+import { montarRelatorioImpressao, dadosRelatorio, descreverFiltros, montarCSV, baixarArquivo } from '../relatorio.mjs';
+import { gerarPdfRelatorio } from '../pdf.mjs';
 import { escapeHTML, fmtDataHora } from '../formato.mjs';
 
 /**
@@ -35,19 +37,36 @@ export function criarExportacoes(ctx) {
 
   /* ------------------------------------------------------- exportações */
 
-  /* Popula #printReport e chama window.print() */
+  /* Nome sugerido do arquivo: "Relatorio-AC4-AAAA-MM-DD". */
+  function nomeDoRelatorio() {
+    const hoje = new Date();
+    const dia = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`;
+    return `Relatorio-AC4-${dia}`;
+  }
+
+  /* iPhone e iPad (o iPad moderno se apresenta como Mac com tela de toque). No app
+     instalado na tela inicial, window.print() não abre nada: o PDF vira arquivo. */
+  const aparelhoApple = () => ehIOS()
+    || (/Macintosh/.test(navigator.userAgent) && (navigator.maxTouchPoints || 0) > 1);
+
+  /* Popula #printReport e chama window.print(); no iPhone/iPad gera o arquivo PDF. */
   function imprimirRelatorio() {
     const lista = escalasOrdenadas();
     if (!lista.length) { toast('Adicione escalas antes de imprimir.', { erro: true }); return; }
+    let resultados;
+    let emitidoEm;
+    let filtrosTexto;
     try {
-      const { resumoHTML, tabelaHTML, normaTexto } = montarRelatorioImpressao(lista.map((e) => ({ e, r: calcularEscala(e) })));
-      $('prDate').textContent = new Date().toLocaleString('pt-BR', {
+      resultados = lista.map((e) => ({ e, r: calcularEscala(e) }));
+      const { resumoHTML, tabelaHTML, normaTexto } = montarRelatorioImpressao(resultados);
+      emitidoEm = new Date().toLocaleString('pt-BR', {
         day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
       });
+      $('prDate').textContent = emitidoEm;
       $('prNorma').textContent = normaTexto;
       /* Logo após um deploy, o navegador pode juntar o JavaScript novo com um index.html
          antigo (sem #prFiltros). O aviso de filtro é opcional: sem o elemento, o PDF sai igual. */
-      const filtrosTexto = descreverFiltros({
+      filtrosTexto = descreverFiltros({
         mes: estado.filtroMes, origem: estado.filtroOrigem, status: estado.filtroStatus, busca: estado.filtroBusca,
       });
       const linhaFiltros = $('prFiltros');
@@ -58,17 +77,43 @@ export function criarExportacoes(ctx) {
       toast('Não foi possível gerar o PDF. Atualize o aplicativo e tente de novo.', { erro: true });
       return;
     }
+    /* Ainda dentro do toque: o compartilhamento do iOS exige o gesto do usuário. */
+    if (aparelhoApple()) { entregarPdfNoAparelho(resultados, emitidoEm, filtrosTexto); return; }
     /* window.print() bloqueia a thread até o diálogo fechar; chamado no próprio
        clique, o tempo no diálogo entra no INP (11s no RUM). Pintar antes. */
     aposProximoPaint(() => imprimirComNomeDoArquivo());
+  }
+
+  /* Gera o PDF no aparelho e abre a tela de compartilhar (Salvar em Arquivos,
+     WhatsApp, Imprimir). Sem compartilhamento de arquivo, baixa como o CSV. */
+  function entregarPdfNoAparelho(resultados, emitidoEm, filtrosTexto) {
+    const nome = nomeDoRelatorio();
+    let bytes;
+    try {
+      bytes = gerarPdfRelatorio({ dados: dadosRelatorio(resultados), emitidoEm, filtrosTexto, titulo: nome });
+    } catch {
+      toast('Não foi possível gerar o PDF. Atualize o aplicativo e tente de novo.', { erro: true });
+      return;
+    }
+    const baixar = () => {
+      baixarArquivo(bytes, `${nome}.pdf`, 'application/pdf');
+      toast('PDF gerado.');
+    };
+    let arquivo = null;
+    try { arquivo = new File([bytes], `${nome}.pdf`, { type: 'application/pdf' }); } catch { arquivo = null; }
+    let podeCompartilhar = false;
+    try { podeCompartilhar = !!(arquivo && navigator.canShare && navigator.canShare({ files: [arquivo] })); } catch { podeCompartilhar = false; }
+    if (!podeCompartilhar) { baixar(); return; }
+    navigator.share({ files: [arquivo], title: 'Relatório de Escalas AC4' }).catch((erro) => {
+      if (erro && erro.name === 'AbortError') return; /* o usuário fechou a tela de compartilhar */
+      baixar();
+    });
   }
 
   /* O navegador sugere o título da página como nome do arquivo PDF: troca por
      "Relatorio-AC4-AAAA-MM-DD" só durante a impressão e restaura ao terminar. */
   function imprimirComNomeDoArquivo() {
     const tituloOriginal = document.title;
-    const hoje = new Date();
-    const dia = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`;
     let restaurado = false;
     const restaurar = () => {
       if (restaurado) return;
@@ -76,7 +121,7 @@ export function criarExportacoes(ctx) {
       document.title = tituloOriginal;
       window.removeEventListener('afterprint', restaurar);
     };
-    document.title = `Relatorio-AC4-${dia}`;
+    document.title = nomeDoRelatorio();
     window.addEventListener('afterprint', restaurar);
     /* Alguns navegadores móveis não disparam afterprint: o título volta sozinho. */
     setTimeout(restaurar, 120000);

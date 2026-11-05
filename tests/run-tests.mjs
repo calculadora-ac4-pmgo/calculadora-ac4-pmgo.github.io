@@ -268,6 +268,64 @@ const validarModulosExtraidos = () => {
 };
 rodar('Templates e exportações (módulos extraídos)', validarModulosExtraidos);
 
+/* PDF gerado no próprio aparelho (v86): no app instalado do iPhone, window.print() não abre nada. */
+const { gerarPdfRelatorio, codigosWinAnsi, quebrarLinhas } = await import('../js/modules/pdf.mjs');
+const { dadosRelatorio, COLUNAS_RELATORIO } = await import('../js/modules/relatorio.mjs');
+const { readFileSync: lerArquivoPdf } = await import('node:fs');
+const validarPdfIphone = () => {
+  const p2 = (n) => String(n).padStart(2, '0');
+  const local = (d) => `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}T${p2(d.getHours())}:${p2(d.getMinutes())}`;
+  const escalas = Array.from({ length: 30 }, (_, k) => {
+    const ini = new Date(2026, 6 + Math.floor(k / 6), 1 + (k % 6) * 4, 6 + (k % 4) * 4);
+    return {
+      id: `p${k}`, inicio: local(ini), fim: local(new Date(ini.getTime() + (8 + (k % 3) * 4) * 3600000)),
+      descricao: k === 0 ? 'Sede (Caldas) \\ teste' : (k % 5 === 0 ? 'Policiamento ostensivo — Companhia Independente de Pontalina' : 'Escala AC4'),
+      origem: 'AC4', qtdPm: k % 7 === 0 ? 4 : 1, status: ['planejada', 'realizada', 'conferida', 'recebida'][k % 4],
+    };
+  });
+  const resultados = escalas.map((e) => ({ e, r: calcularEscala(e, TABELA_OFICIAL) }));
+  const dados = dadosRelatorio(resultados);
+  const bytes = gerarPdfRelatorio({ dados, emitidoEm: '05/11/2026, 16:30', filtrosTexto: 'Filtros aplicados: mês Novembro de 2026.', titulo: 'Relatorio-AC4-2026-11-05' });
+  const s = Array.from(bytes, (b) => String.fromCharCode(b)).join('');
+  const paginas = (s.match(/\/Type \/Page[^s]/g) || []).length;
+  const xref = s.slice(s.indexOf('\nxref\n') + 1);
+  const posicoes = [...xref.matchAll(/^(\d{10}) 00000 n $/gm)].map((m) => Number(m[1]));
+  const xrefOk = posicoes.length > 4 && posicoes.every((pos, i) => s.startsWith(`${i + 1} 0 obj`, pos));
+  const startxref = Number(s.match(/startxref\n(\d+)\n%%EOF\n$/)?.[1]);
+  const comprimentosOk = [...s.matchAll(/<< \/Length (\d+) >>\nstream\n/g)]
+    .every((m) => s.startsWith('\nendstream', m.index + m[0].length + Number(m[1])));
+  const css = lerArquivoPdf(new URL('../css/src/95-rodape-impressao.css', import.meta.url), 'utf8');
+  const larguraCss = [...css.matchAll(/\.pr-table th:nth-child\((\d+)\)\s*\{\s*width:\s*([\d.]+)%/g)].map((m) => Number(m[2]));
+  const util = 595.28 - 2 * 28.35;
+  const cortes = [];
+  dados.linhas.forEach(({ celulas }) => celulas.forEach((c, i) => {
+    if (i === 6) return; /* Unidade: texto livre, pode quebrar palavra enorme */
+    const ls = quebrarLinhas(c, (COLUNAS_RELATORIO[i].largura * util) / 100 - 4.5, 8, i === 12);
+    if (ls.join(' ') !== c.split(/\s+/).join(' ')) cortes.push(`${COLUNAS_RELATORIO[i].titulo}: ${c}`);
+  }));
+  const checks = [
+    [s.startsWith('%PDF-1.4\n') && s.endsWith('%%EOF\n'), 'cabeçalho %PDF-1.4 e fim %%EOF'],
+    [xrefOk && s.startsWith('xref', startxref), 'tabela xref aponta para cada objeto e startxref para a xref'],
+    [comprimentosOk, '/Length de cada conteúdo bate com o tamanho do stream'],
+    [paginas === 2 && s.includes('/Count 2'), `30 escalas em 2 páginas A4 (obtido: ${paginas})`],
+    [s.includes('P\\341gina 1 de 2') && s.includes('P\\341gina 2 de 2'), 'numeração "Página X de Y" com acento em WinAnsi'],
+    [s.includes('(Relat\\363rio de Escalas AC4)'), 'título com acento'],
+    [s.includes('(Sede \\(Caldas\\))') && s.includes('(\\\\ teste)'), 'parênteses e barra da unidade escapados'],
+    [s.includes('(TOTAL GERAL)') && s.includes('Filtros aplicados'), 'total geral e aviso de filtro no PDF'],
+    [/^[\x09\x0A\x0D\x20-\x7E]*$/.test(s.slice(s.indexOf('1 0 obj'))), 'corpo do arquivo só em ASCII (acentos em octal)'],
+    [JSON.stringify(codigosWinAnsi('—“€ç😀')) === JSON.stringify([0x97, 0x93, 0x80, 0xE7, 63]), 'codificação WinAnsi (travessão, aspas, euro, ç; emoji vira ?)'],
+    [quebrarLinhas('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 30, 8).length > 1, 'palavra maior que a coluna é cortada'],
+    [larguraCss.length === COLUNAS_RELATORIO.length && larguraCss.every((w, i) => w === COLUNAS_RELATORIO[i].largura),
+      'larguras do PDF iguais às do CSS de impressão'],
+    [Math.abs(COLUNAS_RELATORIO.reduce((soma, c) => soma + c.largura, 0) - 100) < 1e-9, 'larguras somam 100%'],
+    [cortes.length === 0, `nenhuma palavra cortada fora da Unidade${cortes.length ? `: ${cortes.slice(0, 3).join(' | ')}` : ''}`],
+    [gerarPdfRelatorio({ dados: dadosRelatorio(resultados.slice(0, 1)), emitidoEm: 'x' }).length > 3000, 'uma escala: PDF de 1 página sem total'],
+  ];
+  const falhas = checks.filter(([ok]) => !ok).map(([, nome]) => nome);
+  return falhas.length ? falhas : 'PDF DO IPHONE OK';
+};
+rodar('PDF do iPhone (arquivo gerado no aparelho)', validarPdfIphone);
+
 const validarNormas = () => {
   const ids = new Set(NORMAS.map((n) => n.id));
   const iso = /^\d{4}-\d{2}-\d{2}$/;
