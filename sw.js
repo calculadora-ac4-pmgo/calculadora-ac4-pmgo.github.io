@@ -1,14 +1,19 @@
 /* Service Worker — Calculadora AC4
-   Estratégia: network-first para o app shell (atualizações chegam rápido),
-   com fallback ao cache quando offline. */
-const CACHE = 'ac4-v86';
-const SW_VERSION = '86';
+   Estratégia (v87): os arquivos do app vêm da cópia COMPLETA da versão instalada
+   (cache primeiro). Uma versão nova é baixada inteira na instalação (addAll é tudo
+   ou nada) e só passa a valer quando o usuário toca em "Atualizar agora" ou reabre
+   o app. Até a v86 era network-first arquivo por arquivo: se a rede falhasse no meio
+   de uma atualização, o app juntava arquivos novos com antigos do cache e podia
+   nem abrir (relato do gestor no iPhone, 05/11/2026). */
+const CACHE = 'ac4-v87';
+const SW_VERSION = '87';
 const SHELL = [
   './',
   './index.html',
-  './css/styles.css?v=86',
-  './js/app.js?v=86',
-  './js/theme.js?v=86',
+  './css/styles.css?v=87',
+  './js/app.js?v=87',
+  './js/theme.js?v=87',
+  './js/inicio-seguro.js?v=87',
   // módulos importados sem query string (resolvidos pelo import de app.js)
   './js/modules/formato.mjs',
   './js/modules/calculo.mjs',
@@ -69,24 +74,21 @@ self.addEventListener('fetch', (event) => {
   // Requisições de terceiros, se introduzidas no futuro, não são interceptadas.
   if (new URL(request.url).origin !== location.origin) return;
 
-  event.respondWith(
-    fetch(request, { cache: 'no-cache' })
-      .then(async (resp) => {
-        if (resp.ok) {
-          const clone = resp.clone();
-          const cache = await caches.open(CACHE);
-          await cache.put(request, clone);
-        }
-        return resp;
-      })
-      .catch(() =>
-        caches.match(request).then((hit) => {
-          if (hit) return hit;
-          // Fallback de index só para navegação — devolver HTML no lugar
-          // de CSS/JS quebraria a página.
-          if (request.mode === 'navigate') return caches.match('./index.html');
-          return Response.error();
-        })
-      )
-  );
+  event.respondWith((async () => {
+    const cache = await caches.open(CACHE);
+    // Navegação (abrir o app, inclusive com ?query) sempre recebe o index.html desta versão.
+    const navegacao = request.mode === 'navigate';
+    const guardado = navegacao
+      ? (await cache.match('./index.html')) || (await cache.match('./'))
+      : await cache.match(request);
+    if (guardado) return guardado;
+    // Fora da cópia da versão (1ª visita, arquivo novo): busca na rede e guarda.
+    try {
+      const resp = await fetch(request, { cache: 'no-cache' });
+      if (resp.ok) await cache.put(request, resp.clone());
+      return resp;
+    } catch {
+      return Response.error();
+    }
+  })());
 });

@@ -114,6 +114,98 @@ const validarAtualizacaoPWA = () => {
 };
 rodar('Atualização PWA (espera + ativação explícita)', validarAtualizacaoPWA);
 
+/* v87: o app instalado nunca mistura arquivos de versões diferentes. Executa o sw.js de
+   verdade com cache, rede e eventos simulados: versão A instalada, versão B publicada. */
+const testarSwSemMistura = async () => {
+  const Resposta = globalThis.Response;
+  const fonte = readFileSync(join(raiz, 'sw.js'), 'utf8');
+  const nomeCache = fonte.match(/const CACHE = '([^']+)'/)[1];
+  const base = 'https://ac4.test/';
+  const abs = (r) => new URL(typeof r === 'string' ? r : r.url, base).href;
+  const guardados = new Map();
+  let versaoRede = 'A';
+  let offline = false;
+  const falhar = new Set();
+  const rede = async (r) => {
+    const u = abs(r);
+    if (offline || falhar.has(new URL(u).pathname)) throw new TypeError('sem rede');
+    return new Resposta(`${versaoRede}:${new URL(u).pathname}`);
+  };
+  const abrir = (nome) => {
+    if (!guardados.has(nome)) guardados.set(nome, new Map());
+    const m = guardados.get(nome);
+    return {
+      match: async (r) => (m.has(abs(r)) ? new Resposta(m.get(abs(r))) : undefined),
+      put: async (r, resp) => { m.set(abs(r), await resp.text()); },
+      addAll: async (lista) => {
+        const lidos = [];
+        for (const r of lista) {
+          const resp = await rede(r);
+          lidos.push([abs(r), await resp.text()]);
+        }
+        lidos.forEach(([u, txt]) => m.set(u, txt)); /* tudo ou nada */
+      },
+    };
+  };
+  const cachesFalso = {
+    open: async (nome) => abrir(nome),
+    keys: async () => [...guardados.keys()],
+    delete: async (nome) => guardados.delete(nome),
+    match: async (r) => {
+      for (const m of guardados.values()) if (m.has(abs(r))) return new Resposta(m.get(abs(r)));
+      return undefined;
+    },
+  };
+  const ouvintes = {};
+  const selfFalso = { addEventListener: (tipo, fn) => { ouvintes[tipo] = fn; }, clients: { claim: async () => {} }, skipWaiting: () => {} };
+  class RequisicaoRelativa { constructor(u) { this.url = new URL(u, base).href; } }
+  new Function('self', 'caches', 'fetch', 'location', 'Request', 'Response', fonte)(
+    selfFalso, cachesFalso, rede, new URL(`${base}sw.js`), RequisicaoRelativa, Resposta);
+  const esperar = async (tipo) => { let p = null; ouvintes[tipo]({ waitUntil: (x) => { p = x; } }); return p; };
+  const buscar = async (url, mode = 'cors') => {
+    let resp = null;
+    ouvintes.fetch({ request: { method: 'GET', url: abs(url), mode }, respondWith: (x) => { resp = x; } });
+    const r = await resp;
+    return r.type === 'error' ? 'ERRO' : r.text();
+  };
+
+  guardados.set('ac4-v1', new Map([['x', 'velho']]));
+  await esperar('install');
+  await esperar('activate');
+  const aposAtivar = { antiga: guardados.has('ac4-v1'), atual: guardados.get(nomeCache)?.size || 0 };
+  versaoRede = 'B'; /* nova versão publicada no servidor */
+  const r1 = await buscar('js/modules/relatorio.mjs');
+  const r2 = await buscar('js/modules/ui/exportacoes.mjs');
+  const r3 = await buscar('?nocache=1', 'navigate');
+  falhar.add('/js/modules/pdf.mjs');
+  const r4 = await buscar('js/modules/pdf.mjs');
+  offline = true;
+  const r5 = await buscar('js/modules/calculo.mjs');
+  const r6 = await buscar('docs/nao-guardado.md');
+  offline = false;
+  const r7 = await buscar('docs/nao-guardado.md');
+  const r8 = await buscar('docs/nao-guardado.md');
+  versaoRede = 'C';
+  falhar.clear();
+  falhar.add('/js/modules/lote.mjs');
+  let instalacaoParcialRecusada = false;
+  guardados.delete(nomeCache);
+  try { await esperar('install'); } catch { instalacaoParcialRecusada = true; }
+  const checks = [
+    [r1 === 'A:/js/modules/relatorio.mjs' && r2 === 'A:/js/modules/ui/exportacoes.mjs', 'com versão B no servidor, os módulos continuam da versão A instalada'],
+    [r3 === 'A:/index.html', 'abrir o app (navegação, mesmo com ?query) recebe o index.html da versão instalada'],
+    [r4 === 'A:/js/modules/pdf.mjs' && r5 === 'A:/js/modules/calculo.mjs', 'rede falhando ou offline: ainda só arquivos da versão A'],
+    [r6 === 'ERRO', 'arquivo fora da cópia, offline: erro (nunca outro arquivo no lugar)'],
+    [r7 === 'B:/docs/nao-guardado.md' && r8 === 'B:/docs/nao-guardado.md', 'arquivo fora da cópia, online: busca na rede e guarda'],
+    [!aposAtivar.antiga && aposAtivar.atual > 20, 'instalação guarda a cópia completa e a ativação apaga as de versões antigas'],
+    [instalacaoParcialRecusada && !guardados.get(nomeCache)?.size, 'instalação com arquivo faltando é recusada inteira (sem versão pela metade)'],
+  ];
+  const falhas = checks.filter(([ok]) => !ok).map(([, nome]) => nome);
+  return falhas.length ? falhas : 'SEM MISTURA DE VERSÕES OK';
+};
+const resultadoSwSemMistura = await testarSwSemMistura().catch((erro) => [`erro: ${erro.message}`]);
+rodar('Atualização sem mistura de versões (sw.js simulado)', () => resultadoSwSemMistura);
+
 /* Guarda de release: o PR #58 passou no CI com o redesign da v65 numa pasta
    descartada (ac4-v65-files/), fora do app servido. Toda versão precisa estar
    registrada no CHANGELOG da raiz, e nenhuma pasta de rascunho pode ficar lá. */
