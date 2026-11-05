@@ -5,7 +5,7 @@
    A interface (app.js) só injeta o resultado e dispara impressão/download.
    ========================================================================== */
 import {
-  fmtMoeda, fmtHoras, fmtDataHora, fmtData, fmtHora, escapeHTML, csvTextoSeguro,
+  fmtMoeda, fmtHoras, fmtDataHora, fmtData, fmtHora, fmtMesRef, escapeHTML, csvTextoSeguro,
 } from './formato.mjs';
 import { labelOrigem } from './calculo.mjs';
 import { NORMAS, normaAtual, citacaoNorma } from './portarias.mjs';
@@ -19,6 +19,23 @@ const totais = (resultados) => ({
   noturno: resultados.reduce((s, x) => s + x.r.minNoturno, 0),
   valor: resultados.reduce((s, x) => s + x.r.valorCentavos * (x.e.qtdPm || 1), 0),
 });
+
+/**
+ * Frase que avisa, no relatório impresso, que a lista está filtrada. Sem filtro
+ * devolve '' (a linha fica oculta). Texto puro: usar com textContent.
+ * @param {{mes?:string, origem?:string, status?:string, busca?:string}} filtros
+ *   Valores dos filtros ativos na tela (mês `AAAA-MM`, origem, situação, busca).
+ * @returns {string}
+ */
+export function descreverFiltros({ mes = '', origem = '', status = '', busca = '' } = {}) {
+  const partes = [];
+  if (mes) partes.push(`mês ${fmtMesRef(mes)}`);
+  if (origem) partes.push(`origem ${labelOrigem(origem)}`);
+  if (status && STATUS_INFO[status]) partes.push(`situação ${STATUS_INFO[status].label}`);
+  if (busca && busca.trim()) partes.push(`busca “${busca.trim().slice(0, 40)}”`);
+  if (!partes.length) return '';
+  return `Filtros aplicados: ${partes.join('; ')}. Resumo e totais consideram só as escalas filtradas.`;
+}
 
 /**
  * Conteúdo do relatório de impressão (#printReport → PDF pelo navegador).
@@ -59,6 +76,7 @@ export function montarRelatorioImpressao(resultados) {
           <td>${unidade}</td>
           <td>${origem}</td>
           <td>${situacao}</td>
+          <td class="pr-center">${qtd}</td>
           <td class="pr-center">${fmtHoras(r.minDiurno)}</td>
           <td class="pr-center">${fmtHoras(r.minNoturno)}</td>
           <td class="pr-valor">${valorCell}</td>
@@ -68,7 +86,7 @@ export function montarRelatorioImpressao(resultados) {
   const totalRow = resultados.length > 1 ? `
       <tfoot>
         <tr class="pr-total-row">
-          <td colspan="9">TOTAL GERAL</td>
+          <td colspan="10">TOTAL GERAL</td>
           <td class="pr-center">${fmtHoras(tot.diurno)}</td>
           <td class="pr-center">${fmtHoras(tot.noturno)}</td>
           <td class="pr-valor">${fmtMoeda(tot.valor)}</td>
@@ -81,8 +99,8 @@ export function montarRelatorioImpressao(resultados) {
           <tr>
             <th>N.º</th><th>Dia</th><th>Data</th><th>Início</th>
             <th>Término</th><th>Duração</th><th>Unidade</th>
-            <th>Origem Remunerado</th><th>Situação</th><th>H. Diurnas</th>
-            <th>H. Noturnas</th><th>Valor Estimado</th>
+            <th>Origem Remunerado</th><th>Situação</th><th>PMs</th>
+            <th>H. Diurnas</th><th>H. Noturnas</th><th>Valor Estimado</th>
           </tr>
         </thead>
         <tbody>${rows}</tbody>

@@ -1,5 +1,19 @@
 # Changelog
 
+## v84 — PDF do relatório corrigido
+
+Auditoria do PDF (pedido do usuário): o relatório gerado desde a v62 estava quebrado.
+- **Defeito principal:** a tabela do relatório ganhou a coluna *Situação* na v62, mas o CSS de impressão continuou calibrado para 11 colunas. "Valor Estimado" ficava com largura zero (o valor de cada escala não aparecia) e o texto empilhava uma letra por linha, de modo que cada escala ocupava meia página: 5 escalas = 2 páginas, 30 escalas = **9 páginas**. Também quebrava palavras no meio ("Dura/ção", "Situaçã/o").
+- **Larguras recalibradas** pelo conteúdo de cada coluna (13 colunas, A4 retrato). Agora 5 escalas cabem em 1 página e 30 em 2, sem palavra cortada. Só a *Unidade* (texto livre) quebra palavra muito longa.
+- **Coluna "PMs"** com a quantidade de cada escala (antes só havia um "R$/PM" miúdo).
+- **Fundos cinza** (cabeçalho e total) agora saem mesmo com "Gráficos de segundo plano" desligado, que é o padrão do Chrome (`print-color-adjust: exact`).
+- **"TOTAL GERAL" uma vez só**, no fim da tabela (antes repetia no pé de toda página, parecendo total da página).
+- **Aviso de lista filtrada:** com filtro de mês, origem, situação ou busca ativo, o PDF diz quais filtros valeram e que os totais consideram só essas escalas (`descreverFiltros` em `relatorio.mjs`).
+- **Numeração** "Página X de Y" e "Simulação sem efeito financeiro oficial" em todas as páginas (margens da página; Chrome e Edge; os demais navegadores ignoram sem erro). Letras menores aumentadas (R$/PM 7 pt, rodapé 8 pt) e margem inferior de 14 mm.
+- **Nome do arquivo:** o título da página vira `Relatorio-AC4-AAAA-MM-DD` durante a impressão e volta ao original depois.
+- **Testes novos no smoke** (PDF real em A4, 30 escalas): nenhuma coluna colapsa, "Valor Estimado" ≥ 60 px, nenhuma linha vira "torre", nenhum texto estoura a coluna, a tabela cabe no papel e o PDF tem até 3 páginas. O smoke antigo só conferia que o PDF tinha mais de 10 KB. Suíte unitária cobre `descreverFiltros` e as 13 colunas.
+- Não verificado: Safari do iPhone e o diálogo de impressão do Android (testado no motor do Chrome, A4). A fotografia de equivalência muda de propósito (coluna PMs e linha de filtro).
+
 ## v83 — Gravação que falha não perde o que foi digitado
 
 Correção, sem aviso de novidades (`data-conteudo` continua "82").

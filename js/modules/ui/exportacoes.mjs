@@ -3,7 +3,7 @@
    Planilha CSV, relatório de impressão (PDF pelo navegador) e agenda: diálogo
    de provedores (Google, Outlook pessoal/corporativo) e arquivo .ics.
    ========================================================================== */
-import { montarRelatorioImpressao, montarCSV, baixarArquivo } from '../relatorio.mjs';
+import { montarRelatorioImpressao, descreverFiltros, montarCSV, baixarArquivo } from '../relatorio.mjs';
 import { escapeHTML, fmtDataHora } from '../formato.mjs';
 
 /**
@@ -44,11 +44,36 @@ export function criarExportacoes(ctx) {
       day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
     });
     $('prNorma').textContent = normaTexto;
+    const filtrosTexto = descreverFiltros({
+      mes: estado.filtroMes, origem: estado.filtroOrigem, status: estado.filtroStatus, busca: estado.filtroBusca,
+    });
+    $('prFiltros').textContent = filtrosTexto;
+    $('prFiltros').hidden = !filtrosTexto;
     $('prSummary').innerHTML = resumoHTML;
     $('prTableWrap').innerHTML = tabelaHTML;
     /* window.print() bloqueia a thread até o diálogo fechar; chamado no próprio
        clique, o tempo no diálogo entra no INP (11s no RUM). Pintar antes. */
-    aposProximoPaint(() => window.print());
+    aposProximoPaint(() => imprimirComNomeDoArquivo());
+  }
+
+  /* O navegador sugere o título da página como nome do arquivo PDF: troca por
+     "Relatorio-AC4-AAAA-MM-DD" só durante a impressão e restaura ao terminar. */
+  function imprimirComNomeDoArquivo() {
+    const tituloOriginal = document.title;
+    const hoje = new Date();
+    const dia = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`;
+    let restaurado = false;
+    const restaurar = () => {
+      if (restaurado) return;
+      restaurado = true;
+      document.title = tituloOriginal;
+      window.removeEventListener('afterprint', restaurar);
+    };
+    document.title = `Relatorio-AC4-${dia}`;
+    window.addEventListener('afterprint', restaurar);
+    /* Alguns navegadores móveis não disparam afterprint: o título volta sozinho. */
+    setTimeout(restaurar, 120000);
+    try { window.print(); } catch (erro) { restaurar(); throw erro; }
   }
 
   /* ------------------------------------------------ agendamento
