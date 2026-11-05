@@ -470,6 +470,17 @@ try {
   }, sessionId);
   passos.push({ nome: 'PDF: relatório com 30 escalas populado', ok: gerouPdf.result.value === 30, detalhe: String(gerouPdf.result.value) });
 
+  // Versões misturadas logo após um deploy (JS novo + index.html antigo, sem #prFiltros): o PDF tem que sair igual.
+  const semLinhaFiltros = await cdp.enviar('Runtime.evaluate', {
+    expression: `(async()=>{const sl=ms=>new Promise(r=>setTimeout(r,ms));document.getElementById('prFiltros').remove();
+      window.__imprimiu=false;document.getElementById('btnPrint').click();
+      for(let i=0;i<60&&!window.__imprimiu;i++)await sl(50);
+      return window.__imprimiu===true&&document.querySelectorAll('#printReport .pr-table tbody tr').length===30;})()`,
+    awaitPromise: true, returnByValue: true,
+  }, sessionId);
+  passos.push({ nome: 'PDF: sem #prFiltros (index.html antigo com JS novo) a impressão ainda abre',
+    ok: semLinhaFiltros.result.value === true, detalhe: String(semLinhaFiltros.result.value) });
+
   // Largura útil do A4 com margem de 10 mm (190 mm ≈ 718 px) e mídia de impressão: mede colunas e linhas.
   await cdp.enviar('Emulation.setEmulatedMedia', { media: 'print' }, sessionId);
   await cdp.enviar('Emulation.setDeviceMetricsOverride', { width: 718, height: 1000, deviceScaleFactor: 1, mobile: false }, sessionId);
@@ -497,6 +508,17 @@ try {
   passos.push({ nome: 'PDF: 30 escalas cabem em até 3 páginas A4 (antes: 9)', ok: paginasPdf >= 1 && paginasPdf <= 3, detalhe: `${paginasPdf} página(s)` });
   await cdp.enviar('Emulation.setEmulatedMedia', { media: '' }, sessionId);
   await cdp.enviar('Emulation.clearDeviceMetricsOverride', {}, sessionId);
+  // Falha ao montar o relatório: nunca em silêncio. Mostra aviso e não abre a impressão.
+  const falhaPdf = await cdp.enviar('Runtime.evaluate', {
+    expression: `(async()=>{const sl=ms=>new Promise(r=>setTimeout(r,ms));document.getElementById('prSummary').remove();
+      window.__imprimiu=false;document.getElementById('btnPrint').click();
+      let msg='';for(let i=0;i<60&&!msg;i++){await sl(100);msg=[...document.querySelectorAll('#toastRegion .toast')].map((x)=>x.textContent).find((x)=>x.includes('Não foi possível gerar o PDF'))||'';}
+      await sl(300);return JSON.stringify({msg,imprimiu:window.__imprimiu===true});})()`,
+    awaitPromise: true, returnByValue: true,
+  }, sessionId);
+  const fp = JSON.parse(falhaPdf.result.value);
+  passos.push({ nome: 'PDF: falha ao montar o relatório mostra aviso e não abre a impressão',
+    ok: fp.msg.includes('Atualize o aplicativo') && fp.imprimiu === false, detalhe: JSON.stringify(fp) });
   await cdp.enviar('Runtime.evaluate', { expression: `localStorage.removeItem('pmgoEscalas');` }, sessionId);
 
   console.table(passos.map(({ nome, ok, detalhe }) => ({ passo: nome, ok, detalhe })));

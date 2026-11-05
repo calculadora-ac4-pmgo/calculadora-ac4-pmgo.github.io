@@ -39,18 +39,25 @@ export function criarExportacoes(ctx) {
   function imprimirRelatorio() {
     const lista = escalasOrdenadas();
     if (!lista.length) { toast('Adicione escalas antes de imprimir.', { erro: true }); return; }
-    const { resumoHTML, tabelaHTML, normaTexto } = montarRelatorioImpressao(lista.map((e) => ({ e, r: calcularEscala(e) })));
-    $('prDate').textContent = new Date().toLocaleString('pt-BR', {
-      day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
-    });
-    $('prNorma').textContent = normaTexto;
-    const filtrosTexto = descreverFiltros({
-      mes: estado.filtroMes, origem: estado.filtroOrigem, status: estado.filtroStatus, busca: estado.filtroBusca,
-    });
-    $('prFiltros').textContent = filtrosTexto;
-    $('prFiltros').hidden = !filtrosTexto;
-    $('prSummary').innerHTML = resumoHTML;
-    $('prTableWrap').innerHTML = tabelaHTML;
+    try {
+      const { resumoHTML, tabelaHTML, normaTexto } = montarRelatorioImpressao(lista.map((e) => ({ e, r: calcularEscala(e) })));
+      $('prDate').textContent = new Date().toLocaleString('pt-BR', {
+        day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+      });
+      $('prNorma').textContent = normaTexto;
+      /* Logo após um deploy, o navegador pode juntar o JavaScript novo com um index.html
+         antigo (sem #prFiltros). O aviso de filtro é opcional: sem o elemento, o PDF sai igual. */
+      const filtrosTexto = descreverFiltros({
+        mes: estado.filtroMes, origem: estado.filtroOrigem, status: estado.filtroStatus, busca: estado.filtroBusca,
+      });
+      const linhaFiltros = $('prFiltros');
+      if (linhaFiltros) { linhaFiltros.textContent = filtrosTexto; linhaFiltros.hidden = !filtrosTexto; }
+      $('prSummary').innerHTML = resumoHTML;
+      $('prTableWrap').innerHTML = tabelaHTML;
+    } catch {
+      toast('Não foi possível gerar o PDF. Atualize o aplicativo e tente de novo.', { erro: true });
+      return;
+    }
     /* window.print() bloqueia a thread até o diálogo fechar; chamado no próprio
        clique, o tempo no diálogo entra no INP (11s no RUM). Pintar antes. */
     aposProximoPaint(() => imprimirComNomeDoArquivo());

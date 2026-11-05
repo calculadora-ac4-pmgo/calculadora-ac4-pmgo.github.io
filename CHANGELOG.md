@@ -1,5 +1,12 @@
 # Changelog
 
+## v85 — PDF não falha em silêncio
+
+Correção, sem aviso de novidades (`data-conteudo` continua "84").
+- **Causa reproduzida:** logo após um deploy, o navegador pode juntar o JavaScript novo com um `index.html` antigo. A v84 passou a procurar `#prFiltros`, que só existe no HTML novo; sem ele, `imprimirRelatorio()` dava erro interno e o toque em **PDF** não fazia nada, sem aviso.
+- **Reforço:** `#prFiltros` é opcional (sem ele o PDF sai igual, só sem a linha de filtros) e qualquer falha ao montar o relatório agora mostra "Não foi possível gerar o PDF. Atualize o aplicativo e tente de novo." em vez de silêncio.
+- Testes no smoke: impressão ainda abre sem `#prFiltros` e a falha ao montar o relatório mostra o aviso sem abrir a impressão.
+
 ## v84 — PDF do relatório corrigido
 
 Auditoria do PDF (pedido do usuário): o relatório gerado desde a v62 estava quebrado.
