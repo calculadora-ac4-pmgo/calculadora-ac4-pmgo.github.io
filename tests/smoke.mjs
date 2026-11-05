@@ -441,6 +441,64 @@ try {
   passos.push({ nome: 'localStorage corrompido: app carrega vazio sem quebrar',
     ok: rr.formOk && rr.listaVazia && rr.semErro, detalhe: JSON.stringify(rr) });
 
+  // 7. PDF do relatório com muitas escalas, no papel A4 de verdade. Regressão da v62 à v83: a tabela ganhou a
+  //    coluna Situação, o CSS de impressão continuou com larguras de 11 colunas, "Valor Estimado" ficou com
+  //    largura zero e cada escala virou uma "torre" de meia página (30 escalas = 9 páginas).
+  const p2 = (n) => String(n).padStart(2, '0');
+  const local = (d) => `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}T${p2(d.getHours())}:${p2(d.getMinutes())}`;
+  const muitasEscalas = Array.from({ length: 30 }, (_, k) => {
+    const ini = new Date(2026, 6 + Math.floor(k / 6), 1 + (k % 6) * 4, 6 + (k % 4) * 4, 0);
+    const fim = new Date(ini.getTime() + (8 + (k % 3) * 4) * 3600000);
+    return {
+      id: `pdf${k}`, inicio: local(ini), fim: local(fim),
+      descricao: k % 5 === 0 ? 'Policiamento ostensivo — Companhia Independente de Pontalina' : 'Escala AC4',
+      origem: 'AC4', qtdPm: k % 7 === 0 ? 4 : 1, status: ['planejada', 'realizada', 'conferida', 'recebida'][k % 4],
+    };
+  });
+  await cdp.enviar('Runtime.evaluate', {
+    expression: `localStorage.setItem('pmgoEscalas', ${JSON.stringify(JSON.stringify(muitasEscalas))}); localStorage.removeItem('pmgoUltimoBackup'); localStorage.setItem('pmgoLembreteBackup', String(Date.now()));`,
+  }, sessionId);
+  const abriuPdf = cdp.aguardarEvento('Page.loadEventFired');
+  await cdp.enviar('Page.navigate', { url: `http://127.0.0.1:${porta}/` }, sessionId);
+  await abriuPdf;
+  const gerouPdf = await cdp.enviar('Runtime.evaluate', {
+    expression: `(async()=>{const sl=ms=>new Promise(r=>setTimeout(r,ms));for(let i=0;i<50&&!document.getElementById('formEscala');i++)await sl(100);
+      window.print=()=>{window.__imprimiu=true;};document.getElementById('btnPrint').click();
+      for(let i=0;i<60&&!window.__imprimiu;i++)await sl(50);
+      return document.querySelectorAll('#printReport .pr-table tbody tr').length;})()`,
+    awaitPromise: true, returnByValue: true,
+  }, sessionId);
+  passos.push({ nome: 'PDF: relatório com 30 escalas populado', ok: gerouPdf.result.value === 30, detalhe: String(gerouPdf.result.value) });
+
+  // Largura útil do A4 com margem de 10 mm (190 mm ≈ 718 px) e mídia de impressão: mede colunas e linhas.
+  await cdp.enviar('Emulation.setEmulatedMedia', { media: 'print' }, sessionId);
+  await cdp.enviar('Emulation.setDeviceMetricsOverride', { width: 718, height: 1000, deviceScaleFactor: 1, mobile: false }, sessionId);
+  const layoutPdf = await cdp.enviar('Runtime.evaluate', {
+    expression: `(()=>{const ths=[...document.querySelectorAll('#printReport .pr-table thead th')];
+      const larg=ths.map((t)=>Math.round(t.getBoundingClientRect().width));
+      const alt=[...document.querySelectorAll('#printReport .pr-table tbody tr')].map((t)=>Math.round(t.getBoundingClientRect().height));
+      const estouros=[...document.querySelectorAll('#printReport .pr-table th, #printReport .pr-table td')].filter((c)=>c.scrollWidth>c.clientWidth+1).length;
+      const tabela=document.querySelector('#printReport .pr-table').getBoundingClientRect().width;
+      const pai=document.getElementById('printReport').getBoundingClientRect().width;
+      return JSON.stringify({colunas:ths.length,menorColuna:Math.min(...larg),valor:larg[larg.length-1],maiorLinha:Math.max(...alt),estouros,tabela:Math.round(tabela),pai:Math.round(pai)});})()`,
+    returnByValue: true,
+  }, sessionId);
+  const lay = JSON.parse(layoutPdf.result.value);
+  passos.push({ nome: 'PDF: nenhuma coluna colapsa e "Valor Estimado" tem largura útil (≥ 60 px)',
+    ok: lay.menorColuna >= 18 && lay.valor >= 60, detalhe: JSON.stringify(lay) });
+  passos.push({ nome: 'PDF: cada escala ocupa poucas linhas (nada de "torre" de meia página)',
+    ok: lay.maiorLinha <= 90, detalhe: `maior linha ${lay.maiorLinha}px` });
+  passos.push({ nome: 'PDF: nenhum texto estoura a própria coluna (sem palavra cortada no meio)',
+    ok: lay.estouros === 0, detalhe: `${lay.estouros} célula(s) estourando` });
+  passos.push({ nome: 'PDF: a tabela cabe na largura do papel',
+    ok: lay.tabela <= lay.pai + 1, detalhe: `${lay.tabela}px em ${lay.pai}px` });
+  const pdfLongo = await cdp.enviar('Page.printToPDF', { preferCSSPageSize: true, printBackground: false }, sessionId);
+  const paginasPdf = (Buffer.from(pdfLongo.data, 'base64').toString('latin1').match(/\/Type\s*\/Page[^s]/g) || []).length;
+  passos.push({ nome: 'PDF: 30 escalas cabem em até 3 páginas A4 (antes: 9)', ok: paginasPdf >= 1 && paginasPdf <= 3, detalhe: `${paginasPdf} página(s)` });
+  await cdp.enviar('Emulation.setEmulatedMedia', { media: '' }, sessionId);
+  await cdp.enviar('Emulation.clearDeviceMetricsOverride', {}, sessionId);
+  await cdp.enviar('Runtime.evaluate', { expression: `localStorage.removeItem('pmgoEscalas');` }, sessionId);
+
   console.table(passos.map(({ nome, ok, detalhe }) => ({ passo: nome, ok, detalhe })));
 
   const falhas = passos.filter((p) => !p.ok);

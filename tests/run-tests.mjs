@@ -225,7 +225,7 @@ rodar('Módulos no cache offline do Service Worker', validarShellModulos);
 
 /* Módulos puros extraídos do app.js (P3-2): templates e exportações. */
 const { botoesAcaoHTML, cardEscalaHTML } = await import('../js/modules/templates.mjs');
-const { montarCSV, montarRelatorioImpressao, montarTextoResumo } = await import('../js/modules/relatorio.mjs');
+const { montarCSV, montarRelatorioImpressao, montarTextoResumo, descreverFiltros } = await import('../js/modules/relatorio.mjs');
 const validarModulosExtraidos = () => {
   const hostil = '"><img src=x onerror=alert(1)>';
   const e = { id: hostil, inicio: '2026-07-10T08:00', fim: '2026-07-10T20:00', descricao: '=1+1 <b>x</b>', origem: 'AC4', qtdPm: 2, status: 'realizada' };
@@ -242,6 +242,16 @@ const validarModulosExtraidos = () => {
     [linhasCsv[1].includes('"Realizada"'), 'CSV traz a situação'],
     [linhasCsv[3].endsWith(';1440,00'), 'CSV: total = 2 PMs × R$ 480 + R$ 480'],
     [!tabelaHTML.includes('<b>') && tabelaHTML.includes('&lt;b&gt;'), 'PDF escapa a unidade'],
+    [(tabelaHTML.match(/<th>/g) || []).length === 13 && (tabelaHTML.split('<tr>')[2].match(/<td/g) || []).length === 13,
+      'PDF: 13 colunas no cabeçalho e na linha (o CSS de impressão tem 13 larguras)'],
+    [tabelaHTML.includes('<td class="pr-center">2</td>'), 'PDF: coluna PMs mostra a quantidade'],
+    [descreverFiltros() === '' && descreverFiltros({ mes: '', origem: '', status: '', busca: '  ' }) === '', 'PDF: sem filtro não há aviso'],
+    (() => {
+      const f = descreverFiltros({ mes: '2026-11', origem: 'PREFEITURAS', status: 'realizada', busca: ' natal ' });
+      return [f.startsWith('Filtros aplicados: mês Novembro de 2026; origem Prefeituras; situação Realizada; busca “natal”.')
+        && f.includes('totais consideram só as escalas filtradas'), 'PDF: aviso lista cada filtro ativo'];
+    })(),
+    [descreverFiltros({ status: 'inexistente' }) === '', 'PDF: situação desconhecida não gera aviso'],
     [resumoHTML.includes('R$') && resumoHTML.includes('960,00'), 'PDF: resumo com o valor total'],
     [montarRelatorioImpressao([{ e, r }]).normaTexto === 'Portaria SSP nº 621/2026 (DOE nº 24.801, 17/06/2026)', 'PDF cita norma e DOE'],
     [montarRelatorioImpressao([{ e, r: { ...r, tabela: { id: 'desconhecida', portaria: 'X', valores: r.tabela.valores } } }]).normaTexto.startsWith('Portaria SSP nº 621/2026'), 'PDF sem norma conhecida cai na atual'],
