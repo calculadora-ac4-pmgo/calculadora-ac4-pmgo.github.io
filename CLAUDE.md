@@ -38,6 +38,20 @@ majoritário em **celular**. Produção: <https://calculadora-ac4-pmgo.github.io
 5. Os testes regeneram PNGs em `artifacts/v55/`. Não commitar isso por acidente: `git checkout -- artifacts/` antes do `git add`.
 6. Mensagens de commit e PR em português, no estilo do histórico (`feat(v66): …`, `fix: …`, `ci: …`).
 
+## Política de modelos (decidida em 05/11/2026)
+
+O agente coordenador não troca o próprio modelo (isso é do usuário, via `/model`), mas **escolhe o modelo de cada subagente** pelo parâmetro `model` da ferramenta Agent. Conversa principal recomendada: Sonnet. Merge e decisões continuam com o usuário.
+
+| Tarefa | Modelo |
+|---|---|
+| Desenho de solução, auditoria, bug difícil, revisão final independente antes do PR | **Opus** |
+| Implementar plano já aprovado, testes, documentação, CHANGELOG, abrir PR | **Sonnet** |
+| Conferir deploy e site no ar, listar branches, buscas simples | **Haiku** |
+
+- Todo subagente começa sem contexto: o prompt deve trazer arquivos, regras deste documento e o critério de pronto. Tarefa pequena é feita direto, sem delegar (delegar custa mais que fazer).
+- Ao delegar, dizer ao usuário em uma linha qual modelo foi usado e por quê.
+- Revisão final de mudança de cálculo, PDF ou service worker: subagente Opus que não participou da implementação.
+
 ## Armadilhas conhecidas (aprendidas na prática)
 
 - **Incidente v65:** o PR #58 colocou o redesign numa pasta `ac4-v65-files/` e o commit seguinte a apagou em vez de mover. O CI passou porque testava o código antigo. Hoje o teste "Release" bloqueia pastas `ac4-vNN-files/` na raiz. Arquivos novos vão **direto no lugar final**.
