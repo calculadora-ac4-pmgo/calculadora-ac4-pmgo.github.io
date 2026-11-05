@@ -549,6 +549,51 @@ try {
     ok: fp.msg.includes('Atualize o aplicativo') && fp.imprimiu === false, detalhe: JSON.stringify(fp) });
   await cdp.enviar('Runtime.evaluate', { expression: `localStorage.removeItem('pmgoEscalas');` }, sessionId);
 
+  // 8. Aviso de carregamento (v87): um arquivo do app falha ao baixar (atualização interrompida pela
+  //    rede). Em vez de tela parada, aparece o aviso; "Recarregar" traz o app de volta sem perder dados.
+  await cdp.enviar('Runtime.evaluate', {
+    expression: `localStorage.setItem('pmgoEscalas', ${JSON.stringify(JSON.stringify(muitasEscalas.slice(0, 2)))});`,
+  }, sessionId);
+  await cdp.enviar('Fetch.enable', { patterns: [{ urlPattern: '*relatorio.mjs*' }] }, sessionId);
+  const pausado = cdp.aguardarEvento('Fetch.requestPaused', 20000);
+  const abriuQuebrado = cdp.aguardarEvento('Page.loadEventFired', 20000);
+  await cdp.enviar('Page.navigate', { url: `http://127.0.0.1:${porta}/` }, sessionId);
+  const reqPausada = await pausado;
+  await cdp.enviar('Fetch.failRequest', { requestId: reqPausada.requestId, errorReason: 'Failed' }, sessionId);
+  await abriuQuebrado.catch(() => {});
+  await cdp.enviar('Fetch.disable', {}, sessionId);
+  const quebrado = await cdp.enviar('Runtime.evaluate', {
+    expression: `(async()=>{const sl=ms=>new Promise(r=>setTimeout(r,ms));const a=document.getElementById('avisoCarregamento');
+      for(let i=0;i<140&&a.classList.contains('hidden');i++)await sl(100);
+      return JSON.stringify({visivel:!a.classList.contains('hidden'),pendente:document.documentElement.classList.contains('app-pending'),texto:a.textContent.replace(/\\s+/g,' ').trim()});})()`,
+    awaitPromise: true, returnByValue: true,
+  }, sessionId);
+  const qb = JSON.parse(quebrado.result.value);
+  passos.push({ nome: 'Carregamento interrompido: aparece o aviso com "Recarregar" (sem tela parada)',
+    ok: qb.visivel && qb.pendente && qb.texto.includes('Seus dados continuam salvos'), detalhe: JSON.stringify(qb) });
+  const recarregouAviso = cdp.aguardarEvento('Page.loadEventFired', 20000);
+  await cdp.enviar('Runtime.evaluate', { expression: `document.getElementById('avisoCarregamentoRecarregar').click();` }, sessionId);
+  await recarregouAviso;
+  const voltou = await cdp.enviar('Runtime.evaluate', {
+    expression: `(async()=>{const sl=ms=>new Promise(r=>setTimeout(r,ms));
+      for(let i=0;i<80&&document.documentElement.classList.contains('app-pending');i++)await sl(100);
+      await sl(300);
+      const r={abriu:!document.documentElement.classList.contains('app-pending'),
+        avisoOculto:document.getElementById('avisoCarregamento').classList.contains('hidden'),
+        escalas:JSON.parse(localStorage.getItem('pmgoEscalas')||'[]').length};
+      localStorage.removeItem('pmgoEscalas');return JSON.stringify(r);})()`,
+    awaitPromise: true, returnByValue: true,
+  }, sessionId);
+  const vt = JSON.parse(voltou.result.value);
+  passos.push({ nome: 'Recarregar: o app abre, o aviso some e as escalas continuam salvas',
+    ok: vt.abriu && vt.avisoOculto && vt.escalas === 2, detalhe: JSON.stringify(vt) });
+  const avisoNormal = await cdp.enviar('Runtime.evaluate', {
+    expression: `new Promise((r)=>setTimeout(()=>r(document.getElementById('avisoCarregamento').classList.contains('hidden')),10500))`,
+    awaitPromise: true, returnByValue: true,
+  }, sessionId);
+  passos.push({ nome: 'Carregamento normal: o aviso nunca aparece (nem depois do limite de 10 s)',
+    ok: avisoNormal.result.value === true, detalhe: String(avisoNormal.result.value) });
+
   console.table(passos.map(({ nome, ok, detalhe }) => ({ passo: nome, ok, detalhe })));
 
   const falhas = passos.filter((p) => !p.ok);

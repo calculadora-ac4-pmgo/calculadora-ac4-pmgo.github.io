@@ -1,5 +1,15 @@
 # Changelog
 
+## v87 — Atualização que não deixa o app sem abrir
+
+Correção, sem aviso de novidades (`data-conteudo` continua "86").
+- **Relato do gestor:** depois da v86, o app instalado no iPhone não abria pelo ícone; voltou depois de fechar e reabrir com boa conexão.
+- **Causa reproduzida:** o `sw.js` era *network-first* arquivo por arquivo. Se a rede falhasse no meio de uma atualização, o app juntava arquivos novos da rede com antigos do cache; com módulos de versões diferentes (ex.: `exportacoes.mjs` novo pedindo `dadosRelatorio` a um `relatorio.mjs` antigo) o JavaScript nem inicia e a tela fica parada.
+- **Atualização sem mistura:** os arquivos do app agora vêm da **cópia completa da versão instalada** (cache primeiro; abrir o app sempre recebe o `index.html` dessa versão). A versão nova é baixada inteira na instalação do service worker (tudo ou nada) e só passa a valer pelo banner "Atualizar agora" ou ao reabrir o app, como já era o fluxo da v69. Arquivo fora da cópia vai à rede e é guardado; offline, devolve erro, nunca outro arquivo no lugar.
+- **Aviso de carregamento** (`js/inicio-seguro.js`, script clássico independente dos módulos): se o app não terminar de abrir em 10 s, ou se um script falhar ao carregar, aparece "O aplicativo não terminou de carregar. Seus dados continuam salvos neste aparelho." com **Recarregar**, que apaga as cópias guardadas (se houver internet) e recarrega a versão publicada. Nunca recarrega sozinho; os dados não são tocados.
+- Testes: suíte "Atualização sem mistura de versões", que executa o `sw.js` de verdade com cache e rede simulados (versão A instalada, B publicada, rede falhando, offline, instalação parcial recusada); conferido que o `sw.js` da v86 é reprovado. Smoke: arquivo do app falhando ao baixar mostra o aviso; Recarregar abre o app com as escalas intactas; carregamento normal nunca mostra o aviso.
+- **Transição:** quem ainda está com o service worker da v86 recebe a v87 pelo método antigo uma última vez; se a rede falhar nessa troca, o aviso da v87 só aparece quando o `index.html` novo carregar. A partir da v87 a mistura não acontece mais.
+
 ## v86 — PDF também no iPhone
 
 Relato do gestor (captura de tela): no iPhone, com o app aberto pelo ícone da tela inicial, o botão **PDF** não fazia nada; o CSV funcionava.
