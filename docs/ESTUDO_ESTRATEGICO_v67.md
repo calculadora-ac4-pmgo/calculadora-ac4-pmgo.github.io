@@ -73,6 +73,7 @@ dos dados do policial, a segurança operacional do que ele compartilha e a insti
 - **Evidência:** `gerarTextoResumo()` (em `js/app.js`) envia ao WhatsApp e ao compartilhamento nativo dia, horários, unidade e origem de cada escala. O backup é JSON legível.
 - **Impacto:** não é dado pessoal pela LGPD, mas é **informação operacional** (quando e onde um policial estará de serviço).
 - **Ação:** por padrão, compartilhar só totais (horas e valor), com detalhes como opção explícita; aviso antes de compartilhar horários; backup com senha opcional (Web Crypto AES-GCM).
+- **Decisão do gestor (05/11/2026): não implementar.** O policial normalmente compartilha o resumo com ele mesmo (WhatsApp para si, agenda, arquivo), então o texto com dias, horários e unidade continua como está. Não propor de novo o compartilhamento enxuto por padrão. O backup com senha opcional não foi decidido e fica para avaliação futura.
 
 ### R3 — Legitimidade e continuidade institucional · **ALTO**
 - **Evidência:** `calculadora-ac4-pmgo.github.io` sem domínio institucional; feedback por e-mail pessoal; um único mantenedor.
@@ -212,7 +213,7 @@ dependem de decisão ou ação humana fora do repositório.
 
 ### 30 dias — Proteger
 - [x] **R1 [código]** `navigator.storage.persist()` (após o primeiro lançamento, tolerando recusa); aviso do Safari/iOS fora do modo standalone; data do último backup visível no Compartilhar — **v70, PR #66**. O guia "Adicionar à Tela de Início" já existia (banner + Compartilhar → Instalar).
-- [ ] **R2 [código]** Compartilhamento enxuto por padrão em `gerarTextoResumo()` (só totais); opção explícita "incluir horários e unidade"; aviso curto antes de compartilhar detalhes.
+- [x] **R2 [código]** ~~Compartilhamento enxuto por padrão em `gerarTextoResumo()`~~ — **dispensado por decisão do gestor em 05/11/2026**: o policial compartilha com ele mesmo; texto mantido. Backup com senha opcional segue em aberto.
 - [x] **R6 [código]** Piso de fonte: ≥ 12 px em rótulos secundários, ≥ 14 px em texto de leitura; começar por `.planning-history-value` (0.64rem) e pelos cards de escala. Conferir no teste mobile que nada quebra em 390 px. — **v77, PR #82** (inventário em `docs/inventario-fontes-v77.md`).
 - [x] **R7 [código]** Corrigir `docs/historico/ESCOPO_MVP.md` e `docs/historico/CHECKLIST.md`: importação `.ics` removida na v48 — **PR de governança de 23/09/2026**.
 - [x] **[gestão]** Monitor de disponibilidade externo — **criado pelo gestor em 08/07/2026** (UptimeRobot, HTTP, 5 min; ver diário). *Pendente:* confirmar que o alerta por e-mail está ativo.
