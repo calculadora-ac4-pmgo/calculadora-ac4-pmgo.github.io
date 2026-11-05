@@ -1,5 +1,15 @@
 # Changelog
 
+## v86 — PDF também no iPhone
+
+Relato do gestor (captura de tela): no iPhone, com o app aberto pelo ícone da tela inicial, o botão **PDF** não fazia nada; o CSV funcionava.
+- **Causa:** o PDF dependia de `window.print()`. No app instalado na tela inicial do iPhone, a impressão não abre e o navegador não avisa erro. O CSV funciona porque é um arquivo baixado.
+- **Correção:** no iPhone e no iPad, o app **gera o arquivo PDF** (`js/modules/pdf.mjs`, sem bibliotecas: Helvetica padrão do PDF, codificação WinAnsi para os acentos, A4 retrato) e abre a **tela de compartilhar** (`navigator.share` com arquivo): Salvar em Arquivos, WhatsApp ou Imprimir. Sem compartilhamento de arquivo, baixa o PDF como o CSV. Computador e Android continuam com a impressão do navegador.
+- **Mesmo conteúdo da impressão:** `dadosRelatorio()` em `relatorio.mjs` passa a ser a base comum do relatório impresso e do PDF do iPhone (cabeçalho, filtros, resumo, 13 colunas, total, aviso legal, "Página X de Y"). As larguras das colunas ficam em `COLUNAS_RELATORIO`, e um teste exige que sejam as mesmas do CSS de impressão. A fotografia de equivalência não muda.
+- O iPad moderno se apresenta como Mac com tela de toque e também usa o arquivo.
+- Testes: suíte "PDF do iPhone" (estrutura do arquivo, xref, páginas, acentos, escapes, larguras, nenhuma palavra cortada) e smoke com iPhone simulado (arquivo entregue à tela de compartilhar, sem `window.print`; reserva baixando o arquivo).
+- Não verificado em aparelho real: precisa do teste do gestor no iPhone.
+
 ## v85 — PDF não falha em silêncio
 
 Correção, sem aviso de novidades (`data-conteudo` continua "84").

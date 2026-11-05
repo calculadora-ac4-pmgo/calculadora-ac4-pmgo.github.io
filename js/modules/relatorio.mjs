@@ -38,58 +38,115 @@ export function descreverFiltros({ mes = '', origem = '', status = '', busca = '
 }
 
 /**
+ * Colunas da tabela do relatório, na ordem. `largura` em % da largura útil do A4
+ * retrato: é a mesma do CSS de impressão (css/src/95-rodape-impressao.css); o teste
+ * "PDF do iPhone" confere que as duas listas não se separam.
+ */
+export const COLUNAS_RELATORIO = Object.freeze([
+  { titulo: 'N.º', alinhar: 'centro', largura: 3.5 },
+  { titulo: 'Dia', alinhar: 'centro', largura: 4 },
+  { titulo: 'Data', alinhar: 'esquerda', largura: 9.5 },
+  { titulo: 'Início', alinhar: 'centro', largura: 5.5 },
+  { titulo: 'Término', alinhar: 'esquerda', largura: 10.5 },
+  { titulo: 'Duração', alinhar: 'centro', largura: 7.5 },
+  { titulo: 'Unidade', alinhar: 'esquerda', largura: 11 },
+  { titulo: 'Origem Remunerado', alinhar: 'esquerda', largura: 9.5 },
+  { titulo: 'Situação', alinhar: 'esquerda', largura: 8.5 },
+  { titulo: 'PMs', alinhar: 'centro', largura: 4 },
+  { titulo: 'H. Diurnas', alinhar: 'centro', largura: 7 },
+  { titulo: 'H. Noturnas', alinhar: 'centro', largura: 7.5 },
+  { titulo: 'Valor Estimado', alinhar: 'direita', largura: 12 },
+]);
+
+/**
+ * Dados do relatório em texto puro (sem HTML): base comum do relatório de impressão
+ * (montarRelatorioImpressao) e do PDF gerado no próprio aparelho (pdf.mjs, iPhone).
+ * @param {Array<{e:Object, r:Object}>} resultados Escalas e seus cálculos.
+ * @returns {{resumo:Array<[string,string]>, linhas:Array<{celulas:string[], sub:string}>,
+ *   total:({diurno:string, noturno:string, valor:string}|null), normaTexto:string}}
+ *   `sub` é a segunda linha do valor ("R$ x/PM") quando há mais de um PM; `total` só
+ *   existe com mais de uma escala.
+ */
+export function dadosRelatorio(resultados) {
+  const tot = totais(resultados);
+  const resumo = [
+    ['Escalas:', String(resultados.length)],
+    ['Horas totais:', fmtHoras(tot.mins)],
+    ['H. diurnas:', fmtHoras(tot.diurno)],
+    ['H. noturnas:', fmtHoras(tot.noturno)],
+    ['Valor estimado:', fmtMoeda(tot.valor)],
+  ];
+  const linhas = resultados.map(({ e, r }, i) => {
+    const qtd      = e.qtdPm || 1;
+    const mesmodia = fmtData(e.inicio) === fmtData(e.fim);
+    return {
+      celulas: [
+        String(i + 1),
+        DIAS[new Date(e.inicio).getDay()],
+        fmtData(e.inicio),
+        fmtHora(e.inicio),
+        mesmodia ? fmtHora(e.fim) : `${fmtData(e.fim)} ${fmtHora(e.fim)}`,
+        fmtHoras(r.mins),
+        e.descricao && e.descricao !== 'Escala AC4' ? e.descricao : '—',
+        labelOrigem(e.origem),
+        STATUS_INFO[statusEscala(e)].label,
+        String(qtd),
+        fmtHoras(r.minDiurno),
+        fmtHoras(r.minNoturno),
+        fmtMoeda(r.valorCentavos * qtd),
+      ],
+      sub: qtd > 1 ? `${fmtMoeda(r.valorCentavos)}/PM` : '',
+    };
+  });
+  const total = resultados.length > 1
+    ? { diurno: fmtHoras(tot.diurno), noturno: fmtHoras(tot.noturno), valor: fmtMoeda(tot.valor) }
+    : null;
+  const idsUsados = new Set(resultados.map(({ r }) => r.tabela && r.tabela.id));
+  const usadas = NORMAS.filter((n) => idsUsados.has(n.id));
+  const normaTexto = (usadas.length ? usadas : [normaAtual()]).map(citacaoNorma).join('; ');
+  return { resumo, linhas, total, normaTexto };
+}
+
+/**
  * Conteúdo do relatório de impressão (#printReport → PDF pelo navegador).
  * @param {Array<{e:Object, r:Object}>} resultados Escalas e seus cálculos.
  * @returns {{resumoHTML:string, tabelaHTML:string, normaTexto:string}} `normaTexto` é
  *   texto puro (usar com textContent): normas das tabelas usadas, ou a atual.
  */
 export function montarRelatorioImpressao(resultados) {
-  const tot = totais(resultados);
-  const resumoHTML = [
-    `<div><span class="pr-label">Escalas:</span> <strong>${resultados.length}</strong></div>`,
-    `<div><span class="pr-label">Horas totais:</span> <strong>${fmtHoras(tot.mins)}</strong></div>`,
-    `<div><span class="pr-label">H. diurnas:</span> <strong>${fmtHoras(tot.diurno)}</strong></div>`,
-    `<div><span class="pr-label">H. noturnas:</span> <strong>${fmtHoras(tot.noturno)}</strong></div>`,
-    `<div><span class="pr-label">Valor estimado:</span> <strong>${fmtMoeda(tot.valor)}</strong></div>`,
-  ].join('');
+  const { resumo, linhas, total, normaTexto } = dadosRelatorio(resultados);
+  const resumoHTML = resumo
+    .map(([rotulo, valor]) => `<div><span class="pr-label">${rotulo}</span> <strong>${valor}</strong></div>`)
+    .join('');
 
   let rows = '';
-  resultados.forEach(({ e, r }, i) => {
-    const qtd      = e.qtdPm || 1;
-    const valor    = r.valorCentavos * qtd;
-    const mesmodia = fmtData(e.inicio) === fmtData(e.fim);
-    const fimStr   = mesmodia ? fmtHora(e.fim) : `${fmtData(e.fim)} ${fmtHora(e.fim)}`;
-    const unidade  = e.descricao && e.descricao !== 'Escala AC4' ? escapeHTML(e.descricao) : '—';
-    const origem   = escapeHTML(labelOrigem(e.origem));
-    const situacao = STATUS_INFO[statusEscala(e)].label;
-    const valorCell = qtd > 1
-      ? `${fmtMoeda(valor)}<small>${fmtMoeda(r.valorCentavos)}/PM</small>`
-      : fmtMoeda(valor);
+  linhas.forEach(({ celulas: c, sub }) => {
+    const valorCell = sub ? `${c[12]}<small>${sub}</small>` : c[12];
     rows += `
         <tr>
-          <td class="pr-num">${i + 1}</td>
-          <td class="pr-center">${DIAS[new Date(e.inicio).getDay()]}</td>
-          <td>${fmtData(e.inicio)}</td>
-          <td class="pr-center">${fmtHora(e.inicio)}</td>
-          <td>${fimStr}</td>
-          <td class="pr-center">${fmtHoras(r.mins)}</td>
-          <td>${unidade}</td>
-          <td>${origem}</td>
-          <td>${situacao}</td>
-          <td class="pr-center">${qtd}</td>
-          <td class="pr-center">${fmtHoras(r.minDiurno)}</td>
-          <td class="pr-center">${fmtHoras(r.minNoturno)}</td>
+          <td class="pr-num">${c[0]}</td>
+          <td class="pr-center">${c[1]}</td>
+          <td>${c[2]}</td>
+          <td class="pr-center">${c[3]}</td>
+          <td>${c[4]}</td>
+          <td class="pr-center">${c[5]}</td>
+          <td>${escapeHTML(c[6])}</td>
+          <td>${escapeHTML(c[7])}</td>
+          <td>${c[8]}</td>
+          <td class="pr-center">${c[9]}</td>
+          <td class="pr-center">${c[10]}</td>
+          <td class="pr-center">${c[11]}</td>
           <td class="pr-valor">${valorCell}</td>
         </tr>`;
   });
 
-  const totalRow = resultados.length > 1 ? `
+  const totalRow = total ? `
       <tfoot>
         <tr class="pr-total-row">
           <td colspan="10">TOTAL GERAL</td>
-          <td class="pr-center">${fmtHoras(tot.diurno)}</td>
-          <td class="pr-center">${fmtHoras(tot.noturno)}</td>
-          <td class="pr-valor">${fmtMoeda(tot.valor)}</td>
+          <td class="pr-center">${total.diurno}</td>
+          <td class="pr-center">${total.noturno}</td>
+          <td class="pr-valor">${total.valor}</td>
         </tr>
       </tfoot>` : '';
 
@@ -106,9 +163,6 @@ export function montarRelatorioImpressao(resultados) {
         <tbody>${rows}</tbody>
         ${totalRow}
       </table>`;
-  const idsUsados = new Set(resultados.map(({ r }) => r.tabela && r.tabela.id));
-  const usadas = NORMAS.filter((n) => idsUsados.has(n.id));
-  const normaTexto = (usadas.length ? usadas : [normaAtual()]).map(citacaoNorma).join('; ');
   return { resumoHTML, tabelaHTML, normaTexto };
 }
 

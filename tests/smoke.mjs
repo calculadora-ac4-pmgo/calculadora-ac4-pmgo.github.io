@@ -508,6 +508,34 @@ try {
   passos.push({ nome: 'PDF: 30 escalas cabem em até 3 páginas A4 (antes: 9)', ok: paginasPdf >= 1 && paginasPdf <= 3, detalhe: `${paginasPdf} página(s)` });
   await cdp.enviar('Emulation.setEmulatedMedia', { media: '' }, sessionId);
   await cdp.enviar('Emulation.clearDeviceMetricsOverride', {}, sessionId);
+  // iPhone/iPad (v86): no app instalado, window.print() não abre nada. O toque em PDF gera o arquivo
+  // no aparelho e entrega à tela de compartilhar; sem compartilhamento de arquivo, baixa como o CSV.
+  const pdfIphone = await cdp.enviar('Runtime.evaluate', {
+    expression: `(async()=>{const sl=ms=>new Promise(r=>setTimeout(r,ms));
+      Object.defineProperty(navigator,'userAgent',{configurable:true,get:()=>'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1'});
+      let enviado=null;let imprimiu=false;window.print=()=>{imprimiu=true;};
+      navigator.canShare=(d)=>!!(d&&d.files&&d.files.length);navigator.share=async(d)=>{enviado=d;};
+      document.getElementById('btnPrint').click();
+      for(let i=0;i<40&&!enviado;i++)await sl(50);await sl(150);
+      const f=enviado&&enviado.files&&enviado.files[0];
+      const ini=f?new TextDecoder().decode((await f.arrayBuffer()).slice(0,8)):'';
+      const compartilhar={nome:f?f.name:'',tipo:f?f.type:'',tamanho:f?f.size:0,ini,imprimiu};
+      let baixado='';const clickOriginal=HTMLAnchorElement.prototype.click;
+      HTMLAnchorElement.prototype.click=function(){baixado=this.download||'';};
+      navigator.canShare=undefined;imprimiu=false;
+      document.getElementById('btnPrint').click();await sl(200);
+      HTMLAnchorElement.prototype.click=clickOriginal;delete navigator.userAgent;
+      return JSON.stringify({compartilhar,baixar:{nome:baixado,imprimiu}});})()`,
+    awaitPromise: true, returnByValue: true,
+  }, sessionId);
+  const pi = JSON.parse(pdfIphone.result.value);
+  passos.push({ nome: 'PDF no iPhone: toque gera arquivo PDF e abre a tela de compartilhar (sem window.print)',
+    ok: /^Relatorio-AC4-\d{4}-\d{2}-\d{2}\.pdf$/.test(pi.compartilhar.nome) && pi.compartilhar.tipo === 'application/pdf'
+      && pi.compartilhar.ini === '%PDF-1.4' && pi.compartilhar.tamanho > 20000 && pi.compartilhar.imprimiu === false,
+    detalhe: JSON.stringify(pi.compartilhar) });
+  passos.push({ nome: 'PDF no iPhone: sem compartilhamento de arquivo, baixa o PDF como o CSV',
+    ok: /^Relatorio-AC4-.*\.pdf$/.test(pi.baixar.nome) && pi.baixar.imprimiu === false, detalhe: JSON.stringify(pi.baixar) });
+
   // Falha ao montar o relatório: nunca em silêncio. Mostra aviso e não abre a impressão.
   const falhaPdf = await cdp.enviar('Runtime.evaluate', {
     expression: `(async()=>{const sl=ms=>new Promise(r=>setTimeout(r,ms));document.getElementById('prSummary').remove();
