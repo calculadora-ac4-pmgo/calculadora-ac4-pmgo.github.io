@@ -362,7 +362,8 @@ rodar('Templates e exportações (módulos extraídos)', validarModulosExtraidos
 
 /* PDF gerado no próprio aparelho (v86): no app instalado do iPhone, window.print() não abre nada. */
 const { gerarPdfRelatorio, codigosWinAnsi, quebrarLinhas } = await import('../js/modules/pdf.mjs');
-const { dadosRelatorio, COLUNAS_RELATORIO } = await import('../js/modules/relatorio.mjs');
+const relatorioMod = await import('../js/modules/relatorio.mjs');
+const { dadosRelatorio, COLUNAS_RELATORIO } = relatorioMod;
 const { readFileSync: lerArquivoPdf } = await import('node:fs');
 const validarPdfIphone = () => {
   const p2 = (n) => String(n).padStart(2, '0');
@@ -417,6 +418,47 @@ const validarPdfIphone = () => {
   return falhas.length ? falhas : 'PDF DO IPHONE OK';
 };
 rodar('PDF do iPhone (arquivo gerado no aparelho)', validarPdfIphone);
+
+const validarTotalPorMes = () => {
+  const { COLUNAS_MESES } = relatorioMod;
+  const mk = (id, ini, fim) => ({ id, inicio: ini, fim, descricao: 'Escala AC4', origem: 'AC4', qtdPm: 1, status: 'planejada' });
+  const calc = (es) => es.map((e) => ({ e, r: calcularEscala(e, TABELA_OFICIAL) }));
+  const umMes = dadosRelatorio(calc([mk('a', '2026-07-06T08:00', '2026-07-06T18:00'), mk('b', '2026-07-07T08:00', '2026-07-07T18:00')]));
+  const virada = calc([
+    mk('c', '2026-07-31T20:00', '2026-08-01T06:00'), /* começa em julho, termina em agosto: conta em julho */
+    mk('d', '2026-08-03T08:00', '2026-08-03T18:00'),
+    mk('e', '2026-07-10T08:00', '2026-07-10T18:00'),
+  ]);
+  const dois = dadosRelatorio(virada);
+  const soma = (i) => dois.meses.reduce((a, m) => a + Number(m[i].replace(/\D/g, '')), 0);
+  const geral = dois.resumo.find(([r]) => r === 'Valor estimado:')[1];
+  const valores = dois.meses.map((m) => Number(m[5].replace(/[^\d,]/g, '').replace(',', '.')));
+  const somaValores = valores.reduce((a, v) => a + v, 0).toFixed(2).replace('.', ',');
+  const pdfDois = Array.from(gerarPdfRelatorio({ dados: dois, emitidoEm: 'x' }), (b) => String.fromCharCode(b)).join('');
+  const pdfUm = Array.from(gerarPdfRelatorio({ dados: umMes, emitidoEm: 'x' }), (b) => String.fromCharCode(b)).join('');
+  const css = lerArquivoPdf(new URL('../css/src/95-rodape-impressao.css', import.meta.url), 'utf8');
+  const larguraCss = [...css.matchAll(/\.pr-meses th:nth-child\((\d+)\)\s*\{\s*width:\s*([\d.]+)%/g)].map((m) => Number(m[2]));
+  const html = relatorioMod.montarRelatorioImpressao(virada);
+  const htmlUm = relatorioMod.montarRelatorioImpressao(calc([mk('a', '2026-07-06T08:00', '2026-07-06T18:00')]));
+  const checks = [
+    [umMes.meses.length === 0, 'um mês só: sem quadro'],
+    [dois.meses.length === 2, `dois meses: duas linhas (obtido: ${dois.meses.length})`],
+    [dois.meses[0][0].startsWith('Julho') && dois.meses[1][0].startsWith('Agosto'), 'ordem cronológica'],
+    [dois.meses[0][1] === '2' && dois.meses[1][1] === '1', 'escala que vira o mês conta no mês em que começa'],
+    [somaValores === geral.replace(/[^\d,]/g, '').replace(/^0+/, '').replace(/^(\d+),/, (_, n) => `${Number(n)},`) || somaValores.replace('.', '') === geral.replace(/\D/g, ''),
+      `soma dos meses (${somaValores}) = valor total (${geral})`],
+    [pdfDois.includes('(Julho de 2026)') && pdfDois.includes('(Agosto de 2026)'), 'PDF do iPhone traz as linhas dos meses'],
+    [!pdfUm.includes('(Julho de 2026)'), 'PDF do iPhone com um mês não traz o quadro'],
+    [html.mesesHTML.includes('Julho de 2026') && html.mesesHTML.includes('Agosto de 2026'), 'relatório do computador traz o quadro'],
+    [htmlUm.mesesHTML === '', 'relatório do computador com um mês: sem quadro'],
+    [larguraCss.length === COLUNAS_MESES.length && larguraCss.every((w, i) => w === COLUNAS_MESES[i].largura), 'larguras do quadro iguais no PDF e no CSS'],
+    [Math.abs(COLUNAS_MESES.reduce((a, c) => a + c.largura, 0) - 100) < 1e-9, 'larguras do quadro somam 100%'],
+    [soma(1) === 3, 'escalas por mês somam 3'],
+  ];
+  const falhas = checks.filter(([ok]) => !ok).map(([, nome]) => nome);
+  return falhas.length ? falhas : 'TOTAL POR MÊS OK';
+};
+rodar('Total por mês no relatório', validarTotalPorMes);
 
 const validarNormas = () => {
   const ids = new Set(NORMAS.map((n) => n.id));

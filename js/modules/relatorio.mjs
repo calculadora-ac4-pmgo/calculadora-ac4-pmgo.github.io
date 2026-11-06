@@ -13,6 +13,16 @@ import { STATUS_INFO, statusEscala } from './templates.mjs';
 
 const DIAS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
+/** Colunas do quadro "Total por mês" (mesmo desenho no PDF do computador e no do iPhone). */
+export const COLUNAS_MESES = [
+  { titulo: 'Mês', largura: 34, alinhar: 'esquerda' },
+  { titulo: 'Escalas', largura: 10, alinhar: 'centro' },
+  { titulo: 'Horas', largura: 12, alinhar: 'centro' },
+  { titulo: 'H. Diurnas', largura: 13, alinhar: 'centro' },
+  { titulo: 'H. Noturnas', largura: 14, alinhar: 'centro' },
+  { titulo: 'Valor Estimado', largura: 17, alinhar: 'direita' },
+];
+
 const totais = (resultados) => ({
   mins: resultados.reduce((s, x) => s + x.r.mins, 0),
   diurno: resultados.reduce((s, x) => s + x.r.minDiurno, 0),
@@ -101,23 +111,42 @@ export function dadosRelatorio(resultados) {
   const total = resultados.length > 1
     ? { diurno: fmtHoras(tot.diurno), noturno: fmtHoras(tot.noturno), valor: fmtMoeda(tot.valor) }
     : null;
+  /* Total por mês: só com 2 meses ou mais. A escala conta no mês em que começa. */
+  const porMes = new Map();
+  resultados.forEach((x) => {
+    const mes = String(x.e.inicio).slice(0, 7);
+    if (!porMes.has(mes)) porMes.set(mes, []);
+    porMes.get(mes).push(x);
+  });
+  const meses = porMes.size > 1
+    ? [...porMes.keys()].sort().map((mes) => {
+      const t = totais(porMes.get(mes));
+      return [fmtMesRef(mes), String(porMes.get(mes).length), fmtHoras(t.mins), fmtHoras(t.diurno), fmtHoras(t.noturno), fmtMoeda(t.valor)];
+    })
+    : [];
   const idsUsados = new Set(resultados.map(({ r }) => r.tabela && r.tabela.id));
   const usadas = NORMAS.filter((n) => idsUsados.has(n.id));
   const normaTexto = (usadas.length ? usadas : [normaAtual()]).map(citacaoNorma).join('; ');
-  return { resumo, linhas, total, normaTexto };
+  return { resumo, linhas, total, meses, normaTexto };
 }
 
 /**
  * Conteúdo do relatório de impressão (#printReport → PDF pelo navegador).
  * @param {Array<{e:Object, r:Object}>} resultados Escalas e seus cálculos.
- * @returns {{resumoHTML:string, tabelaHTML:string, normaTexto:string}} `normaTexto` é
+ * @returns {{resumoHTML:string, mesesHTML:string, tabelaHTML:string, normaTexto:string}} `normaTexto` é
  *   texto puro (usar com textContent): normas das tabelas usadas, ou a atual.
  */
 export function montarRelatorioImpressao(resultados) {
-  const { resumo, linhas, total, normaTexto } = dadosRelatorio(resultados);
+  const { resumo, linhas, total, meses, normaTexto } = dadosRelatorio(resultados);
   const resumoHTML = resumo
     .map(([rotulo, valor]) => `<div><span class="pr-label">${rotulo}</span> <strong>${valor}</strong></div>`)
     .join('');
+
+  const mesesHTML = meses.length ? `
+      <table class="pr-meses">
+        <thead><tr>${COLUNAS_MESES.map((c) => `<th>${c.titulo}</th>`).join('')}</tr></thead>
+        <tbody>${meses.map((m) => `<tr>${m.map((v) => `<td>${escapeHTML(v)}</td>`).join('')}</tr>`).join('')}</tbody>
+      </table>` : '';
 
   let rows = '';
   linhas.forEach(({ celulas: c, sub }) => {
@@ -163,7 +192,7 @@ export function montarRelatorioImpressao(resultados) {
         <tbody>${rows}</tbody>
         ${totalRow}
       </table>`;
-  return { resumoHTML, tabelaHTML, normaTexto };
+  return { resumoHTML, mesesHTML, tabelaHTML, normaTexto };
 }
 
 /**
