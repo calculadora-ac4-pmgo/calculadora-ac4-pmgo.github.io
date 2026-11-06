@@ -594,6 +594,59 @@ try {
   passos.push({ nome: 'Carregamento normal: o aviso nunca aparece (nem depois do limite de 10 s)',
     ok: avisoNormal.result.value === true, detalhe: String(avisoNormal.result.value) });
 
+  // 9. Meu dinheiro e Já passou? (v89): o painel divide o total em Recebido · A receber · Previsto
+  //    e o cartão marca de uma vez as escalas encerradas que ficaram como planejadas (com Desfazer).
+  const dinEscalas = [
+    { id: 'd1', inicio: '2026-08-03T07:00', fim: '2026-08-03T19:00', descricao: 'Escala AC4', origem: 'AC4', qtdPm: 1, status: 'planejada' },
+    { id: 'd2', inicio: '2026-08-05T07:00', fim: '2026-08-05T19:00', descricao: 'Escala AC4', origem: 'AC4', qtdPm: 1, status: 'planejada' },
+    { id: 'd3', inicio: '2026-08-07T07:00', fim: '2026-08-07T19:00', descricao: 'Escala AC4', origem: 'AC4', qtdPm: 1, status: 'recebida' },
+    { id: 'd4', inicio: '2099-08-07T07:00', fim: '2099-08-07T19:00', descricao: 'Escala AC4', origem: 'AC4', qtdPm: 1, status: 'planejada' },
+  ];
+  await cdp.enviar('Runtime.evaluate', {
+    expression: `localStorage.setItem('pmgoEscalas', ${JSON.stringify(JSON.stringify(dinEscalas))}); localStorage.removeItem('pmgoJaPassouDispensadas');`,
+  }, sessionId);
+  const abrirDin = async () => {
+    const carregou = cdp.aguardarEvento('Page.loadEventFired', 20000);
+    await cdp.enviar('Page.navigate', { url: `http://127.0.0.1:${porta}/` }, sessionId);
+    await carregou;
+  };
+  const avaliarDin = async (expr) => JSON.parse((await cdp.enviar('Runtime.evaluate', {
+    expression: `(async()=>{const sl=ms=>new Promise(r=>setTimeout(r,ms));
+      for(let i=0;i<80&&document.documentElement.classList.contains('app-pending');i++)await sl(100);
+      await sl(250); ${expr}})()`, awaitPromise: true, returnByValue: true,
+  }, sessionId)).result.value);
+  await abrirDin();
+  const din = await avaliarDin(`const n=(id)=>Number(document.getElementById(id).textContent.replace(/\\D/g,''));
+    return JSON.stringify({painel:!document.getElementById('dinheiro').classList.contains('hidden'),
+      soma:n('dinValor-recebida')+n('dinValor-a-receber')+n('dinValor-planejada'), total:n('totValor'),
+      qtdPrev:document.getElementById('dinQtd-planejada').textContent,
+      cartao:!document.getElementById('jaPassou').classList.contains('hidden'),
+      texto:document.getElementById('jaPassouTexto').textContent});`);
+  passos.push({ nome: 'Meu dinheiro: Recebido + A receber + Previsto = valor total', ok: din.painel && din.soma === din.total && din.total > 0 && din.qtdPrev === '3 escalas', detalhe: JSON.stringify(din) });
+  passos.push({ nome: 'Já passou: cartão mostra as 2 escalas encerradas ainda planejadas', ok: din.cartao && din.texto.startsWith('2 escalas'), detalhe: din.texto });
+  const filtro = await avaliarDin(`document.querySelector('[data-dinheiro-filtro="planejada"]').click(); await sl(150);
+    const r={itens:document.querySelectorAll('#listaEscalas .escala-card').length, pressionado:document.querySelector('[data-dinheiro-filtro="planejada"]').getAttribute('aria-pressed'), select:document.getElementById('filtroStatus').value};
+    document.querySelector('[data-dinheiro-filtro="planejada"]').click(); await sl(150);
+    r.depois=document.querySelectorAll('#listaEscalas .escala-card').length; return JSON.stringify(r);`);
+  passos.push({ nome: 'Meu dinheiro: tocar em Previsto filtra a lista; tocar de novo limpa', ok: filtro.itens === 3 && filtro.pressionado === 'true' && filtro.select === 'planejada' && filtro.depois === 4, detalhe: JSON.stringify(filtro) });
+  const marcou = await avaliarDin(`document.getElementById('jaPassouMarcar').click(); await sl(200);
+    const st=()=>JSON.parse(localStorage.getItem('pmgoEscalas')).map(e=>e.status).join(',');
+    const r={depois:st(), cartao:document.getElementById('jaPassou').classList.contains('hidden')};
+    let b=null; for(let i=0;i<60&&!(b=[...document.querySelectorAll('.toast-action')].find(x=>x.textContent==='Desfazer'));i++)await sl(100);
+    r.temDesfazer=!!b; b&&b.click(); await sl(200); r.desfeito=st();
+    r.cartaoVoltou=!document.getElementById('jaPassou').classList.contains('hidden'); return JSON.stringify(r);`);
+  passos.push({ nome: 'Já passou: "Marcar como realizadas" muda só as passadas e "Desfazer" volta', ok: marcou.depois === 'realizada,realizada,recebida,planejada' && marcou.cartao && marcou.temDesfazer && marcou.desfeito === 'planejada,planejada,recebida,planejada' && marcou.cartaoVoltou, detalhe: JSON.stringify(marcou) });
+  await avaliarDin(`document.getElementById('jaPassouAgoraNao').click(); return '1';`);
+  await abrirDin();
+  const dispensou = await avaliarDin(`return JSON.stringify(document.getElementById('jaPassou').classList.contains('hidden'));`);
+  await cdp.enviar('Runtime.evaluate', {
+    expression: `const l=JSON.parse(localStorage.getItem('pmgoEscalas'));l.push({id:'d5',inicio:'2026-08-09T07:00',fim:'2026-08-09T19:00',descricao:'Escala AC4',origem:'AC4',qtdPm:1,status:'planejada'});localStorage.setItem('pmgoEscalas',JSON.stringify(l));`,
+  }, sessionId);
+  await abrirDin();
+  const voltouNova = await avaliarDin(`const r={visivel:!document.getElementById('jaPassou').classList.contains('hidden'),texto:document.getElementById('jaPassouTexto').textContent};
+    localStorage.removeItem('pmgoEscalas'); localStorage.removeItem('pmgoJaPassouDispensadas'); return JSON.stringify(r);`);
+  passos.push({ nome: 'Já passou: "Agora não" some após recarregar e só volta com escala passada nova', ok: dispensou === true && voltouNova.visivel && voltouNova.texto.startsWith('1 escala'), detalhe: JSON.stringify({ dispensou, voltouNova }) });
+
   console.table(passos.map(({ nome, ok, detalhe }) => ({ passo: nome, ok, detalhe })));
 
   const falhas = passos.filter((p) => !p.ok);

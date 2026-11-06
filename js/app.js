@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Calculadora AC4 — v88
+   Calculadora AC4 — v89
    Módulo principal: estado, ligação dos módulos de interface (js/modules/ui/),
    render() e init(). Regras de negócio, formatação e agenda vivem em js/modules/.
    ========================================================================== */
@@ -30,6 +30,7 @@ import { criarDados } from './modules/ui/dados.mjs';
 import { criarExportacoes } from './modules/ui/exportacoes.mjs';
 import { criarCompartilhar } from './modules/ui/compartilhar.mjs';
 import { criarPlanejamento } from './modules/ui/planejamento.mjs';
+import { criarDinheiro, PARTES_DINHEIRO } from './modules/ui/dinheiro.mjs';
 import { criarFormulario } from './modules/ui/formulario.mjs';
 import { criarModelos } from './modules/ui/modelos.mjs';
 import { criarAgendaDias } from './modules/ui/agenda-dias.mjs';
@@ -43,7 +44,7 @@ import { criarAgendaDias } from './modules/ui/agenda-dias.mjs';
   /* Versão da aplicação (sincronizada pelo tools/bump-version.mjs). Serve para
      carimbar o log de erros e detectar clientes presos em cache antigo:
      se __ac4Version no console divergir do rodapé/CHANGELOG, o SW não atualizou. */
-  const APP_VERSION = '88';
+  const APP_VERSION = '89';
 
   const STORAGE = {
     escalas:   'pmgoEscalas',
@@ -58,6 +59,7 @@ import { criarAgendaDias } from './modules/ui/agenda-dias.mjs';
     schema:    'pmgoSchemaVersion',
     ultimoBackup:   'pmgoUltimoBackup',
     lembreteBackup: 'pmgoLembreteBackup',
+    jaPassouDispensadas: 'pmgoJaPassouDispensadas',
   };
 
   /* ------------------------------------------------------------ estado */
@@ -136,6 +138,9 @@ import { criarAgendaDias } from './modules/ui/agenda-dias.mjs';
     $, on, estado, toast, salvarMetas, render: () => render(), calcularEscala: (e) => calcularEscala(e),
   });
   const { atualizarSelectMes, renderPlanejamento } = planejamento;
+  const dinheiro = criarDinheiro({
+    $, on, estado, toast, salvar, lerLocal, STORAGE, render: () => render(),
+  });
   const formulario = criarFormulario({
     $, on, estado, toast, dialogConfirmar, haptic, salvar, clonarEscalas, aposProximoPaint, esperarProximoPaint,
     pedirArmazenamentoPersistente, agendarEscalaItem, PASSO_LISTA,
@@ -192,7 +197,12 @@ import { criarAgendaDias } from './modules/ui/agenda-dias.mjs';
       .map(([, e]) => e);
     if (filtroMes) lista = lista.filter((e) => toInputMonth(parseDateTimeLocal(e.inicio) || new Date(e.inicio)) === filtroMes);
     if (filtroOrigem) lista = lista.filter((e) => (e.origem || 'AC4') === filtroOrigem);
-    if (filtroStatus) lista = lista.filter((e) => statusEscala(e) === filtroStatus);
+    if (filtroStatus) {
+      /* "A receber" (painel Meu dinheiro) junta realizadas e conferidas. */
+      const parte = PARTES_DINHEIRO.find((p) => p.chave === filtroStatus);
+      const situacoes = parte ? parte.situacoes : [filtroStatus];
+      lista = lista.filter((e) => situacoes.includes(statusEscala(e)));
+    }
     if (filtroBusca) {
       const termo = filtroBusca.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR');
       lista = lista.filter((e) => `${e.descricao || ''} ${labelOrigem(e.origem || 'AC4')}`
@@ -234,6 +244,8 @@ import { criarAgendaDias } from './modules/ui/agenda-dias.mjs';
     $('btnClearAll').classList.toggle('hidden', escalas.length === 0);
     $('btnRepeatLast')?.classList.toggle('hidden', escalas.length === 0);
     renderPlanejamento();
+    dinheiro.renderDinheiro(resultados);
+    dinheiro.renderJaPassou();
 
     const container = $('listaEscalas');
     if (!lista.length) {
@@ -337,6 +349,7 @@ import { criarAgendaDias } from './modules/ui/agenda-dias.mjs';
     modelosFavoritos.ligarEventos();
     agendaDias.ligarEventos();
     planejamento.ligarEventos();
+    dinheiro.ligarEventos();
 
     on('btnTheme', 'click', () =>
       aplicarTema(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'));

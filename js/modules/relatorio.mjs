@@ -42,6 +42,7 @@ export function descreverFiltros({ mes = '', origem = '', status = '', busca = '
   if (mes) partes.push(`mês ${fmtMesRef(mes)}`);
   if (origem) partes.push(`origem ${labelOrigem(origem)}`);
   if (status && STATUS_INFO[status]) partes.push(`situação ${STATUS_INFO[status].label}`);
+  else if (status === 'a-receber') partes.push('situação A receber (realizadas e conferidas)');
   if (busca && busca.trim()) partes.push(`busca “${busca.trim().slice(0, 40)}”`);
   if (!partes.length) return '';
   return `Filtros aplicados: ${partes.join('; ')}. Resumo e totais consideram só as escalas filtradas.`;

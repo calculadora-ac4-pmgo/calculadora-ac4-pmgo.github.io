@@ -106,20 +106,6 @@
 .planning-status--realizada { border-left: 4px solid var(--blue-600); }
 .planning-status--conferida { border-left: 4px solid var(--green-600); }
 .planning-status--recebida { border-left: 4px solid #7c3aed; }
-.planning-alert {
-  width: 100%;
-  min-height: 44px;
-  margin-top: 14px;
-  padding: 10px 12px;
-  border: 1px solid color-mix(in srgb, var(--gold-500) 42%, var(--border));
-  border-radius: var(--radius-sm);
-  background: var(--warn-soft);
-  color: var(--warn-text);
-  font-size: var(--fs-leitura);
-  font-weight: 800;
-  text-align: left;
-  cursor: pointer;
-}
 .planning-goal-hours-label { margin-top: 14px; }
 
 .status-control { display: block; }

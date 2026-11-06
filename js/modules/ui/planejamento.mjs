@@ -117,13 +117,6 @@ export function criarPlanejamento(ctx) {
 
     renderHistorico(mes);
 
-    const agora = new Date();
-    const atrasadas = listaMes.filter((e) => statusEscala(e) === 'planejada' && (parseDateTimeLocal(e.fim) || new Date(e.fim)) < agora).length;
-    const alerta = $('planningAlert');
-    alerta.classList.toggle('hidden', atrasadas === 0);
-    alerta.textContent = atrasadas
-      ? `${atrasadas} escala${atrasadas === 1 ? '' : 's'} passada${atrasadas === 1 ? '' : 's'} ainda marcada${atrasadas === 1 ? '' : 's'} como planejada${atrasadas === 1 ? '' : 's'}. Revisar`
-      : '';
   }
 
   /* Histórico dos últimos 6 meses até o mês do painel. Barras em HTML/CSS,
@@ -213,14 +206,6 @@ export function criarPlanejamento(ctx) {
       const btn = ev.target.closest('[data-status-filter]');
       if (!btn) return;
       estado.filtroStatus = btn.dataset.statusFilter || '';
-      if ($('filtroStatus')) $('filtroStatus').value = estado.filtroStatus;
-      render();
-      document.querySelector('.feed')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
-    on('planningAlert', 'click', () => {
-      estado.filtroMes = mesPainelAtual();
-      estado.filtroStatus = 'planejada';
-      if ($('filtroMes')) $('filtroMes').value = estado.filtroMes;
       if ($('filtroStatus')) $('filtroStatus').value = estado.filtroStatus;
       render();
       document.querySelector('.feed')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
