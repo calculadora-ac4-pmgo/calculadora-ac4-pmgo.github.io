@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Calculadora AC4 — v87
+   Calculadora AC4 — v88
    Arquivo gerado por tools/montar-css.mjs — edite css/src/ e rode o script.
    ========================================================================== */
 
@@ -2334,6 +2334,21 @@ textarea.control { min-height: 74px; resize: vertical; }
   }
   .pr-summary-grid div:last-child { border-right: none; }
   .pr-label { color: #555 !important; }
+
+  /* --- Total por mês (só com 2 meses ou mais) --- */
+  .pr-meses-wrap { margin-top: 6px; break-inside: avoid; }
+  .pr-meses-wrap[hidden] { display: none; }
+  .pr-meses { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 8pt; }
+  .pr-meses th, .pr-meses td {
+    border: 1px solid #ccc; padding: 3px 4px; color: #000 !important; background: #fff !important;
+    overflow-wrap: normal; word-break: normal;
+  }
+  .pr-meses th { background: #f0f0f0 !important; font-size: 7.5pt; text-align: center; }
+  .pr-meses td:nth-child(n+2) { text-align: center; }
+  .pr-meses td:last-child { text-align: right; font-weight: bold; }
+  .pr-meses th:nth-child(1) { width: 34%; } .pr-meses th:nth-child(2) { width: 10%; }
+  .pr-meses th:nth-child(3) { width: 12%; } .pr-meses th:nth-child(4) { width: 13%; }
+  .pr-meses th:nth-child(5) { width: 14%; } .pr-meses th:nth-child(6) { width: 17%; }
 
   /* --- Tabela principal --- */
   .pr-table {

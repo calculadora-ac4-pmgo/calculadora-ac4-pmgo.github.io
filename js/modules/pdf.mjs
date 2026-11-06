@@ -6,7 +6,7 @@
    de impressão. Fontes padrão do PDF (Helvetica), codificação WinAnsi: cobre os
    acentos do português. Função pura: recebe dados, devolve os bytes.
    ========================================================================== */
-import { COLUNAS_RELATORIO } from './relatorio.mjs';
+import { COLUNAS_RELATORIO, COLUNAS_MESES } from './relatorio.mjs';
 
 /* Larguras (milésimos do corpo) da Helvetica e da Helvetica-Bold, códigos WinAnsi
    32 a 255 — métricas AFM da Adobe. */
@@ -195,7 +195,29 @@ export function gerarPdfRelatorio({ dados, emitidoEm, filtrosTexto = '', titulo 
     if (junto) texto(x + 8 + larguraTexto(`${rotulo} `, 8), y + 12, valor, 8, { negrito: true });
     else texto(x + 8, y + 22, valor, 8, { negrito: true });
   });
-  y += hResumo + 12;
+  y += hResumo + (dados.meses && dados.meses.length ? 6 : 12);
+
+  /* --- Total por mês (só com 2 meses ou mais) --- */
+  if (dados.meses && dados.meses.length) {
+    const lm = COLUNAS_MESES.map((c) => (c.largura * UTIL) / 100);
+    const xm = lm.map((_, i) => MARGEM + lm.slice(0, i).reduce((a, w) => a + w, 0));
+    const hCab = 15;
+    const hLin = 14;
+    if (!cabe(hCab + hLin * dados.meses.length + 14)) novaPagina();
+    COLUNAS_MESES.forEach((c, i) => {
+      retangulo(xm[i], y, lm[i], hCab, { fundo: CINZA_FUNDO, borda: CINZA_BORDA });
+      textoAlinhado(xm[i] + PAD, lm[i] - 2 * PAD, y + 10.3, c.titulo, 7.5, 'centro', { negrito: true });
+    });
+    y += hCab;
+    dados.meses.forEach((m) => {
+      m.forEach((v, i) => {
+        retangulo(xm[i], y, lm[i], hLin, { borda: CINZA_BORDA });
+        textoAlinhado(xm[i] + PAD + 1, lm[i] - 2 * PAD - 2, y + 9.8, v, 8, COLUNAS_MESES[i].alinhar, { negrito: i === m.length - 1 });
+      });
+      y += hLin;
+    });
+    y += 12;
+  }
 
   /* --- Tabela --- */
   secao('Escalas Lançadas');

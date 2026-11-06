@@ -371,6 +371,7 @@
  "'pmgoVersion'": 1,
  "'prDate'": 1,
  "'prFiltros'": 1,
+ "'prMeses'": 1,
  "'prNorma'": 1,
  "'prSummary'": 1,
  "'prTableWrap'": 1,

@@ -1,5 +1,13 @@
 # Changelog
 
+## v88 — Total por mês no relatório PDF
+
+Melhoria no relatório, sem aviso de novidades (`data-conteudo` continua "86").
+- Quando o relatório reúne escalas de **2 meses ou mais**, aparece o quadro **Total por mês** logo abaixo do Resumo: mês, escalas, horas, H. diurnas, H. noturnas e valor estimado, em ordem cronológica. Serve para conferir mês a mês. Com um mês só, o relatório fica igual ao anterior.
+- A escala conta no mês em que **começa** (uma escala de 31/07 a 01/08 entra em julho).
+- Mesmo quadro no PDF do computador (impressão) e no PDF gerado no iPhone (`dadosRelatorio().meses`, colunas em `COLUNAS_MESES`). A tabela principal, o CSV e o texto compartilhado não mudaram.
+- Testes: suíte "Total por mês no relatório" (um mês sem quadro, ordem, escala que vira o mês, soma dos meses = total geral, larguras iguais no PDF e no CSS).
+
 ## v87 — Atualização que não deixa o app sem abrir
 
 Correção, sem aviso de novidades (`data-conteudo` continua "86").

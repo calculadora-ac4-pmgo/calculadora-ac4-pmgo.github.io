@@ -58,7 +58,7 @@ export function criarExportacoes(ctx) {
     let filtrosTexto;
     try {
       resultados = lista.map((e) => ({ e, r: calcularEscala(e) }));
-      const { resumoHTML, tabelaHTML, normaTexto } = montarRelatorioImpressao(resultados);
+      const { resumoHTML, mesesHTML, tabelaHTML, normaTexto } = montarRelatorioImpressao(resultados);
       emitidoEm = new Date().toLocaleString('pt-BR', {
         day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
       });
@@ -72,6 +72,9 @@ export function criarExportacoes(ctx) {
       const linhaFiltros = $('prFiltros');
       if (linhaFiltros) { linhaFiltros.textContent = filtrosTexto; linhaFiltros.hidden = !filtrosTexto; }
       $('prSummary').innerHTML = resumoHTML;
+      /* Quadro opcional (como #prFiltros): sem o elemento, o PDF sai sem ele. */
+      const quadroMeses = $('prMeses');
+      if (quadroMeses) { quadroMeses.innerHTML = mesesHTML; quadroMeses.hidden = !mesesHTML; }
       $('prTableWrap').innerHTML = tabelaHTML;
     } catch {
       toast('Não foi possível gerar o PDF. Atualize o aplicativo e tente de novo.', { erro: true });
