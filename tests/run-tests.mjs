@@ -460,6 +460,37 @@ const validarTotalPorMes = () => {
 };
 rodar('Total por mês no relatório', validarTotalPorMes);
 
+const dinheiroMod = await import('../js/modules/ui/dinheiro.mjs');
+const validarMeuDinheiro = () => {
+  const { resumirDinheiro, escalasPassadasPlanejadas, PARTES_DINHEIRO } = dinheiroMod;
+  const mk = (id, ini, fim, status, qtdPm = 1) => ({ id, inicio: ini, fim, descricao: 'Escala AC4', origem: 'AC4', qtdPm, status });
+  const escalas = [
+    mk('a', '2026-07-06T08:00', '2026-07-06T18:00', 'recebida'),
+    mk('b', '2026-07-07T08:00', '2026-07-07T18:00', 'realizada', 2),
+    mk('c', '2026-07-08T08:00', '2026-07-08T18:00', 'conferida'),
+    mk('d', '2026-07-09T08:00', '2026-07-09T18:00', 'planejada'),
+    mk('e', '2026-07-10T08:00', '2026-07-10T18:00'), /* sem situação = planejada */
+  ];
+  const resultados = escalas.map((e) => ({ e, r: calcularEscala(e, TABELA_OFICIAL) }));
+  const { total, partes } = resumirDinheiro(resultados);
+  const totalGeral = resultados.reduce((t, x) => t + x.r.valorCentavos * (x.e.qtdPm || 1), 0);
+  const p = Object.fromEntries(partes.map((x) => [x.chave, x]));
+  const passadas = escalasPassadasPlanejadas(escalas, new Date(2026, 6, 9, 20));
+  const situacoes = PARTES_DINHEIRO.flatMap((x) => x.situacoes).sort().join(',');
+  const checks = [
+    [total === totalGeral && partes.reduce((t, x) => t + x.valor, 0) === totalGeral, 'partes somam o total geral'],
+    [p.recebida.qtd === 1 && p['a-receber'].qtd === 2 && p.planejada.qtd === 2, 'quantidades por parte (1 · 2 · 2)'],
+    [p['a-receber'].valor === resultados[1].r.valorCentavos * 2 + resultados[2].r.valorCentavos, 'A receber = realizadas (× PMs) + conferidas'],
+    [situacoes === 'conferida,planejada,realizada,recebida', 'cada situação cai em exatamente uma parte'],
+    [resumirDinheiro([]).total === 0, 'lista vazia: total zero'],
+    [passadas.length === 1 && passadas[0].id === 'd', 'já passou: só planejada com término antes de agora'],
+    [descreverFiltros({ status: 'a-receber' }).includes('A receber'), 'aviso de filtro do PDF entende "A receber"'],
+  ];
+  const falhas = checks.filter(([ok]) => !ok).map(([, nome]) => nome);
+  return falhas.length ? falhas : 'MEU DINHEIRO OK';
+};
+rodar('Meu dinheiro e Já passou', validarMeuDinheiro);
+
 const validarNormas = () => {
   const ids = new Set(NORMAS.map((n) => n.id));
   const iso = /^\d{4}-\d{2}-\d{2}$/;

@@ -1,5 +1,14 @@
 # Changelog
 
+## v89 — Meu dinheiro e "Já passou?"
+
+Novidade para o usuário (`data-conteudo` = "89"; o aviso também lembra o Total por mês da v88).
+- **Meu dinheiro:** o cartão de valor do topo divide o total em **Recebido** (escalas recebidas), **A receber** (realizadas e conferidas) e **Previsto** (planejadas), com barra e quantidade de escalas. Segue os mesmos filtros da lista; tocar numa parte filtra a lista por ela e tocar de novo limpa. O filtro de situação ganhou a opção "A receber (realizadas e conferidas)", também citada no aviso de filtro do PDF.
+- **Já passou?:** cartão abaixo do painel quando há escala encerrada ainda como planejada (todas as escalas, não só o mês). **Marcar como realizadas** muda todas de uma vez, com **Desfazer** no aviso; **Agora não** guarda as escalas dispensadas (`pmgoJaPassouDispensadas`) e o cartão só volta com escala passada nova. Substitui o aviso que ficava escondido em "Ver detalhes do mês".
+- Desktop: o cartão de valor ficou mais largo (2 de 5 partes da linha) para caber o painel; o cartão "Já passou?" ocupa uma linha própria (oculto, a linha some).
+- Novo módulo `js/modules/ui/dinheiro.mjs` (funções puras `resumirDinheiro` e `escalasPassadasPlanejadas` + fábrica `criarDinheiro`), no `SHELL` do `sw.js`.
+- Testes: unit "Meu dinheiro e Já passou" (partes somam o total, A receber = realizadas × PMs + conferidas, cada situação em uma parte só, passadas); smoke (soma igual ao total, filtro por toque, marcar e desfazer, "Agora não" depois de recarregar e volta com escala nova). Revisão visual em 390 px e 1280 px, claro e escuro.
+
 ## v88 — Total por mês no relatório PDF
 
 Melhoria no relatório, sem aviso de novidades (`data-conteudo` continua "86").

@@ -5,15 +5,15 @@
    o app. Até a v86 era network-first arquivo por arquivo: se a rede falhasse no meio
    de uma atualização, o app juntava arquivos novos com antigos do cache e podia
    nem abrir (relato do gestor no iPhone, 05/11/2026). */
-const CACHE = 'ac4-v88';
-const SW_VERSION = '88';
+const CACHE = 'ac4-v89';
+const SW_VERSION = '89';
 const SHELL = [
   './',
   './index.html',
-  './css/styles.css?v=88',
-  './js/app.js?v=88',
-  './js/theme.js?v=88',
-  './js/inicio-seguro.js?v=88',
+  './css/styles.css?v=89',
+  './js/app.js?v=89',
+  './js/theme.js?v=89',
+  './js/inicio-seguro.js?v=89',
   // módulos importados sem query string (resolvidos pelo import de app.js)
   './js/modules/formato.mjs',
   './js/modules/calculo.mjs',
@@ -24,6 +24,7 @@ const SHELL = [
   './js/modules/templates.mjs',
   './js/modules/relatorio.mjs',
   './js/modules/pdf.mjs',
+  './js/modules/ui/dinheiro.mjs',
   './js/modules/pwa.mjs',
   './js/modules/ui/avisos.mjs',
   './js/modules/ui/observabilidade.mjs',

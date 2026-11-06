@@ -18,9 +18,11 @@
   .layout > .metrics,
   .layout > .feed,
   .layout > .legal-alert { grid-column: 1 / -1; }
-  .layout > .launch-panel { grid-column: 1; grid-row: 2 / span 2; margin-top: 20px; }
-  .layout > .planning-panel { grid-column: 2; grid-row: 2; margin-top: 20px; }
-  .layout > .tariff-strip { grid-column: 2; grid-row: 3; }
+  /* Linha 2: cartão "Já passou?" (v89); oculto, a linha fica com altura zero. */
+  .layout > .ja-passou { grid-column: 1 / -1; grid-row: 2; }
+  .layout > .launch-panel { grid-column: 1; grid-row: 3 / span 2; margin-top: 20px; }
+  .layout > .planning-panel { grid-column: 2; grid-row: 3; margin-top: 20px; }
+  .layout > .tariff-strip { grid-column: 2; grid-row: 4; }
 }
 /* Superfícies: cartão sólido + borda nítida + sombra em camadas.
    Sem backdrop-filter — mais legível, mais barato para a GPU (INP). */

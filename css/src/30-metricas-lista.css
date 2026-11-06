@@ -1,7 +1,8 @@
 /* ===== METRICS ===== */
 .metrics {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  /* O cartão de valor é mais largo: leva o painel "Meu dinheiro" (v89). */
+  grid-template-columns: minmax(0, 2fr) repeat(3, minmax(0, 1fr));
   gap: 14px;
 }
 .metric-card {
@@ -67,6 +68,51 @@
 }
 .metric-card.highlight .metric-value { color: #fff; }
 .metric-sub { margin-top: 6px; color: var(--text-muted); font-size: var(--fs-leitura); font-weight: 600; }
+
+/* ===== MEU DINHEIRO (v89): Recebido · A receber · Previsto, dentro do cartão de valor ===== */
+.metric-card.highlight > div:last-child { flex: 1; }
+.dinheiro { width: 100%; margin-top: 12px; }
+.dinheiro-barra {
+  display: flex; height: 8px; overflow: hidden;
+  border-radius: 999px; background: rgb(255 255 255 / 0.14);
+}
+.dinheiro-seg { display: block; height: 100%; width: 0; transition: width var(--dur) var(--ease-out); }
+.dinheiro-seg--recebida, .dinheiro-parte--recebida .dinheiro-ponto { background: #a78bfa; }
+.dinheiro-seg--a-receber, .dinheiro-parte--a-receber .dinheiro-ponto { background: #60a5fa; }
+.dinheiro-seg--planejada, .dinheiro-parte--planejada .dinheiro-ponto { background: var(--gold-300); }
+.dinheiro-partes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-top: 8px; }
+.dinheiro-parte {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+  min-height: 44px; min-width: 0; padding: 6px 8px;
+  border: 1px solid transparent; border-radius: var(--radius-sm);
+  background: rgb(255 255 255 / 0.06); color: #fff; text-align: left; cursor: pointer;
+  font-variant-numeric: tabular-nums;
+}
+.dinheiro-parte:hover { background: rgb(255 255 255 / 0.12); }
+.dinheiro-parte[aria-pressed="true"] { border-color: var(--gold-300); background: rgb(255 255 255 / 0.14); }
+.dinheiro-parte:focus-visible { outline: 2px solid var(--gold-300); outline-offset: 2px; }
+.dinheiro-rotulo {
+  display: inline-flex; align-items: center; gap: 5px;
+  color: rgb(255 255 255 / 0.8); font-size: var(--fs-rotulo); font-weight: 700;
+}
+.dinheiro-ponto { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.dinheiro-valor {
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: var(--fs-leitura); font-weight: 800; color: #fff;
+}
+.dinheiro-qtd { color: rgb(255 255 255 / 0.7); font-size: var(--fs-rotulo); font-weight: 600; }
+
+/* ===== JÁ PASSOU? (v89): escalas encerradas ainda como planejadas ===== */
+.ja-passou {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 14px;
+  margin-top: 14px; padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--gold-500) 42%, var(--border));
+  border-radius: var(--radius-lg);
+  background: var(--warn-soft);
+}
+.ja-passou-texto { margin: 0; color: var(--warn-text); font-size: var(--fs-leitura); font-weight: 800; }
+.ja-passou-acoes { display: flex; gap: 8px; flex-wrap: wrap; }
+.ja-passou-acoes .btn { min-height: 44px; }
 
 /* ===== FEED ===== */
 .feed { margin-top: 20px; }
