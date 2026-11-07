@@ -15,9 +15,9 @@
   <!-- Preload da fonte principal — reduz reflow/CLS do font-swap da Inter -->
   <link rel="preload" href="assets/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 
-  <link rel="stylesheet" href="css/styles.css?v=90">
-  <script src="js/theme.js?v=90"></script>
-  <script src="js/inicio-seguro.js?v=90" defer></script>
+  <link rel="stylesheet" href="css/styles.css?v=91">
+  <script src="js/theme.js?v=91"></script>
+  <script src="js/inicio-seguro.js?v=91" defer></script>
 </head>
 <body>
 
@@ -205,6 +205,17 @@
         </div>
       </div>
     </section>
+
+    <!-- Escala em andamento ou a próxima (v91): toque leva até ela na lista -->
+    <button type="button" class="proxima-escala hidden" id="proximaEscala">
+      <span class="proxima-icone" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+      <span class="proxima-textos">
+        <span class="proxima-rotulo" id="proximaRotulo">Próxima escala</span>
+        <strong class="proxima-quando" id="proximaQuando"></strong>
+        <span class="proxima-detalhe" id="proximaDetalhe"></span>
+      </span>
+      <svg class="icon icon-sm proxima-seta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+    </button>
 
     <!-- Escalas encerradas ainda como planejadas (v89) -->
     <section class="ja-passou hidden" id="jaPassou" aria-labelledby="jaPassouTexto">
@@ -427,16 +438,11 @@
       <div class="planning-main">
         <div class="planning-total">
           <span>Estimativa do mês</span>
-          <strong id="planningValue">R$ 0,00</strong>
-          <small id="planningHours">0h · 0 escalas</small>
+          <p class="planning-total-linha"><strong id="planningValue">R$ 0,00</strong> · <small id="planningHours">0h · 0 escalas</small></p>
         </div>
         <div class="planning-comparison" id="planningComparison">Sem dados do mês anterior</div>
       </div>
-      <button class="planning-toggle" id="planningToggle" type="button" aria-expanded="false" aria-controls="planningDetails">
-        <span>Ver detalhes do mês</span>
-        <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
-      </button>
-      <div class="planning-details" id="planningDetails">
+      <div class="planning-destaques">
         <div class="planning-progress hidden" id="planningProgress">
           <div class="planning-progress-head">
             <span id="planningProgressLabel">Meta mensal</span>
@@ -450,6 +456,12 @@
           <div class="planning-hours-bar" id="planningHoursBar"><span class="planning-day" id="planningDayBar"></span><span class="planning-night" id="planningNightBar"></span></div>
           <div class="planning-hours-labels"><span id="planningDayLabel">Dia 0h</span><span id="planningNightLabel">Noite 0h</span></div>
         </div>
+      </div>
+      <button class="planning-toggle" id="planningToggle" type="button" aria-expanded="false" aria-controls="planningDetails">
+        <span>Ver detalhes do mês</span>
+        <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+      </button>
+      <div class="planning-details" id="planningDetails">
         <figure class="planning-history hidden" id="planningHistory" aria-labelledby="planningHistoryTitle">
           <figcaption class="planning-history-head">
             <span id="planningHistoryTitle">Últimos 6 meses (R$)</span>
@@ -534,7 +546,7 @@
         &copy; <span class="footer-year"></span> Weliton Pinheiro &mdash; Todos os direitos reservados.
       </p>
       <p class="site-footer-meta">
-        Calculadora AC4 &middot; PMGO &middot; v90 &middot;
+        Calculadora AC4 &middot; PMGO &middot; v91 &middot;
         <a href="#" id="footerNovidades" class="footer-link">Novidades</a> &middot;
         <a href="#" id="footerPrivacidade" class="footer-link">Privacidade</a> &middot;
         <a href="#" id="footerFeedback" class="footer-link">Feedback</a> &middot;
@@ -573,7 +585,7 @@
   <dialog class="confirm-dialog whats-new-dialog" id="dialogNovidades" data-conteudo="89" aria-modal="true" aria-labelledby="novidadesTitle" aria-describedby="novidadesIntro">
     <div class="whats-new-body">
       <div class="whats-new-topbar">
-        <span class="whats-new-badge">Nova versão <strong>v90</strong></span>
+        <span class="whats-new-badge">Nova versão <strong>v91</strong></span>
         <button class="btn-icon whats-new-close" id="novidadesFechar" type="button" aria-label="Fechar novidades">
           <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
         </button>
@@ -874,7 +886,7 @@
     </div>
   </dialog>
 
-  <script type="module" src="js/app.js?v=90"></script>
+  <script type="module" src="js/app.js?v=91"></script>
 
   <!-- Relatório profissional de impressão — populado pelo JS antes de window.print() -->
   <section id="printReport">

@@ -508,6 +508,34 @@ const validarHoraRapida = () => {
 };
 rodar('Hora de início rápida', validarHoraRapida);
 
+const proximaMod = await import('../js/modules/ui/proxima-escala.mjs');
+const { fmtMoeda } = await import('../js/modules/formato.mjs');
+const validarProximaEscala = () => {
+  const { proximaEscala, rotuloDia, textosProximaEscala } = proximaMod;
+  const agora = new Date(2026, 10, 7, 20, 0); /* sáb 07/11/2026 20:00 */
+  const mk = (id, ini, fim, extra = {}) => ({ id, inicio: ini, fim, descricao: 'Escala AC4', origem: 'AC4', qtdPm: 1, status: 'planejada', ...extra });
+  const passada = mk('p', '2026-11-05T07:00', '2026-11-05T19:00');
+  const amanha = mk('a', '2026-11-08T07:00', '2026-11-08T19:00', { descricao: '19º CRPM — Sede' });
+  const depois = mk('d', '2026-11-14T07:00', '2026-11-14T19:00');
+  const andando = mk('n', '2026-11-07T19:00', '2026-11-08T07:00');
+  const r = calcularEscala(amanha, TABELA_OFICIAL);
+  const tAmanha = textosProximaEscala({ escala: amanha, emAndamento: false }, r, agora);
+  const tAndando = textosProximaEscala({ escala: andando, emAndamento: true }, calcularEscala(andando, TABELA_OFICIAL), agora);
+  const checks = [
+    [proximaEscala([passada, depois, amanha], agora)?.escala.id === 'a', 'escolhe a próxima a começar (não a passada nem a mais distante)'],
+    [proximaEscala([amanha, andando], agora)?.emAndamento === true && proximaEscala([amanha, andando], agora).escala.id === 'n', 'escala em andamento tem prioridade'],
+    [proximaEscala([passada], agora) === null && proximaEscala([], agora) === null, 'sem escala futura: nada'],
+    [rotuloDia(new Date(2026, 10, 7, 23), agora) === 'Hoje' && rotuloDia(new Date(2026, 10, 8, 7), agora) === 'Amanhã', 'Hoje e Amanhã'],
+    [/^sáb\.?, 14\/11$/.test(rotuloDia(new Date(2026, 10, 14, 7), agora)), `data abreviada (obtido: ${rotuloDia(new Date(2026, 10, 14, 7), agora)})`],
+    [rotuloDia(new Date(2026, 11, 1, 7), new Date(2026, 10, 30, 20)) === 'Amanhã', 'Amanhã na virada do mês'],
+    [tAmanha.rotulo === 'Próxima escala' && tAmanha.quando === 'Amanhã · 07:00 às 19:00' && tAmanha.detalhe === `19º CRPM — Sede · ${fmtMoeda(r.valorCentavos)}`, `textos da próxima (${JSON.stringify(tAmanha)})`],
+    [tAndando.rotulo === 'Em andamento' && tAndando.quando === 'Termina amanhã às 07:00', `textos em andamento (${JSON.stringify(tAndando)})`],
+  ];
+  const falhas = checks.filter(([ok]) => !ok).map(([, nome]) => nome);
+  return falhas.length ? falhas : 'PRÓXIMA ESCALA OK';
+};
+rodar('Próxima escala', validarProximaEscala);
+
 const validarNormas = () => {
   const ids = new Set(NORMAS.map((n) => n.id));
   const iso = /^\d{4}-\d{2}-\d{2}$/;

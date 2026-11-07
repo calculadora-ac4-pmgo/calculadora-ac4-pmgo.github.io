@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Calculadora AC4 — v90
+   Calculadora AC4 — v91
    Arquivo gerado por tools/montar-css.mjs — edite css/src/ e rode o script.
    ========================================================================== */
 
@@ -436,11 +436,12 @@ button { color: inherit; }
   .layout > .metrics,
   .layout > .feed,
   .layout > .legal-alert { grid-column: 1 / -1; }
-  /* Linha 2: cartão "Já passou?" (v89); oculto, a linha fica com altura zero. */
-  .layout > .ja-passou { grid-column: 1 / -1; grid-row: 2; }
-  .layout > .launch-panel { grid-column: 1; grid-row: 3 / span 2; margin-top: 20px; }
-  .layout > .planning-panel { grid-column: 2; grid-row: 3; margin-top: 20px; }
-  .layout > .tariff-strip { grid-column: 2; grid-row: 4; }
+  /* Linhas 2 e 3: "Próxima escala" (v91) e "Já passou?" (v89); ocultos, a linha fica com altura zero. */
+  .layout > .proxima-escala { grid-column: 1 / -1; grid-row: 2; }
+  .layout > .ja-passou { grid-column: 1 / -1; grid-row: 3; }
+  .layout > .launch-panel { grid-column: 1; grid-row: 4 / span 2; margin-top: 20px; }
+  .layout > .planning-panel { grid-column: 2; grid-row: 4; margin-top: 20px; }
+  .layout > .tariff-strip { grid-column: 2; grid-row: 5; }
 }
 /* Superfícies: cartão sólido + borda nítida + sombra em camadas.
    Sem backdrop-filter — mais legível, mais barato para a GPU (INP). */
@@ -769,13 +770,16 @@ textarea.control { min-height: 74px; resize: vertical; }
 .planning-main { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 18px; margin-top: 20px; }
 .planning-total { min-width: 0; }
 .planning-total span { display: block; color: var(--text-muted); font-size: 0.75rem; font-weight: 750; }
-.planning-total strong { display: block; margin-top: 3px; color: var(--green-600); font-size: clamp(1.65rem, 4vw, 2.25rem); font-weight: 900; line-height: 1.05; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-.planning-total small { display: block; margin-top: 6px; color: var(--text-muted); font-size: var(--fs-leitura); font-weight: 700; }
+/* v91: o valor do mês vira uma linha discreta (o número grande já está no topo). */
+.planning-total-linha { margin-top: 4px; color: var(--text-muted); font-size: var(--fs-leitura); font-weight: 700; font-variant-numeric: tabular-nums; }
+.planning-total strong { color: var(--text); font-size: var(--fs-leitura); font-weight: 850; }
+.planning-total small { color: var(--text-muted); font-size: var(--fs-leitura); font-weight: 700; }
 .planning-comparison { padding: 8px 10px; border-radius: 999px; background: var(--surface-2); color: var(--text-muted); font-size: var(--fs-leitura); font-weight: 750; white-space: nowrap; }
 .planning-comparison.is-up { background: color-mix(in srgb, var(--green-600) 13%, var(--surface)); color: var(--green-700); }
 .planning-comparison.is-down { background: var(--info-soft); color: var(--info-text); }
 .planning-toggle { display: none; }
-.planning-progress { margin-top: 18px; }
+.planning-progress { margin-top: 16px; }
+.planning-progress-head strong { font-size: 1.05rem; }
 .planning-progress-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--text-muted); font-size: 0.76rem; font-weight: 750; }
 .planning-progress-head strong { color: var(--text); font-variant-numeric: tabular-nums; }
 .planning-progress-track { height: 10px; margin-top: 8px; overflow: hidden; border-radius: 999px; background: var(--surface-3); }
@@ -1026,6 +1030,36 @@ textarea.control { min-height: 74px; resize: vertical; }
   font-size: var(--fs-leitura); font-weight: 800; color: #fff;
 }
 .dinheiro-qtd { color: rgb(255 255 255 / 0.7); font-size: var(--fs-rotulo); font-weight: 600; }
+
+/* ===== PRÓXIMA ESCALA (v91): em andamento ou a próxima; toque leva à lista ===== */
+.proxima-escala {
+  display: flex; align-items: center; gap: 12px; width: 100%;
+  margin-top: 14px; padding: 12px 14px; min-height: 64px;
+  border: 1px solid var(--glass-border); border-radius: var(--radius-lg);
+  background: var(--surface); color: var(--text); text-align: left; cursor: pointer;
+  box-shadow: var(--shadow-sm);
+}
+.proxima-escala:hover { border-color: var(--border-strong); }
+.proxima-escala:focus-visible { outline: 2px solid var(--gold-500); outline-offset: 2px; }
+.proxima-icone {
+  display: grid; place-items: center; flex-shrink: 0; width: 40px; height: 40px;
+  border-radius: var(--radius-md); background: var(--info-soft); color: var(--info-text);
+}
+.proxima-escala.is-andamento .proxima-icone { background: color-mix(in srgb, var(--green-600) 15%, var(--surface)); color: var(--green-700); }
+.proxima-textos { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
+.proxima-rotulo { color: var(--text-muted); font-size: var(--fs-rotulo); font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; }
+.proxima-escala.is-andamento .proxima-rotulo { color: var(--green-700); }
+.proxima-quando { font-size: 1rem; font-weight: 850; color: var(--text); }
+.proxima-detalhe { color: var(--text-muted); font-size: var(--fs-leitura); font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.proxima-seta { flex-shrink: 0; color: var(--text-muted); }
+.escala-card.is-destaque { animation: destaque-escala 1.8s var(--ease-out); }
+@keyframes destaque-escala {
+  0%, 35% { box-shadow: 0 0 0 3px var(--gold-500); }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .escala-card.is-destaque { animation: none; outline: 3px solid var(--gold-500); }
+}
 
 /* ===== JÁ PASSOU? (v89): escalas encerradas ainda como planejadas ===== */
 .ja-passou {

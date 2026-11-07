@@ -1,5 +1,13 @@
 # Changelog
 
+## v91 — Próxima escala e Planejamento sem número repetido
+
+Ajustes de interface, sem aviso de novidades (`data-conteudo` continua "89").
+- **Próxima escala:** cartão abaixo do painel Meu dinheiro com a escala em andamento ("Em andamento · Termina às 19:00") ou a próxima a começar ("Amanhã · 07:00 às 19:00"), com unidade e valor. Olha todas as escalas, sem depender dos filtros; o dia aparece como Hoje, Amanhã ou data abreviada ("sex., 13/11"). Tocar leva até a escala na lista e a destaca; se ela estiver fora da lista (filtro ou limite), os filtros são limpos. Sem escala futura, o cartão não aparece. Novo módulo `js/modules/ui/proxima-escala.mjs` (no `SHELL`).
+- **Planejamento:** o valor do mês virou uma linha discreta ("R$ 4.226,00 · 104h · 8 escalas"), porque o número grande já está no topo. A meta (com barra) e a divisão dia/noite saíram de "Ver detalhes do mês" e ficam sempre visíveis; histórico e contadores por situação continuam nos detalhes.
+- Desktop: "Próxima escala" e "Já passou?" têm linhas próprias no grid (ocultos, as linhas somem).
+- Testes: unit "Próxima escala" (escolha da escala, em andamento, Hoje/Amanhã, virada do mês, textos); smoke (texto do cartão, toque limpa o filtro e destaca, sem escala futura some, Planejamento discreto com meta visível). Revisão visual em 390 px e 1280 px, claro e escuro.
+
 ## v90 — Hora rápida, lista vazia e faixa da Portaria recolhida
 
 Ajustes pequenos, sem aviso de novidades (`data-conteudo` continua "89").
