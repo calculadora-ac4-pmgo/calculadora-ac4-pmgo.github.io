@@ -647,6 +647,40 @@ try {
     localStorage.removeItem('pmgoEscalas'); localStorage.removeItem('pmgoJaPassouDispensadas'); return JSON.stringify(r);`);
   passos.push({ nome: 'Já passou: "Agora não" some após recarregar e só volta com escala passada nova', ok: dispensou === true && voltouNova.visivel && voltouNova.texto.startsWith('1 escala'), detalhe: JSON.stringify({ dispensou, voltouNova }) });
 
+  // 10. Ajustes rápidos (v90) no celular: lista vazia com botão, hora vinda da última escala,
+  //     botões de hora e faixa da Portaria recolhida. No computador, a faixa continua aberta.
+  await cdp.enviar('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true }, sessionId);
+  await cdp.enviar('Runtime.evaluate', { expression: `localStorage.removeItem('pmgoEscalas');` }, sessionId);
+  await abrirDin();
+  const v90 = await avaliarDin(`const r={};
+    const vazio=document.querySelector('#listaEscalas .empty-state');
+    r.texto=vazio?.querySelector('p')?.textContent; r.botao=!!vazio?.querySelector('[data-acao-vazia="nova-escala"]');
+    const faixa=document.getElementById('tariffStrip');
+    r.itensOcultos=getComputedStyle(document.getElementById('tariffItems')).display==='none';
+    document.getElementById('tariffToggle').click(); await sl(50);
+    r.itensAbertos=getComputedStyle(document.getElementById('tariffItems')).display!=='none' && document.getElementById('tariffToggle').getAttribute('aria-expanded')==='true';
+    localStorage.setItem('pmgoEscalas', JSON.stringify([{id:'h1',inicio:'2026-08-03T22:30',fim:'2026-08-04T06:30',descricao:'Escala AC4',origem:'AC4',qtdPm:1,status:'recebida'}]));
+    return JSON.stringify(r);`);
+  passos.push({ nome: 'Lista vazia no celular: "Toque em Nova escala…" com o botão', ok: v90.texto === 'Toque em Nova escala para lançar a primeira.' && v90.botao, detalhe: JSON.stringify(v90) });
+  passos.push({ nome: 'Faixa da Portaria: recolhida no celular e abre com um toque', ok: v90.itensOcultos && v90.itensAbertos, detalhe: JSON.stringify(v90) });
+  await abrirDin();
+  const hora = await avaliarDin(`document.getElementById('mobileAdd').click();
+    for(let i=0;i<30&&!document.getElementById('escalaInicioHora').value;i++)await sl(100); await sl(200);
+    const r={padrao:document.getElementById('escalaInicioHora').value, data:document.getElementById('escalaInicioData').value,
+      ultimaVisivel:!document.getElementById('horaChipUltima').classList.contains('hidden'),
+      ultimaAtiva:document.getElementById('horaChipUltima').getAttribute('aria-pressed')};
+    document.querySelector('.hora-chip[data-hora="19:00"]').click(); await sl(150);
+    r.depois=document.getElementById('escalaInicio').value.slice(11,16);
+    r.ativo19=document.querySelector('.hora-chip[data-hora="19:00"]').getAttribute('aria-pressed');
+    localStorage.removeItem('pmgoEscalas'); return JSON.stringify(r);`);
+  const hoje = await avaliarDin(`const d=new Date();return JSON.stringify(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'));`);
+  passos.push({ nome: 'Nova escala: hora vem da última escala (22:30), data de hoje, botão "Última" ativo', ok: hora.padrao === '22:30' && hora.data === hoje && hora.ultimaVisivel && hora.ultimaAtiva === 'true', detalhe: JSON.stringify(hora) });
+  passos.push({ nome: 'Botão 19:00 preenche a hora do início', ok: hora.depois === '19:00' && hora.ativo19 === 'true', detalhe: JSON.stringify(hora) });
+  await cdp.enviar('Emulation.setDeviceMetricsOverride', { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false }, sessionId);
+  await abrirDin();
+  const desk = await avaliarDin(`return JSON.stringify({itens:getComputedStyle(document.getElementById('tariffItems')).display!=='none', botao:getComputedStyle(document.getElementById('tariffToggle')).display==='none', texto:document.querySelector('#listaEscalas .empty-state p')?.textContent, botaoVazio:!!document.querySelector('[data-acao-vazia]')});`);
+  passos.push({ nome: 'Computador: faixa da Portaria aberta e lista vazia sem o botão do celular', ok: desk.itens && desk.botao && desk.texto === 'Use o formulário Lançar escala para começar.' && !desk.botaoVazio, detalhe: JSON.stringify(desk) });
+
   console.table(passos.map(({ nome, ok, detalhe }) => ({ passo: nome, ok, detalhe })));
 
   const falhas = passos.filter((p) => !p.ok);

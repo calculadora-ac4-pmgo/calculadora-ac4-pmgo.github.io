@@ -222,6 +222,7 @@
 .empty-state .icon { width: 44px; height: 44px; margin: 0 auto 16px; color: var(--text-faint); }
 .empty-state h3 { color: var(--text); font-size: 1rem; font-weight: 800; margin-bottom: 6px; }
 .empty-state p { font-size: var(--fs-leitura); }
+.empty-state-acao { margin-top: 16px; min-height: 44px; }
 
 .legal-alert {
   margin-top: 16px;

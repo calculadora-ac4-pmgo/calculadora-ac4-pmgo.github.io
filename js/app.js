@@ -1,11 +1,11 @@
 /* ==========================================================================
-   Calculadora AC4 — v89
+   Calculadora AC4 — v90
    Módulo principal: estado, ligação dos módulos de interface (js/modules/ui/),
    render() e init(). Regras de negócio, formatação e agenda vivem em js/modules/.
    ========================================================================== */
 import {
   fmtMoeda, fmtHoras, fmtData, fmtDiaSemana, fmtHora,
-  parseDateTimeLocal, toInputLocal,
+  parseDateTimeLocal,
   toInputMonth, fmtMesRef, escapeHTML,
 } from './modules/formato.mjs';
 import {
@@ -31,7 +31,7 @@ import { criarExportacoes } from './modules/ui/exportacoes.mjs';
 import { criarCompartilhar } from './modules/ui/compartilhar.mjs';
 import { criarPlanejamento } from './modules/ui/planejamento.mjs';
 import { criarDinheiro, PARTES_DINHEIRO } from './modules/ui/dinheiro.mjs';
-import { criarFormulario } from './modules/ui/formulario.mjs';
+import { criarFormulario, inicioPadrao } from './modules/ui/formulario.mjs';
 import { criarModelos } from './modules/ui/modelos.mjs';
 import { criarAgendaDias } from './modules/ui/agenda-dias.mjs';
 
@@ -44,7 +44,7 @@ import { criarAgendaDias } from './modules/ui/agenda-dias.mjs';
   /* Versão da aplicação (sincronizada pelo tools/bump-version.mjs). Serve para
      carimbar o log de erros e detectar clientes presos em cache antigo:
      se __ac4Version no console divergir do rodapé/CHANGELOG, o SW não atualizou. */
-  const APP_VERSION = '89';
+  const APP_VERSION = '90';
 
   const STORAGE = {
     escalas:   'pmgoEscalas',
@@ -111,7 +111,7 @@ import { criarAgendaDias } from './modules/ui/agenda-dias.mjs';
      os anteriores devolvem. Um módulo de UI nunca importa outro. */
   const { toast, dialogConfirmar, haptic } = criarAvisos({ $ });
   const { registrarErro, initObservabilidade } = criarObservabilidade({ STORAGE, APP_VERSION, estado, toast });
-  const { aplicarTema, initTema, initNovidades } = criarAparencia({
+  const { aplicarTema, initTema, initNovidades, ligarFaixaPortaria } = criarAparencia({
     $, on, STORAGE, lerLocal, APP_VERSION, estado, aposProximoPaint,
   });
   const {
@@ -249,7 +249,14 @@ import { criarAgendaDias } from './modules/ui/agenda-dias.mjs';
 
     const container = $('listaEscalas');
     if (!lista.length) {
-      const msg = filtrosAtivos ? 'Nenhuma escala corresponde aos filtros. Ajuste a busca ou o período.' : 'Preencha o formulário acima para iniciar o cálculo.';
+      /* No celular o formulário abre pelo botão Nova escala; no computador ele já está ao lado (v90). */
+      const celular = formulario.isMobileViewport();
+      const msg = filtrosAtivos
+        ? 'Nenhuma escala corresponde aos filtros. Ajuste a busca ou o período.'
+        : (celular ? 'Toque em Nova escala para lançar a primeira.' : 'Use o formulário Lançar escala para começar.');
+      const botaoNova = !filtrosAtivos && celular
+        ? '<button type="button" class="btn btn-primary empty-state-acao" data-acao-vazia="nova-escala">Nova escala</button>'
+        : '';
       container.innerHTML = `
         <div class="empty-state">
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -257,6 +264,7 @@ import { criarAgendaDias } from './modules/ui/agenda-dias.mjs';
           </svg>
           <h3>Nenhuma escala lançada</h3>
           <p>${escapeHTML(msg)}</p>
+          ${botaoNova}
         </div>`;
       return;
     }
@@ -342,10 +350,12 @@ import { criarAgendaDias } from './modules/ui/agenda-dias.mjs';
     renderModelos();
     setDetalhesAvancados(false);
 
-    $('escalaInicio').value = toInputLocal(new Date());
+    $('escalaInicio').value = inicioPadrao(estado.escalas);
     sincronizarTodosControlesDataHora();
+    formulario.atualizarChipsHora();
 
     formulario.ligarEventos();
+    ligarFaixaPortaria();
     modelosFavoritos.ligarEventos();
     agendaDias.ligarEventos();
     planejamento.ligarEventos();

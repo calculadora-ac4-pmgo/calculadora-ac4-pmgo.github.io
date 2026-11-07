@@ -8,7 +8,7 @@
  * Cria os controles de aparência.
  * @param {Object} ctx Dependências de app.js: $, on, STORAGE, lerLocal, APP_VERSION,
  *   estado (versaoAnterior) e aposProximoPaint.
- * @returns {{aplicarTema:Function, initTema:Function, initNovidades:Function, abrirNovidades:Function, marcarNovidadesVistas:Function}}
+ * @returns {{aplicarTema:Function, initTema:Function, initNovidades:Function, abrirNovidades:Function, marcarNovidadesVistas:Function, ligarFaixaPortaria:Function}}
  */
 export function criarAparencia(ctx) {
   const { $, on, STORAGE, lerLocal, APP_VERSION, estado, aposProximoPaint } = ctx;
@@ -64,5 +64,16 @@ export function criarAparencia(ctx) {
     }
   }
 
-  return { aplicarTema, initTema, initNovidades, abrirNovidades, marcarNovidadesVistas };
+  /* ------------------------------------------ faixa da Portaria (v90) */
+  /* No celular a faixa de valores fica recolhida em uma linha; o botão abre. */
+  function ligarFaixaPortaria() {
+    on('tariffToggle', 'click', () => {
+      const faixa = $('tariffStrip');
+      const aberta = !faixa.classList.contains('is-aberta');
+      faixa.classList.toggle('is-aberta', aberta);
+      $('tariffToggle').setAttribute('aria-expanded', aberta ? 'true' : 'false');
+    });
+  }
+
+  return { aplicarTema, initTema, initNovidades, abrirNovidades, marcarNovidadesVistas, ligarFaixaPortaria };
 }

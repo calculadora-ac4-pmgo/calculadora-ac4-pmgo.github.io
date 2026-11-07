@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Calculadora AC4 — v89
+   Calculadora AC4 — v90
    Arquivo gerado por tools/montar-css.mjs — edite css/src/ e rode o script.
    ========================================================================== */
 
@@ -699,6 +699,7 @@ textarea.control { min-height: 74px; resize: vertical; }
 .field-ico,
 .mobile-datetime,
 .dur-chips,
+.hora-chips,
 .dur-rapida-tag,
 .auto-tag,
 .fim-hint,
@@ -707,6 +708,8 @@ textarea.control { min-height: 74px; resize: vertical; }
 .metric-resumo-mobile { display: none; }
 
 /* ===== TARIFF STRIP — referência discreta de valores ===== */
+/* Botão de recolher: só no celular (v90). */
+.tariff-toggle { display: none; }
 .tariff-strip {
   margin-top: 12px;
   padding: 10px 16px;
@@ -1144,6 +1147,7 @@ textarea.control { min-height: 74px; resize: vertical; }
 .empty-state .icon { width: 44px; height: 44px; margin: 0 auto 16px; color: var(--text-faint); }
 .empty-state h3 { color: var(--text); font-size: 1rem; font-weight: 800; margin-bottom: 6px; }
 .empty-state p { font-size: var(--fs-leitura); }
+.empty-state-acao { margin-top: 16px; min-height: 44px; }
 
 .legal-alert {
   margin-top: 16px;
@@ -1937,6 +1941,24 @@ textarea.control { min-height: 74px; resize: vertical; }
   /* Duração rápida: chips de largura total no lugar do select */
   #fieldDuracao > .control { display: none; }
   .dur-chips { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  /* Hora de início rápida (v90): mesmos chips da duração, mais baixos */
+  .hora-chips { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px; }
+  .hora-chip { min-height: 44px; }
+  .hora-chip.hidden { display: none; }
+
+  /* Faixa da Portaria recolhida em uma linha (v90) */
+  .tariff-strip { padding: 0; gap: 0; }
+  .tariff-toggle {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    width: 100%; min-height: 44px; padding: 10px 16px;
+    border: 0; background: none; color: var(--text-muted); cursor: pointer;
+    font-size: var(--fs-rotulo); font-weight: 750; letter-spacing: 0.03em; text-align: left;
+  }
+  .tariff-toggle .icon { transition: transform var(--dur) var(--ease-out); }
+  .tariff-strip.is-aberta .tariff-toggle .icon { transform: rotate(180deg); }
+  .tariff-strip .tariff-strip-label { display: none; }
+  .tariff-strip .tariff-strip-items { display: none; padding: 0 16px 12px; }
+  .tariff-strip.is-aberta .tariff-strip-items { display: flex; }
   .dur-rapida-tag { display: inline; }
   .dur-chip {
     position: relative;

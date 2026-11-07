@@ -1,5 +1,14 @@
 # Changelog
 
+## v90 — Hora rápida, lista vazia e faixa da Portaria recolhida
+
+Ajustes pequenos, sem aviso de novidades (`data-conteudo` continua "89").
+- **Hora de início rápida (celular):** na janela Nova escala, botões **07:00**, **19:00** e **Última HH:MM** (só quando a última hora usada é outra), no estilo dos botões de duração.
+- **Hora sugerida:** uma escala nova começa com a data de hoje e a **hora da última escala lançada** (07:00 se ainda não houver), em vez da hora do relógio. Vale no celular e no computador (`inicioPadrao`/`horaUltimaEscala` em `ui/formulario.mjs`).
+- **Lista vazia:** no celular, "Toque em Nova escala para lançar a primeira." com o botão **Nova escala**; no computador, "Use o formulário Lançar escala para começar." (o texto antigo citava um "formulário acima" que não existe no celular).
+- **Faixa da Portaria:** no celular fica recolhida em uma linha ("Valores da Portaria SSP nº 621/2026") e abre com um toque; no computador continua aberta.
+- Testes: unit "Hora de início rápida"; smoke (lista vazia no celular e no computador, faixa recolhida/aberta, hora vinda da última escala, botão 19:00). Revisão visual em 390 px e 1280 px, claro e escuro.
+
 ## v89 — Meu dinheiro e "Já passou?"
 
 Novidade para o usuário (`data-conteudo` = "89"; o aviso também lembra o Total por mês da v88).
