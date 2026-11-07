@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Calculadora AC4 — v90
+   Calculadora AC4 — v91
    Módulo principal: estado, ligação dos módulos de interface (js/modules/ui/),
    render() e init(). Regras de negócio, formatação e agenda vivem em js/modules/.
    ========================================================================== */
@@ -31,6 +31,7 @@ import { criarExportacoes } from './modules/ui/exportacoes.mjs';
 import { criarCompartilhar } from './modules/ui/compartilhar.mjs';
 import { criarPlanejamento } from './modules/ui/planejamento.mjs';
 import { criarDinheiro, PARTES_DINHEIRO } from './modules/ui/dinheiro.mjs';
+import { criarProximaEscala } from './modules/ui/proxima-escala.mjs';
 import { criarFormulario, inicioPadrao } from './modules/ui/formulario.mjs';
 import { criarModelos } from './modules/ui/modelos.mjs';
 import { criarAgendaDias } from './modules/ui/agenda-dias.mjs';
@@ -44,7 +45,7 @@ import { criarAgendaDias } from './modules/ui/agenda-dias.mjs';
   /* Versão da aplicação (sincronizada pelo tools/bump-version.mjs). Serve para
      carimbar o log de erros e detectar clientes presos em cache antigo:
      se __ac4Version no console divergir do rodapé/CHANGELOG, o SW não atualizou. */
-  const APP_VERSION = '90';
+  const APP_VERSION = '91';
 
   const STORAGE = {
     escalas:   'pmgoEscalas',
@@ -140,6 +141,9 @@ import { criarAgendaDias } from './modules/ui/agenda-dias.mjs';
   const { atualizarSelectMes, renderPlanejamento } = planejamento;
   const dinheiro = criarDinheiro({
     $, on, estado, toast, salvar, lerLocal, STORAGE, render: () => render(),
+  });
+  const proxima = criarProximaEscala({
+    $, on, estado, calcularEscala: (e) => calcularEscala(e), render: () => render(),
   });
   const formulario = criarFormulario({
     $, on, estado, toast, dialogConfirmar, haptic, salvar, clonarEscalas, aposProximoPaint, esperarProximoPaint,
@@ -246,6 +250,7 @@ import { criarAgendaDias } from './modules/ui/agenda-dias.mjs';
     renderPlanejamento();
     dinheiro.renderDinheiro(resultados);
     dinheiro.renderJaPassou();
+    proxima.renderProximaEscala();
 
     const container = $('listaEscalas');
     if (!lista.length) {
@@ -360,6 +365,7 @@ import { criarAgendaDias } from './modules/ui/agenda-dias.mjs';
     agendaDias.ligarEventos();
     planejamento.ligarEventos();
     dinheiro.ligarEventos();
+    proxima.ligarEventos();
 
     on('btnTheme', 'click', () =>
       aplicarTema(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'));

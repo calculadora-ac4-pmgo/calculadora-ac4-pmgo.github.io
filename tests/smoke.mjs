@@ -681,6 +681,34 @@ try {
   const desk = await avaliarDin(`return JSON.stringify({itens:getComputedStyle(document.getElementById('tariffItems')).display!=='none', botao:getComputedStyle(document.getElementById('tariffToggle')).display==='none', texto:document.querySelector('#listaEscalas .empty-state p')?.textContent, botaoVazio:!!document.querySelector('[data-acao-vazia]')});`);
   passos.push({ nome: 'Computador: faixa da Portaria aberta e lista vazia sem o botão do celular', ok: desk.itens && desk.botao && desk.texto === 'Use o formulário Lançar escala para começar.' && !desk.botaoVazio, detalhe: JSON.stringify(desk) });
 
+  // 11. Próxima escala e Planejamento (v91), no celular: o cartão mostra a próxima escala e o toque
+  //     leva até ela na lista, mesmo filtrada; o Planejamento não repete o número grande do topo.
+  await cdp.enviar('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true }, sessionId);
+  await cdp.enviar('Runtime.evaluate', { expression: `(()=>{const p=(n)=>String(n).padStart(2,'0');const f=(d)=>d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'T'+p(d.getHours())+':'+p(d.getMinutes());
+    const am=new Date();am.setDate(am.getDate()+1);am.setHours(7,0,0,0);const fa=new Date(am);fa.setHours(19);
+    const lg=new Date();lg.setDate(lg.getDate()+40);lg.setHours(7,0,0,0);const fl=new Date(lg);fl.setHours(19);
+    localStorage.setItem('pmgoEscalas',JSON.stringify([{id:'px2',inicio:f(lg),fim:f(fl),descricao:'Escala AC4',origem:'AC4',qtdPm:1,status:'planejada'},{id:'px1',inicio:f(am),fim:f(fa),descricao:'19º CRPM — Sede',origem:'AC4',qtdPm:1,status:'planejada'}]));
+    localStorage.setItem('pmgoMetasMensais',JSON.stringify({[f(am).slice(0,7)]:{valorCentavos:100000}}));})()` }, sessionId);
+  await abrirDin();
+  const px = await avaliarDin(`const c=document.getElementById('proximaEscala');
+    const r={visivel:!c.classList.contains('hidden'),rotulo:document.getElementById('proximaRotulo').textContent,
+      quando:document.getElementById('proximaQuando').textContent,detalhe:document.getElementById('proximaDetalhe').textContent,
+      fonteValorPlan:parseFloat(getComputedStyle(document.getElementById('planningValue')).fontSize),
+      metaSemAbrir:getComputedStyle(document.getElementById('planningProgress')).display!=='none' && document.getElementById('planningProgress').offsetHeight>0,
+      diaNoiteSemAbrir:document.getElementById('planningHoursBar').offsetHeight>0};
+    const fm=document.getElementById('filtroStatus'); fm.value='recebida'; fm.dispatchEvent(new Event('change',{bubbles:true})); await sl(150);
+    r.cardsFiltrados=document.querySelectorAll('#listaEscalas .escala-card').length;
+    c.click(); await sl(300);
+    const alvo=[...document.querySelectorAll('#listaEscalas .escala-card')].find(x=>x.querySelector('[data-id="px1"]'));
+    r.achou=!!alvo; r.destaque=!!alvo&&alvo.classList.contains('is-destaque'); r.filtroLimpo=fm.value==='';
+    localStorage.removeItem('pmgoEscalas'); localStorage.removeItem('pmgoMetasMensais'); return JSON.stringify(r);`);
+  passos.push({ nome: 'Próxima escala: "Amanhã · 07:00 às 19:00" com unidade e valor', ok: px.visivel && px.rotulo === 'Próxima escala' && px.quando === 'Amanhã · 07:00 às 19:00' && px.detalhe.startsWith('19º CRPM — Sede · R$'), detalhe: JSON.stringify(px) });
+  passos.push({ nome: 'Próxima escala: o toque limpa o filtro e destaca a escala na lista', ok: px.cardsFiltrados === 0 && px.achou && px.destaque && px.filtroLimpo, detalhe: JSON.stringify(px) });
+  passos.push({ nome: 'Planejamento: valor do mês discreto; meta e dia/noite visíveis sem abrir detalhes', ok: px.fonteValorPlan <= 16 && px.metaSemAbrir && px.diaNoiteSemAbrir, detalhe: JSON.stringify(px) });
+  await abrirDin();
+  const semPx = await avaliarDin(`return JSON.stringify(document.getElementById('proximaEscala').classList.contains('hidden'));`);
+  passos.push({ nome: 'Próxima escala: sem escala futura, o cartão não aparece', ok: semPx === true, detalhe: String(semPx) });
+
   console.table(passos.map(({ nome, ok, detalhe }) => ({ passo: nome, ok, detalhe })));
 
   const falhas = passos.filter((p) => !p.ok);

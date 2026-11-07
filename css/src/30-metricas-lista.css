@@ -102,6 +102,36 @@
 }
 .dinheiro-qtd { color: rgb(255 255 255 / 0.7); font-size: var(--fs-rotulo); font-weight: 600; }
 
+/* ===== PRÓXIMA ESCALA (v91): em andamento ou a próxima; toque leva à lista ===== */
+.proxima-escala {
+  display: flex; align-items: center; gap: 12px; width: 100%;
+  margin-top: 14px; padding: 12px 14px; min-height: 64px;
+  border: 1px solid var(--glass-border); border-radius: var(--radius-lg);
+  background: var(--surface); color: var(--text); text-align: left; cursor: pointer;
+  box-shadow: var(--shadow-sm);
+}
+.proxima-escala:hover { border-color: var(--border-strong); }
+.proxima-escala:focus-visible { outline: 2px solid var(--gold-500); outline-offset: 2px; }
+.proxima-icone {
+  display: grid; place-items: center; flex-shrink: 0; width: 40px; height: 40px;
+  border-radius: var(--radius-md); background: var(--info-soft); color: var(--info-text);
+}
+.proxima-escala.is-andamento .proxima-icone { background: color-mix(in srgb, var(--green-600) 15%, var(--surface)); color: var(--green-700); }
+.proxima-textos { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
+.proxima-rotulo { color: var(--text-muted); font-size: var(--fs-rotulo); font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; }
+.proxima-escala.is-andamento .proxima-rotulo { color: var(--green-700); }
+.proxima-quando { font-size: 1rem; font-weight: 850; color: var(--text); }
+.proxima-detalhe { color: var(--text-muted); font-size: var(--fs-leitura); font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.proxima-seta { flex-shrink: 0; color: var(--text-muted); }
+.escala-card.is-destaque { animation: destaque-escala 1.8s var(--ease-out); }
+@keyframes destaque-escala {
+  0%, 35% { box-shadow: 0 0 0 3px var(--gold-500); }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .escala-card.is-destaque { animation: none; outline: 3px solid var(--gold-500); }
+}
+
 /* ===== JÁ PASSOU? (v89): escalas encerradas ainda como planejadas ===== */
 .ja-passou {
   display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 14px;
