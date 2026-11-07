@@ -22,6 +22,30 @@ import { primeiraDoMes } from '../lote.mjs';
  *   pedirArmazenamentoPersistente, mostrarInstalacaoAposConversao, agendarEscalaItem, abrirLote, PASSO_LISTA.
  * @returns {Object} Funções públicas da área, incluindo ligarEventos().
  */
+/** Horas de início mais comuns, oferecidas como botões no celular (v90). */
+export const HORAS_RAPIDAS = Object.freeze(['07:00', '19:00']);
+
+/**
+ * Hora de início da última escala lançada (a última da lista salva), ou 07:00.
+ * @param {Array<Object>} escalas
+ * @returns {string} "HH:MM"
+ */
+export function horaUltimaEscala(escalas) {
+  const ultima = escalas[escalas.length - 1];
+  const hora = ultima && String(ultima.inicio || '').slice(11, 16);
+  return /^\d{2}:\d{2}$/.test(hora || '') ? hora : HORAS_RAPIDAS[0];
+}
+
+/**
+ * Início sugerido para uma escala nova: data de hoje e hora da última escala.
+ * @param {Array<Object>} escalas
+ * @param {Date} [agora]
+ * @returns {string} "AAAA-MM-DDTHH:MM"
+ */
+export function inicioPadrao(escalas, agora = new Date()) {
+  return `${toInputLocal(agora).slice(0, 10)}T${horaUltimaEscala(escalas)}`;
+}
+
 export function criarFormulario(ctx) {
   const { $, on, estado, toast, dialogConfirmar, haptic, salvar, render, calcularEscala, clonarEscalas,
     aposProximoPaint, esperarProximoPaint, pedirArmazenamentoPersistente, mostrarInstalacaoAposConversao,
@@ -340,6 +364,26 @@ export function criarFormulario(ctx) {
     });
   }
 
+  /* Botões de hora de início (v90): 07:00, 19:00 e a hora da última escala
+     quando for outra. Escrevem no campo Hora, que já atualiza o Início. */
+  function atualizarChipsHora() {
+    const ultima = horaUltimaEscala(estado.escalas);
+    const chipUltima = $('horaChipUltima');
+    if (chipUltima) {
+      const mostrar = estado.escalas.length > 0 && !HORAS_RAPIDAS.includes(ultima);
+      chipUltima.classList.toggle('hidden', !mostrar);
+      chipUltima.dataset.hora = ultima;
+      const rotulo = $('horaChipUltimaValor');
+      if (rotulo) rotulo.textContent = ultima;
+    }
+    const atual = $('escalaInicioHora')?.value || '';
+    document.querySelectorAll('#horaChips .hora-chip').forEach((c) => {
+      const ativo = !c.classList.contains('hidden') && c.dataset.hora === atual;
+      c.classList.toggle('is-active', ativo);
+      c.setAttribute('aria-pressed', ativo ? 'true' : 'false');
+    });
+  }
+
   const setTituloSheet = (txt) => { const el = $('mobileLaunchTitle'); if (el) el.textContent = txt; };
 
   function cancelarEdicao() {
@@ -436,9 +480,10 @@ export function criarFormulario(ctx) {
           if (estado.editandoId === null) {
             setTituloSheet('Nova escala AC4');
             setDetalhesAvancados(false);
-            $('escalaInicio').value = toInputLocal(new Date());
+            $('escalaInicio').value = inicioPadrao(estado.escalas);
             aplicarDuracao();
             sincronizarTodosControlesDataHora();
+            atualizarChipsHora();
           }
           atualizarResumoLancamento();
         });
@@ -492,6 +537,17 @@ export function criarFormulario(ctx) {
         on(`${id}${sufixo}`, 'change', () => aplicarPartesDataHora(id, 'change'));
       });
     });
+    on('horaChips', 'click', (ev) => {
+      const chip = ev.target.closest('.hora-chip');
+      if (!chip || !chip.dataset.hora || !$('escalaInicioHora')) return;
+      if (!$('escalaInicioData').value) $('escalaInicioData').value = toInputLocal(new Date()).slice(0, 10);
+      $('escalaInicioHora').value = chip.dataset.hora;
+      aplicarPartesDataHora('escalaInicio', 'change');
+      atualizarChipsHora();
+    });
+    on('escalaInicioHora', 'input', atualizarChipsHora);
+    on('escalaInicioHora', 'change', atualizarChipsHora);
+    on('escalaInicio', 'change', atualizarChipsHora);
     /* Resumo do lançamento também depende de Qtd. PM e Origem */
     on('escalaQtdPm', 'input', atualizarResumoLancamento);
     on('escalaQtdPm', 'change', atualizarResumoLancamento);
@@ -540,6 +596,7 @@ export function criarFormulario(ctx) {
     atualizarEstadoStepper();
 
     on('listaEscalas', 'click', (ev) => {
+      if (ev.target.closest('[data-acao-vazia="nova-escala"]')) { $('mobileAdd')?.click(); return; }
       const btn = ev.target.closest('[data-acao]');
       if (!btn) return;
       if (btn.dataset.acao === 'anteriores') { estado.limiteLista += PASSO_LISTA; render(); return; }
@@ -580,7 +637,7 @@ export function criarFormulario(ctx) {
   return {
     isMobileViewport, setDetalhesAvancados, abrirPainelLancamentoMobile, fecharPainelLancamentoMobile,
     validarFormulario, submeterFormulario, editarEscala, cancelarEdicao, atualizarResumoLancamento,
-    sincronizarTodosControlesDataHora, aplicarPartesDataHora, atualizarChipsDuracao, duplicarEscala,
+    sincronizarTodosControlesDataHora, aplicarPartesDataHora, atualizarChipsDuracao, atualizarChipsHora, duplicarEscala,
     removerEscala, limparTudo, atualizarStatusEscala, atualizarResumoFim, lerQtdPm, ligarEventos,
   };
 }

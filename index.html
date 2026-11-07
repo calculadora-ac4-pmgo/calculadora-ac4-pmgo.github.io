@@ -15,9 +15,9 @@
   <!-- Preload da fonte principal — reduz reflow/CLS do font-swap da Inter -->
   <link rel="preload" href="assets/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 
-  <link rel="stylesheet" href="css/styles.css?v=89">
-  <script src="js/theme.js?v=89"></script>
-  <script src="js/inicio-seguro.js?v=89" defer></script>
+  <link rel="stylesheet" href="css/styles.css?v=90">
+  <script src="js/theme.js?v=90"></script>
+  <script src="js/inicio-seguro.js?v=90" defer></script>
 </head>
 <body>
 
@@ -276,6 +276,11 @@
                     <input type="time" class="control" id="escalaInicioHora" inputmode="numeric" step="60" aria-describedby="inicioErro">
                   </label>
                 </div>
+                <div class="hora-chips" id="horaChips" role="group" aria-label="Hora de início rápida">
+                  <button type="button" class="dur-chip hora-chip" data-hora="07:00" aria-pressed="false"><span>07:00</span></button>
+                  <button type="button" class="dur-chip hora-chip" data-hora="19:00" aria-pressed="false"><span>19:00</span></button>
+                  <button type="button" class="dur-chip hora-chip hidden" id="horaChipUltima" data-hora="" aria-pressed="false"><span>Última <span id="horaChipUltimaValor"></span></span></button>
+                </div>
                 <p class="field-error" id="inicioErro" role="alert">Informe a data e hora de início.</p>
               </div>
 
@@ -396,9 +401,13 @@
     </section>
 
     <!-- Referência de valores — faixa discreta -->
-    <div class="tariff-strip" role="note" aria-label="Valores de referência da tabela AC4">
+    <div class="tariff-strip" id="tariffStrip" role="note" aria-label="Valores de referência da tabela AC4">
+      <button type="button" class="tariff-toggle" id="tariffToggle" aria-expanded="false" aria-controls="tariffItems">
+        Valores da Portaria SSP nº 621/2026
+        <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+      </button>
       <span class="tariff-strip-label">Portaria SSP nº 621/2026</span>
-      <div class="tariff-strip-items">
+      <div class="tariff-strip-items" id="tariffItems">
         <span class="tariff-chip"><span class="tariff-dot tariff-blue"></span>Azul dia · R$&nbsp;30/h</span>
         <span class="tariff-chip"><span class="tariff-dot tariff-blue-dark"></span>Azul noite · R$&nbsp;33/h</span>
         <span class="tariff-chip"><span class="tariff-dot tariff-red"></span>Verm. dia · R$&nbsp;40/h</span>
@@ -525,7 +534,7 @@
         &copy; <span class="footer-year"></span> Weliton Pinheiro &mdash; Todos os direitos reservados.
       </p>
       <p class="site-footer-meta">
-        Calculadora AC4 &middot; PMGO &middot; v89 &middot;
+        Calculadora AC4 &middot; PMGO &middot; v90 &middot;
         <a href="#" id="footerNovidades" class="footer-link">Novidades</a> &middot;
         <a href="#" id="footerPrivacidade" class="footer-link">Privacidade</a> &middot;
         <a href="#" id="footerFeedback" class="footer-link">Feedback</a> &middot;
@@ -564,7 +573,7 @@
   <dialog class="confirm-dialog whats-new-dialog" id="dialogNovidades" data-conteudo="89" aria-modal="true" aria-labelledby="novidadesTitle" aria-describedby="novidadesIntro">
     <div class="whats-new-body">
       <div class="whats-new-topbar">
-        <span class="whats-new-badge">Nova versão <strong>v89</strong></span>
+        <span class="whats-new-badge">Nova versão <strong>v90</strong></span>
         <button class="btn-icon whats-new-close" id="novidadesFechar" type="button" aria-label="Fechar novidades">
           <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
         </button>
@@ -865,7 +874,7 @@
     </div>
   </dialog>
 
-  <script type="module" src="js/app.js?v=89"></script>
+  <script type="module" src="js/app.js?v=90"></script>
 
   <!-- Relatório profissional de impressão — populado pelo JS antes de window.print() -->
   <section id="printReport">

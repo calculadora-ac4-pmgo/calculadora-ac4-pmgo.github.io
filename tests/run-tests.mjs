@@ -491,6 +491,23 @@ const validarMeuDinheiro = () => {
 };
 rodar('Meu dinheiro e Já passou', validarMeuDinheiro);
 
+const formularioMod = await import('../js/modules/ui/formulario.mjs');
+const validarHoraRapida = () => {
+  const { horaUltimaEscala, inicioPadrao, HORAS_RAPIDAS } = formularioMod;
+  const agora = new Date(2026, 10, 7, 16, 41);
+  const checks = [
+    [horaUltimaEscala([]) === '07:00', 'sem escala: 07:00'],
+    [horaUltimaEscala([{ inicio: '2026-11-01T19:00' }, { inicio: '2026-11-03T22:30' }]) === '22:30', 'usa a última da lista'],
+    [horaUltimaEscala([{ inicio: 'lixo' }]) === '07:00', 'início inválido: 07:00'],
+    [inicioPadrao([], agora) === '2026-11-07T07:00', 'data de hoje + 07:00 (nunca a hora do relógio)'],
+    [inicioPadrao([{ inicio: '2026-10-01T19:00' }], agora) === '2026-11-07T19:00', 'data de hoje + hora da última escala'],
+    [HORAS_RAPIDAS.join(',') === '07:00,19:00', 'botões 07:00 e 19:00'],
+  ];
+  const falhas = checks.filter(([ok]) => !ok).map(([, nome]) => nome);
+  return falhas.length ? falhas : 'HORA RÁPIDA OK';
+};
+rodar('Hora de início rápida', validarHoraRapida);
+
 const validarNormas = () => {
   const ids = new Set(NORMAS.map((n) => n.id));
   const iso = /^\d{4}-\d{2}-\d{2}$/;

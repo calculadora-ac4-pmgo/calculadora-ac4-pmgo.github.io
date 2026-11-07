@@ -1,4 +1,6 @@
 /* ===== TARIFF STRIP — referência discreta de valores ===== */
+/* Botão de recolher: só no celular (v90). */
+.tariff-toggle { display: none; }
 .tariff-strip {
   margin-top: 12px;
   padding: 10px 16px;

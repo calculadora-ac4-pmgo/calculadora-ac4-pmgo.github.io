@@ -319,6 +319,24 @@
   /* Duração rápida: chips de largura total no lugar do select */
   #fieldDuracao > .control { display: none; }
   .dur-chips { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  /* Hora de início rápida (v90): mesmos chips da duração, mais baixos */
+  .hora-chips { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px; }
+  .hora-chip { min-height: 44px; }
+  .hora-chip.hidden { display: none; }
+
+  /* Faixa da Portaria recolhida em uma linha (v90) */
+  .tariff-strip { padding: 0; gap: 0; }
+  .tariff-toggle {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    width: 100%; min-height: 44px; padding: 10px 16px;
+    border: 0; background: none; color: var(--text-muted); cursor: pointer;
+    font-size: var(--fs-rotulo); font-weight: 750; letter-spacing: 0.03em; text-align: left;
+  }
+  .tariff-toggle .icon { transition: transform var(--dur) var(--ease-out); }
+  .tariff-strip.is-aberta .tariff-toggle .icon { transform: rotate(180deg); }
+  .tariff-strip .tariff-strip-label { display: none; }
+  .tariff-strip .tariff-strip-items { display: none; padding: 0 16px 12px; }
+  .tariff-strip.is-aberta .tariff-strip-items { display: flex; }
   .dur-rapida-tag { display: inline; }
   .dur-chip {
     position: relative;
