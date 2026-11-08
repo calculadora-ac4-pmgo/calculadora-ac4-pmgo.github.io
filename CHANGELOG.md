@@ -1,5 +1,14 @@
 # Changelog
 
+## v93 — Cada faixa arredondada para a hora mais próxima (igual à planilha)
+
+Decisão do gestor (08/11/2026), depois de conferir o relatório de novembro com a planilha oficial. Novidade para o usuário (`data-conteudo` = "93").
+- **Regra de valor:** cada faixa (AD/AN/VD/VN) passa a ser **arredondada para a hora mais próxima** (30 min sobe), como a fórmula `ROUND` da planilha. Antes (v71–v92) só as horas inteiras eram pagas e 13h59 pagava 13h.
+- **Motivo:** o sistema oficial exige lançar com ":01" a escala que começa logo depois de uma escala ordinária. Ex.: dom 08/11 08:01→23:01 dava R$ 565,00 na calculadora e R$ 605,00 na planilha; agora dá R$ 605,00. O relatório de novembro do gestor (11 escalas) fecha com a planilha (R$ 6.696,00) mais a escala de 12/11, que não está na planilha.
+- Escalas em hora redonda não mudam de valor. Escalas já salvas são recalculadas na hora (o valor não fica gravado).
+- `calcularEscala`: `horasPagas[k] = Math.floor((min + 30) / 60)`. Documentado em `docs/portaria-ssp-621-2026.md`, `CLAUDE.md`, `DIARIO_DE_BORDO.md`, `ARQUITETURA.md` e `README.md`.
+- Testes: Anexo I com 12h40→13h e 12h20→12h por dia; 6 escalas da planilha de novembro/2026 (incluindo 08:01, 18:01); invariantes com arredondamento; casos de fração atualizados (07:00→19:30 = 13h; 21:30→06:00 = 2h AD + 7h AN).
+
 ## v92 — Início e Término à vista; horário de cada dia direto na agenda
 
 Pedido do gestor (08/11/2026). Novidade para o usuário (`data-conteudo` = "92").

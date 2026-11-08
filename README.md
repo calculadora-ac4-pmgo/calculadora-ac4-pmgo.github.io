@@ -44,7 +44,7 @@ a partir de 01/07/2026. Transcrição e leitura das regras em
 - O período noturno vai das 22h às 5h. A madrugada pertence ao dia em que o noturno começou.
 - A faixa é definida pelo dia em que **cada hora é trabalhada**, não pelo dia de início da escala;
   uma escala que vira o dia pode misturar faixas azuis e vermelhas.
-- **Só horas inteiras de cada faixa são pagas**; a fração de hora não entra (decisão do gestor, v71).
+- **Cada faixa é arredondada para a hora mais próxima** (30 min sobe), como a planilha do gestor (decisão de 08/11/2026, v93).
   Ex.: sexta 08:00 → 18:20 paga 10h VD = R$ 400,00.
 - Cada escala guarda a tabela da Portaria vigente na sua data. Quando sair uma Portaria nova, as
   escalas antigas continuam com os valores da época.

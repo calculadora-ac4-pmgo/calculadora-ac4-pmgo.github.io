@@ -43,13 +43,13 @@
 
 1. **A tarifa é por dia da semana em que a hora é trabalhada** (Anexo I organiza os valores por coluna de dia) — não pelo dia de início da escala. Escala que atravessa a virada do dia combina faixas.
 2. **O período noturno "de 22h de um dia às 5h do dia seguinte" pertence ao dia em que começou** (Art. 1º, parágrafo único): a madrugada até 4h59 é remunerada pela tarifa noturna do dia anterior. Ex.: noturno de quinta = 22h de quinta às 5h de sexta, a R$ 33,00.
-3. A aplicação classifica **minuto a minuto** e **paga só as horas inteiras de cada faixa** (AD/AN/VD/VN); a fração de hora não é paga. A Portaria não trata de fração de hora; a regra foi definida pelo gestor em 23/09/2026 (v71), porque os valores pagos são sempre em reais inteiros. Ex.: sex 08:00→18:20 = 10h20 VD → paga 10h (R$ 400,00); qui 18:00→sex 05:00 = 4h AD + 7h AN → R$ 120,00 + R$ 231,00 = R$ 351,00. Até a v70 a fração era paga proporcionalmente (ex.: 10h20 VD = R$ 413,33).
+3. A aplicação classifica **minuto a minuto** e paga **cada faixa (AD/AN/VD/VN) arredondada para a hora mais próxima** (30 min sobe), como a planilha do gestor (fórmula `ROUND`). A Portaria não trata de fração de hora; a regra foi definida pelo gestor em 08/11/2026 (v93): o sistema oficial exige lançar com ":01" a escala que começa logo depois de uma escala ordinária (ex.: ordinário até 08:00 → AC4 a partir de 08:01), e esse minuto não pode tirar uma hora do valor. Ex.: dom 08:01→23:01 = 13h59 VD + 1h01 VN → paga 14h + 1h = R$ 605,00 (igual a 08:00→23:00); sex 08:00→18:20 = 10h20 VD → paga 10h (R$ 400,00); qui 18:00→sex 05:00 = 4h AD + 7h AN → R$ 351,00. Histórico: até a v70 a fração era paga proporcionalmente; da v71 à v92, só horas inteiras (13h59 pagava 13h).
 
 ### Observação de fronteira (registrada na auditoria v46)
 
 A Portaria descreve o diurno como "5h01 às 21h59" e o noturno como "22h às 5h" — texto que deixa o minuto exato das 5h00 e o intervalo 21h59–22h00 sem enquadramento literal contínuo. A aplicação adota a leitura contínua padrão: noturno = [22h00, 05h00) e diurno = [05h00, 22h00), ou seja, as horas noturnas são 22h–23h, …, 4h–5h (7 horas) e as diurnas 5h–6h, …, 21h–22h (17 horas).
 
-Com o pagamento só por horas inteiras (v71), essa leitura é a que preserva as horas cheias: qualquer leitura que deslocasse 1 minuto (ex.: noturno até 5h00 inclusive) quebraria a hora 5h–6h em 59 minutos e ela deixaria de ser paga.
+Essa leitura preserva as horas cheias: escalas em hora redonda dão sempre horas exatas por faixa. Com o arredondamento por faixa (v93), um deslocamento de 1 minuto também não muda o valor (59 minutos contam como 1 hora).
 
 ### Fonte dos dados no código
 
@@ -57,10 +57,10 @@ Valores, DOE e vigência desta Portaria estão em `js/modules/portarias.mjs` (fo
 
 ### Conferência automática
 
-`tests/run-tests.mjs` → "Conformidade com a Portaria 621/2026 (Anexo I)": 52 casos derivados diretamente desta tabela (para cada dia da semana: hora diurna, hora noturna, madrugada paga pelo noturno do dia anterior, viradas das 5h e das 22h, fração não paga) e 10 escalas reais da planilha do gestor, conferidas coluna a coluna (ex.: qui 24/09/2026 18h → sex 05h = R$ 351,00; seg 21/09/2026 04h → 06h = R$ 75,00; qui 13/08/2026 18h → sex 08h = R$ 471,00). Roda no CI em todo PR.
+`tests/run-tests.mjs` → "Conformidade com a Portaria 621/2026 (Anexo I)": 52 casos derivados diretamente desta tabela (para cada dia da semana: hora diurna, hora noturna, madrugada paga pelo noturno do dia anterior, viradas das 5h e das 22h, arredondamento da fração) e escalas reais das planilhas do gestor (agosto/setembro e novembro de 2026, incluindo inícios com ":01"), conferidas coluna a coluna (ex.: qui 24/09/2026 18h → sex 05h = R$ 351,00; seg 21/09/2026 04h → 06h = R$ 75,00; qui 13/08/2026 18h → sex 08h = R$ 471,00). Roda no CI em todo PR.
 
 ### O que a Portaria não trata
 
-- **Fração de hora:** decisão do gestor (23/09/2026) — só horas inteiras por faixa.
+- **Fração de hora:** decisão do gestor (08/11/2026, v93) — cada faixa arredondada para a hora mais próxima, como a planilha. Antes (v71): só horas inteiras.
 - **Feriados:** a Portaria classifica só por dia da semana; feriado em dia útil segue a tarifa daquele dia.
 - **Limite de horas:** o teto de 192h por lançamento é regra do gestor (limite de horas do policial), não da Portaria.
