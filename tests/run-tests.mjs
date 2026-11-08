@@ -229,7 +229,7 @@ rodar('Release (CHANGELOG × versão, sem rascunhos na raiz)', validarRelease);
      "22h de um dia e 5h do dia seguinte");
    - virada às 5h: 04h→06h = 1h noturno do dia anterior + 1h diurno do dia;
    - virada às 22h: 21h→23h = 1h diurno + 1h noturno do mesmo dia;
-   - só horas inteiras por faixa (decisão do gestor, v71). */
+   - cada faixa arredondada para a hora mais próxima, 30 min sobe (decisão do gestor, v93; antes, v71, só horas inteiras). */
 const validarAnexoI = () => {
   const ANEXO = { // centavos/hora por dia (0 = domingo … 6 = sábado)
     diurno:  [4000, 3000, 3000, 3000, 3000, 4000, 4000],
@@ -248,7 +248,8 @@ const validarAnexoI = () => {
       [`${NOMES[d]} 02h→03h (madrugada = noturno de ${NOMES[ant]})`, dia(d + 1, 2), dia(d + 1, 3), ANEXO.noturno[d]],
       [`${NOMES[d]} 04h→06h (virada das 5h)`, dia(d, 4), dia(d, 6), ANEXO.noturno[ant] + ANEXO.diurno[d]],
       [`${NOMES[d]} 21h→23h (virada das 22h)`, dia(d, 21), dia(d, 23), ANEXO.diurno[d] + ANEXO.noturno[d]],
-      [`${NOMES[d]} 08h→20h40 (fração não paga)`, dia(d, 8), dia(d, 20, 40), 12 * ANEXO.diurno[d]],
+      [`${NOMES[d]} 08h→20h40 (12h40 arredonda para 13h)`, dia(d, 8), dia(d, 20, 40), 13 * ANEXO.diurno[d]],
+      [`${NOMES[d]} 08h→20h20 (12h20 arredonda para 12h)`, dia(d, 8), dia(d, 20, 20), 12 * ANEXO.diurno[d]],
     );
   }
   // exemplo conferido pelo gestor em 23/09/2026: qui 24/09 18h → sex 05h = R$ 351,00
@@ -264,6 +265,14 @@ const validarAnexoI = () => {
     ['sex 28/08 18h→sáb 08h', '2026-08-28T18:00', '2026-08-29T08:00', 59500],
     ['sáb 29/08 08h→dom 08h', '2026-08-29T08:00', '2026-08-30T08:00', 99500],
     ['seg 21/09 04h→06h', '2026-09-21T04:00', '2026-09-21T06:00', 7500],       // VN 45 (domingo) + AD 30
+    /* Planilha do gestor de novembro/2026 (08/11/2026): o sistema oficial exige início com ":01"
+       depois de escala ordinária; a planilha arredonda (ROUND) cada faixa — v93. */
+    ['dom 08/11 08h→23h', '2026-11-08T08:00', '2026-11-08T23:00', 60500],       // VD 14h 560 + VN 1h 45
+    ['dom 08/11 08:01→23:01', '2026-11-08T08:01', '2026-11-08T23:01', 60500],   // VD 13h59 → 14h
+    ['sáb 07/11 08:01→dom 07:01', '2026-11-07T08:01', '2026-11-08T07:01', 95500], // VD 16h + VN 7h
+    ['qui 26/11 18:01→sex 03:01', '2026-11-26T18:01', '2026-11-27T03:01', 28500], // AD 3h59→4h + AN 5h01→5h
+    ['sex 27/11 18:01→sáb 08h', '2026-11-27T18:01', '2026-11-28T08:00', 59500],   // VD 6h59→7h + VN 7h
+    ['qui 05/11 18h→sex 08h', '2026-11-05T18:00', '2026-11-06T08:00', 47100],     // AD 120 + VD 120 + AN 231
   ].forEach(([nome, inicio, fim, cent]) => casos.push([`${nome} (planilha do gestor)`, inicio, fim, cent]));
   const falhas = casos
     .map(([nome, inicio, fim, esperado]) => [nome, esperado, calcularEscala({ inicio, fim }, TABELA_OFICIAL).valorCentavos])

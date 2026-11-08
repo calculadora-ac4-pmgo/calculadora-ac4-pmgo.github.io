@@ -35,11 +35,12 @@ export function instalarTestes(ctx) {
       /* Fronteiras (§10 da auditoria) — dom→seg cruzando 05h, 1 min, término 00:00, bissexto */
       { caso: 'Fronteira dom→seg: dom 05/07 20h→seg 08h', inicio: '2026-07-05T20:00', fim: '2026-07-06T08:00', AD: h(3), AN: 0,    VD: h(2), VN: h(7), centavos: 48500 },
       { caso: 'Escala de 1 minuto (seg 06/07 10:00)',      inicio: '2026-07-06T10:00', fim: '2026-07-06T10:01', AD: 1,    AN: 0,    VD: 0,    VN: 0,    centavos: 0 },
-      /* Só horas inteiras por categoria (v71): a fração de hora não é paga */
-      { caso: 'Fração VD: sex 10/07 08:00→18:20 paga 10h', inicio: '2026-07-10T08:00', fim: '2026-07-10T18:20', AD: 0,    AN: 0,    VD: 620,  VN: 0,    centavos: 40000 },
+      /* Cada categoria arredondada para a hora mais próxima, 30 min sobe (v93; antes só horas inteiras, v71) */
+      { caso: 'Fração VD: sex 10/07 08:00→18:20 (10h20) paga 10h', inicio: '2026-07-10T08:00', fim: '2026-07-10T18:20', AD: 0,    AN: 0,    VD: 620,  VN: 0,    centavos: 40000 },
       { caso: 'Fração VD: sex 10/07 08:00→18:10 paga 10h', inicio: '2026-07-10T08:00', fim: '2026-07-10T18:10', AD: 0,    AN: 0,    VD: 610,  VN: 0,    centavos: 40000 },
-      { caso: 'Meia hora AD: seg 06/07 07:00→19:30 paga 12h', inicio: '2026-07-06T07:00', fim: '2026-07-06T19:30', AD: 750, AN: 0,   VD: 0,    VN: 0,    centavos: 36000 },
-      { caso: 'Fração por faixa: seg 21:30→ter 06:00',     inicio: '2026-07-06T21:30', fim: '2026-07-07T06:00', AD: 90,   AN: h(7), VD: 0,    VN: 0,    centavos: 26100 },
+      { caso: 'Meia hora AD: seg 06/07 07:00→19:30 paga 13h', inicio: '2026-07-06T07:00', fim: '2026-07-06T19:30', AD: 750, AN: 0,   VD: 0,    VN: 0,    centavos: 39000 },
+      { caso: '13h59 VD: dom 08/11 08:01→23:01 paga 14h',     inicio: '2026-11-08T08:01', fim: '2026-11-08T23:01', AD: 0,   AN: 0,   VD: 839,  VN: 61,   centavos: 60500 },
+      { caso: 'Fração por faixa: seg 21:30→ter 06:00',     inicio: '2026-07-06T21:30', fim: '2026-07-07T06:00', AD: 90,   AN: h(7), VD: 0,    VN: 0,    centavos: 29100 },
       { caso: 'Término 00:00 (seg 06/07 22h→ter 00:00)',   inicio: '2026-07-06T22:00', fim: '2026-07-07T00:00', AD: 0,    AN: h(2), VD: 0,    VN: 0,    centavos: 6600 },
       { caso: 'Bissexto: ter 29/02/2028 08h→18h',          inicio: '2028-02-29T08:00', fim: '2028-02-29T18:00', AD: h(10),AN: 0,    VD: 0,    VN: 0,    centavos: 30000 },
       { caso: 'Vermelha madrugada: sex 03/07 22h→sáb 06h', inicio: '2026-07-03T22:00', fim: '2026-07-04T06:00', AD: 0,    AN: 0,    VD: h(1), VN: h(7), centavos: 35500 },
@@ -72,7 +73,7 @@ export function instalarTestes(ctx) {
 
     /* Invariantes de calcularEscala sobre 50 escalas aleatórias válidas:
        cont soma = mins; diurno+noturno = mins; vermelha ≤ mins; valor é inteiro
-       ≥ 0, em reais inteiros, e reproduz Σ horas inteiras×tarifa por categoria;
+       ≥ 0, em reais inteiros, e reproduz Σ horas arredondadas×tarifa por categoria;
        total = Σ dos valores por escala. */
     const tabela = { portaria: PORTARIA_ATUAL, valores: { AD: 3000, AN: 3300, VD: 4000, VN: 4500 } };
     const base = new Date('2026-01-01T00:00').getTime();
@@ -85,7 +86,7 @@ export function instalarTestes(ctx) {
       const e = { inicio: formatarDataHoraInput(ini), fim: formatarDataHoraInput(fim) };
       const r = calcularEscalaBase(e, tabela);
       const somaCont = r.cont.AD + r.cont.AN + r.cont.VD + r.cont.VN;
-      const h = (m) => Math.floor(m / 60);
+      const h = (m) => Math.floor((m + 30) / 60);
       const esperadoCent = h(r.cont.AD) * 3000 + h(r.cont.AN) * 3300 + h(r.cont.VD) * 4000 + h(r.cont.VN) * 4500;
       const ok = somaCont === r.mins
         && r.minDiurno + r.minNoturno === r.mins

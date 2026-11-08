@@ -13,7 +13,7 @@
 | --- | --- |
 | Versão em produção | **v72** — https://calculadora-ac4-pmgo.github.io/ · próxima **v73** |
 | Projeto | **Em evolução ativa** (o "modo de manutenção" de 08/07 foi encerrado na v55) |
-| Regra de cálculo | Portaria SSP 621/2026 + **só horas inteiras por faixa** (decisão do gestor, v71). Suíte "Conformidade com o Anexo I" com 52 casos, 10 deles da planilha do gestor |
+| Regra de cálculo | Portaria SSP 621/2026 + **cada faixa arredondada para a hora mais próxima** (decisão do gestor, v93; antes, v71, só horas inteiras). Suíte "Conformidade com o Anexo I" com 52 casos, 10 deles da planilha do gestor |
 | Última auditoria | [`relatorio_auditoria_producao_v67.md`](historico/relatorio_auditoria_producao_v67.md) (BIH TECHS): 8,6/10. Itens P2-1…P2-4, P3-1…P3-4 e P3-6 resolvidos entre a v68 e a v72; aberto só o P3-5 (SRI/privacidade) |
 | CI | Lint + 10 suítes unitárias + smoke (44 passos) + 2 mobile + Web Vitals (7 cenários) em todo PR; deploy só na `main` |
 | Repositório | Sem PR aberto, sem trabalho pendente em branch. Dependências: ESLint 10.11.0 (única, só de desenvolvimento) |
@@ -273,7 +273,7 @@ Em testes com celulares de colegas, o fluxo de "Agenda" no celular ficou **confu
 ### Regras invioláveis do projeto (resumo)
 
 - `js/modules/calculo.mjs` e os valores da Portaria só mudam com **nova norma + decisão formal do gestor**. A suíte "Conformidade com o Anexo I" (`tests/run-tests.mjs`) precisa continuar verde.
-- Valor = **só horas inteiras por faixa** (AD/AN/VD/VN) — decisão do gestor em 23/09/2026 (v71).
+- Valor = **cada faixa (AD/AN/VD/VN) arredondada para a hora mais próxima**, 30 min sobe, como a planilha do gestor — decisão de 08/11/2026 (v93). Não voltar a "só horas inteiras": o sistema oficial exige início com ":01" e 13h59 perdia uma hora.
 - Nunca coletar/armazenar dados pessoais (LGPD) — sem login, sem identificação.
 - Ações destrutivas na UI sempre via `dialogConfirmar()` (nunca `confirm()` — quebra em iOS PWA).
 - Dados novos no navegador sempre em `localStorage` com prefixo `pmgo*`.

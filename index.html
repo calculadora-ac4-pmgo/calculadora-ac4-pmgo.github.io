@@ -15,9 +15,9 @@
   <!-- Preload da fonte principal — reduz reflow/CLS do font-swap da Inter -->
   <link rel="preload" href="assets/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 
-  <link rel="stylesheet" href="css/styles.css?v=92">
-  <script src="js/theme.js?v=92"></script>
-  <script src="js/inicio-seguro.js?v=92" defer></script>
+  <link rel="stylesheet" href="css/styles.css?v=93">
+  <script src="js/theme.js?v=93"></script>
+  <script src="js/inicio-seguro.js?v=93" defer></script>
 </head>
 <body>
 
@@ -536,7 +536,7 @@
         &copy; <span class="footer-year"></span> Weliton Pinheiro &mdash; Todos os direitos reservados.
       </p>
       <p class="site-footer-meta">
-        Calculadora AC4 &middot; PMGO &middot; v92 &middot;
+        Calculadora AC4 &middot; PMGO &middot; v93 &middot;
         <a href="#" id="footerNovidades" class="footer-link">Novidades</a> &middot;
         <a href="#" id="footerPrivacidade" class="footer-link">Privacidade</a> &middot;
         <a href="#" id="footerFeedback" class="footer-link">Feedback</a> &middot;
@@ -572,10 +572,10 @@
 
   <!-- Novidades: exibido uma única vez após cada atualização e sempre
        disponível pelo rodapé. A confirmação fica somente neste aparelho. -->
-  <dialog class="confirm-dialog whats-new-dialog" id="dialogNovidades" data-conteudo="92" aria-modal="true" aria-labelledby="novidadesTitle" aria-describedby="novidadesIntro">
+  <dialog class="confirm-dialog whats-new-dialog" id="dialogNovidades" data-conteudo="93" aria-modal="true" aria-labelledby="novidadesTitle" aria-describedby="novidadesIntro">
     <div class="whats-new-body">
       <div class="whats-new-topbar">
-        <span class="whats-new-badge">Nova versão <strong>v92</strong></span>
+        <span class="whats-new-badge">Nova versão <strong>v93</strong></span>
         <button class="btn-icon whats-new-close" id="novidadesFechar" type="button" aria-label="Fechar novidades">
           <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
         </button>
@@ -585,8 +585,8 @@
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3-1.7 4.3L6 9l4.3 1.7L12 15l1.7-4.3L18 9l-4.3-1.7L12 3Z"/><path d="m19 15-.8 2.2L16 18l2.2.8L19 21l.8-2.2L22 18l-2.2-.8L19 15Z"/></svg>
         </span>
         <div>
-          <h2 id="novidadesTitle">Início e término à vista</h2>
-          <p id="novidadesIntro">Lançar escala com horário diferente ficou mais direto.</p>
+          <h2 id="novidadesTitle">Valores iguais à planilha</h2>
+          <p id="novidadesIntro">Escala lançada com ":01" não perde mais uma hora no valor.</p>
         </div>
       </div>
       <ul class="whats-new-list">
@@ -594,19 +594,19 @@
           <span class="whats-new-item-icon" aria-hidden="true">
             <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4M8 14h2M14 14h2M8 18h2"/></svg>
           </span>
-          <div><strong>Início e Término na tela</strong><span>Data e hora do início e do término aparecem juntas na Nova escala, sem abrir "Mais detalhes".</span></div>
+          <div><strong>Horário com :01 vale a hora cheia</strong><span>Começar às 08:01 ou 18:01, como pede o sistema oficial, dá o mesmo valor de 08:00 ou 18:00.</span></div>
         </li>
         <li>
           <span class="whats-new-item-icon" aria-hidden="true">
             <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
           </span>
-          <div><strong>Horário de cada dia</strong><span>Em "Lançar em outros dias", tocar no dia já abre o início e o término daquele dia para ajustar.</span></div>
+          <div><strong>Arredonda como a planilha</strong><span>Cada faixa (dia e noite, azul e vermelha) vai para a hora mais próxima: 13h59 conta 14h, 10h20 conta 10h.</span></div>
         </li>
         <li>
           <span class="whats-new-item-icon" aria-hidden="true">
             <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg>
           </span>
-          <div><strong>12h, 14h e 24h continuam</strong><span>Os atalhos de duração preenchem o término; se você mudar o término, vale o que digitou.</span></div>
+          <div><strong>Início e Término na tela</strong><span>Na Nova escala, data e hora do início e do término aparecem juntas; 12h, 14h e 24h preenchem o término.</span></div>
         </li>
       </ul>
       <p class="whats-new-privacy">
@@ -878,7 +878,7 @@
     </div>
   </dialog>
 
-  <script type="module" src="js/app.js?v=92"></script>
+  <script type="module" src="js/app.js?v=93"></script>
 
   <!-- Relatório profissional de impressão — populado pelo JS antes de window.print() -->
   <section id="printReport">

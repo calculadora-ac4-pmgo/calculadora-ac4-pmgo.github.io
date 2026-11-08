@@ -4,8 +4,10 @@
    - Vermelha: dia operacional do minuto é sex/sáb/dom.
    - Noturno: [22:00, 05:00) minuto a minuto.
    - Minutos entre 00:00 e 04:59 usam o dia operacional anterior.
-   - Pagamento só por horas inteiras em cada faixa (AD/AN/VD/VN): a fração
-     de hora não é paga — decisão do gestor em 23/09/2026 (v71).
+   - Pagamento por faixa (AD/AN/VD/VN) arredondado para a hora mais próxima
+     (30 min sobe), como a planilha do gestor (ROUND) — decisão de 08/11/2026
+     (v93). Motivo: o sistema oficial exige início com ":01" depois de escala
+     ordinária, e 13h59 não pode perder uma hora. Até a v92: só horas inteiras.
    Funções puras, sem acesso ao DOM.
    ========================================================================== */
 import { parseDateTimeLocal } from './formato.mjs';
@@ -65,7 +67,7 @@ export function regraNormativaParaData(valor) {
  * @property {number} minDiurno Minutos diurnos (AD+VD).
  * @property {number} minNoturno Minutos noturnos (AN+VN).
  * @property {number} minVermelha Minutos em dia vermelho (VD+VN).
- * @property {{AD:number, AN:number, VD:number, VN:number}} horasPagas Horas inteiras pagas por categoria.
+ * @property {{AD:number, AN:number, VD:number, VN:number}} horasPagas Horas pagas por categoria (arredondadas para a hora mais próxima).
  * @property {number} valorCentavos Valor total por PM, em centavos (sempre em reais inteiros com as tarifas oficiais).
  * @property {Tabela} tabela Tabela efetivamente usada no cálculo.
  */
@@ -87,7 +89,7 @@ function diaReferenciaOperacional(data, minutoDoDia, noturno) {
 /**
  * Calcula minutos por categoria (AD/AN/VD/VN) e o valor de uma escala,
  * classificando minuto a minuto conforme a Portaria vigente. O valor
- * paga só as horas inteiras de cada categoria (a fração de hora é descartada).
+ * paga as horas de cada categoria arredondadas para a hora mais próxima (30 min sobe).
  * Usa a tabela congelada no lançamento (`e.tabela`) quando válida — preserva o
  * histórico se a Portaria mudar; caso contrário usa a tabela vigente.
  * @param {Escala} e
@@ -112,10 +114,11 @@ export function calcularEscala(e, tabelaVigente = TABELA_OFICIAL) {
     cont[vermelha ? (noturno ? 'VN' : 'VD') : (noturno ? 'AN' : 'AD')]++;
   }
 
-  /* Só horas inteiras por categoria: 10h20 VD paga 10h; 1h30 AD + 7h AN paga
-     1h AD + 7h AN. Garante valores sem centavos com as tarifas oficiais. */
+  /* Cada categoria arredondada para a hora mais próxima, como o ROUND da
+     planilha do gestor (v93): 13h59 VD paga 14h; 10h20 VD paga 10h; 1h30 AD
+     paga 2h. Garante valores sem centavos com as tarifas oficiais. */
   const horasPagas = { AD: 0, AN: 0, VD: 0, VN: 0 };
-  Object.keys(cont).forEach((k) => { horasPagas[k] = Math.floor(cont[k] / 60); });
+  Object.keys(cont).forEach((k) => { horasPagas[k] = Math.floor((cont[k] + 30) / 60); });
   const valorCentavos = Object.keys(horasPagas).reduce((s, k) => s + horasPagas[k] * tabela.valores[k], 0);
   return {
     mins, cont, horasPagas,
