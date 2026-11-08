@@ -493,7 +493,7 @@ rodar('Meu dinheiro e Já passou', validarMeuDinheiro);
 
 const formularioMod = await import('../js/modules/ui/formulario.mjs');
 const validarHoraRapida = () => {
-  const { horaUltimaEscala, inicioPadrao, HORAS_RAPIDAS } = formularioMod;
+  const { horaUltimaEscala, inicioPadrao } = formularioMod;
   const agora = new Date(2026, 10, 7, 16, 41);
   const checks = [
     [horaUltimaEscala([]) === '07:00', 'sem escala: 07:00'],
@@ -501,12 +501,11 @@ const validarHoraRapida = () => {
     [horaUltimaEscala([{ inicio: 'lixo' }]) === '07:00', 'início inválido: 07:00'],
     [inicioPadrao([], agora) === '2026-11-07T07:00', 'data de hoje + 07:00 (nunca a hora do relógio)'],
     [inicioPadrao([{ inicio: '2026-10-01T19:00' }], agora) === '2026-11-07T19:00', 'data de hoje + hora da última escala'],
-    [HORAS_RAPIDAS.join(',') === '07:00,19:00', 'botões 07:00 e 19:00'],
   ];
   const falhas = checks.filter(([ok]) => !ok).map(([, nome]) => nome);
   return falhas.length ? falhas : 'HORA RÁPIDA OK';
 };
-rodar('Hora de início rápida', validarHoraRapida);
+rodar('Hora sugerida para escala nova', validarHoraRapida);
 
 const proximaMod = await import('../js/modules/ui/proxima-escala.mjs');
 const { fmtMoeda } = await import('../js/modules/formato.mjs');

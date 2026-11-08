@@ -35,7 +35,6 @@ export function criarAgendaDias(ctx) {
   let mesAtual = 0;           // índice do mês exibido
   const marcados = new Map(); // data → horário trocado (ou null = horário da base)
   let selecionado = null;     // dia mostrado no painel
-  let editando = false;       // painel com os campos de horário abertos
   let resultado = null;       // v82: { escalas, desfazer } depois de lançar
 
   const textoEscalas = (n) => `${n} ${n === 1 ? 'escala' : 'escalas'}`;
@@ -120,20 +119,18 @@ export function criarAgendaDias(ctx) {
     const painel = $('loteDiaPainel');
     if (!painel) return;
     painel.classList.toggle('hidden', !selecionado);
-    if (!selecionado) { editando = false; $('loteEditar')?.classList.add('hidden'); return; }
+    /* v92: os campos de horário abrem junto com o dia (sem o passo "Alterar"). */
+    $('loteEditar')?.classList.toggle('hidden', !selecionado);
+    if (!selecionado) return;
     const marcado = marcados.has(selecionado);
     $('loteDiaTexto').textContent = textoIntervalo(selecionado);
     let problema = marcado ? (mapa.get(selecionado) || '') : '';
-    if (!marcado) problema = `Já existe escala às ${base.inicio.slice(11, 16)} neste dia.`;
+    if (!marcado) problema = `Já existe escala às ${base.inicio.slice(11, 16)} neste dia. Escolha outro horário abaixo.`;
     $('loteDiaProblema').textContent = problema;
-    $('loteAlterar').textContent = marcado ? 'Alterar' : 'Escolher outro horário';
-    $('loteAlterar').classList.toggle('hidden', editando);
-    $('loteEditar').classList.toggle('hidden', !editando);
-    if (editando) {
-      const { inicio, fim } = escalaDoDia(base, selecionado, horarioDe(selecionado));
-      $('loteHora').value = inicio.slice(11, 16);
-      $('loteFim').value = fim;
-    }
+    const { inicio, fim } = escalaDoDia(base, selecionado, horarioDe(selecionado));
+    $('loteHora').value = inicio.slice(11, 16);
+    $('loteFimData').value = fim.slice(0, 10);
+    $('loteFimHora').value = fim.slice(11, 16);
   }
 
   /* v82: depois de lançar, a janela mostra o resultado (agenda / desfazer / concluir). */
@@ -159,7 +156,6 @@ export function criarAgendaDias(ctx) {
     const data = btn.dataset.data;
     if (btn.getAttribute('aria-disabled') === 'true') { setAviso(btn.title); return; }
     setAviso();
-    editando = false;
     if (marcados.has(data)) {
       if (selecionado === data) { marcados.delete(data); selecionado = null; } else { selecionado = data; }
     } else if (situacaoDoDia(estado.escalas, base, data).estado === 'ocupado') {
@@ -251,7 +247,6 @@ export function criarAgendaDias(ctx) {
     base = escala;
     marcados.clear();
     selecionado = null;
-    editando = false;
     resultado = null;
     mostrarEtapaResultado(false);
     setAviso();
@@ -259,7 +254,7 @@ export function criarAgendaDias(ctx) {
     mesBase = indiceMes(ini.getFullYear(), ini.getMonth());
     mesAtual = mesBase;
     if ($('loteBase')) {
-      $('loteBase').textContent = `Base: ${fmtDiaBase.format(ini).replace('.', '')} · ${base.inicio.slice(11, 16)} → ${base.fim.slice(11, 16)}. Toque nos dias; para outro horário, use “Alterar”.`;
+      $('loteBase').textContent = `Base: ${fmtDiaBase.format(ini).replace('.', '')} · ${base.inicio.slice(11, 16)} → ${base.fim.slice(11, 16)}. Toque nos dias; o horário de cada dia pode ser trocado logo abaixo.`;
     }
     renderTudo();
     if (!dlg.open) dlg.showModal();
@@ -277,10 +272,13 @@ export function criarAgendaDias(ctx) {
       const btn = ev.target.closest('.lote-dia');
       if (btn) tocarDia(btn);
     });
-    on('loteAlterar', 'click', () => { editando = true; renderTudo(); });
-    on('loteEditarOk', 'click', () => { editando = false; renderTudo(); });
+    on('loteEditarOk', 'click', () => { selecionado = null; renderTudo(); });
     on('loteHora', 'change', () => trocarHorario({ hora: $('loteHora').value }));
-    on('loteFim', 'change', () => trocarTermino($('loteFim').value));
+    const mudouTermino = () => {
+      if ($('loteFimData').value && $('loteFimHora').value) trocarTermino(`${$('loteFimData').value}T${$('loteFimHora').value}`);
+    };
+    on('loteFimData', 'change', mudouTermino);
+    on('loteFimHora', 'change', mudouTermino);
     document.querySelectorAll('#loteEditar .lote-dur').forEach((chip) => {
       chip.addEventListener('click', () => trocarHorario({ hora: $('loteHora').value, duracaoMin: Number(chip.dataset.horas) * 60 }));
     });

@@ -356,6 +356,11 @@
 .lote-aviso { margin: 0 0 10px; padding: 8px 10px; border-radius: var(--radius-sm); background: var(--warn-soft); color: var(--warn-text); font-size: var(--fs-leitura); font-weight: 650; }
 .lote-editar { margin-top: 12px; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-2); }
 .lote-editar-campos { display: grid; gap: 6px; margin-bottom: 10px; }
+/* v92: término do dia em Data e Hora, como no formulário */
+.lote-fim { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr); gap: 8px; }
+.lote-fim-parte { display: block; min-width: 0; }
+.lote-fim-parte span { display: block; margin-bottom: 4px; color: var(--text-faint); font-size: var(--fs-rotulo); font-weight: 800; letter-spacing: 0.03em; text-transform: uppercase; }
+.lote-fim-parte .control { width: 100%; min-height: 44px; font-variant-numeric: tabular-nums; }
 .lote-durs { display: flex; gap: 6px; }
 .lote-dur {
   flex: 1; min-height: 44px; border: 1px solid var(--border); border-radius: var(--radius-sm);

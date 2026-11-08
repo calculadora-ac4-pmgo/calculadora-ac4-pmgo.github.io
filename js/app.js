@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Calculadora AC4 — v91
+   Calculadora AC4 — v92
    Módulo principal: estado, ligação dos módulos de interface (js/modules/ui/),
    render() e init(). Regras de negócio, formatação e agenda vivem em js/modules/.
    ========================================================================== */
@@ -45,7 +45,7 @@ import { criarAgendaDias } from './modules/ui/agenda-dias.mjs';
   /* Versão da aplicação (sincronizada pelo tools/bump-version.mjs). Serve para
      carimbar o log de erros e detectar clientes presos em cache antigo:
      se __ac4Version no console divergir do rodapé/CHANGELOG, o SW não atualizou. */
-  const APP_VERSION = '91';
+  const APP_VERSION = '92';
 
   const STORAGE = {
     escalas:   'pmgoEscalas',
@@ -357,7 +357,6 @@ import { criarAgendaDias } from './modules/ui/agenda-dias.mjs';
 
     $('escalaInicio').value = inicioPadrao(estado.escalas);
     sincronizarTodosControlesDataHora();
-    formulario.atualizarChipsHora();
 
     formulario.ligarEventos();
     ligarFaixaPortaria();

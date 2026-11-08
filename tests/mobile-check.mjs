@@ -335,10 +335,9 @@ const ROTEIRO_MOBILE = `(async () => {
     const r = el.getBoundingClientRect();
     return r.left >= 0 && r.right <= window.innerWidth + 1 && r.height >= 54;
   });
-  ok('Fluxo básico começa com término personalizado recolhido',
-     inicioContido && document.getElementById('fieldFim').classList.contains('hidden'));
-  document.getElementById('toggleAdvanced').click();
-  await espera(30);
+  ok('Início e Término visíveis desde o começo (v92)',
+     inicioContido && !document.getElementById('fieldFim').classList.contains('hidden') &&
+     getComputedStyle(dtFim).display !== 'none' && getComputedStyle(hrFim).display !== 'none');
   const contidos = [dtInicio, hrInicio, dtFim, hrFim].every((el) => {
     const r = el.getBoundingClientRect();
     return r.left >= 0 && r.right <= window.innerWidth + 1 && r.height >= 54;
@@ -392,8 +391,7 @@ const ROTEIRO_MOBILE = `(async () => {
   ok('Chip 24h recalcula término', document.getElementById('escalaFim').value === '2026-07-11T18:00', document.getElementById('escalaFim').value);
   // 11b. tocar de novo no chip ativo desmarca: volta a "Personalizada", mantém o
   // término calculado e mostra o campo Término para o ajuste manual (v78).
-  if (!document.getElementById('fieldFim').classList.contains('hidden')) document.getElementById('toggleAdvanced').click();
-  ok('Campo Término oculto antes de desmarcar', document.getElementById('fieldFim').classList.contains('hidden'));
+  ok('Campo Término continua visível com o chip ativo', !document.getElementById('fieldFim').classList.contains('hidden'));
   chip24.click();
   await espera(80);
   ok('Tocar de novo no chip ativo desmarca',
@@ -647,7 +645,9 @@ const ROTEIRO_LOTE = `(async () => {
      $('loteContador')?.textContent.trim() === '3 dias marcados', $('loteContador')?.textContent);
   ok('dia marcado mostra a hora de início', horaDia(15) === '18h', horaDia(15));
   ok('painel mostra o último dia tocado', painel() === 'Qui 19/11 · 18:00 → 08:00' && problema() === '', painel());
-  ok('painel oferece "Alterar"', $('loteAlterar')?.textContent.trim() === 'Alterar', $('loteAlterar')?.textContent);
+  ok('ao tocar no dia, os campos de horário já abrem (v92)', !!$('loteEditar') && !$('loteEditar').classList.contains('hidden') &&
+     $('loteHora')?.value === '18:00' && $('loteFimData')?.value === '2026-11-20' && $('loteFimHora')?.value === '08:00' && !$('loteAlterar'),
+     [$('loteHora')?.value, $('loteFimData')?.value, $('loteFimHora')?.value].join(' '));
   dia(19)?.click(); await espera(30);
   ok('tocar de novo no dia selecionado desmarca', dia(19)?.getAttribute('aria-pressed') === 'false' &&
      $('loteContador')?.textContent.trim() === '2 dias marcados', $('loteContador')?.textContent);
@@ -658,9 +658,7 @@ const ROTEIRO_LOTE = `(async () => {
   // dia ocupado no horário da base: escolher outro horário
   dia(14)?.click(); await espera(30);
   ok('dia ocupado não marca e explica', dia(14)?.getAttribute('aria-pressed') !== 'true' &&
-     problema() === 'Já existe escala às 18:00 neste dia.' && $('loteAlterar')?.textContent.trim() === 'Escolher outro horário',
-     problema() + ' / ' + $('loteAlterar')?.textContent);
-  $('loteAlterar')?.click(); await espera(50);
+     problema() === 'Já existe escala às 18:00 neste dia. Escolha outro horário abaixo.', problema());
   ok('abre a troca de horário ali mesmo', !!$('loteEditar') && !$('loteEditar').classList.contains('hidden') &&
      $('loteHora')?.value === '18:00' && !$('loteCalendario')?.classList.contains('hidden'), $('loteHora')?.value);
   if ($('loteHora')) { $('loteHora').value = '13:00'; $('loteHora').dispatchEvent(new Event('change', { bubbles: true })); }
@@ -671,12 +669,12 @@ const ROTEIRO_LOTE = `(async () => {
   // troca de horário de um dia marcado
   dia(19)?.click(); await espera(30);
   dia(17)?.click(); await espera(30);
-  $('loteAlterar')?.click(); await espera(50);
   document.querySelector('#loteEditar .lote-dur[data-horas="24"]')?.click(); await espera(50);
   ok('24 h no dia 17', painel() === 'Ter 17/11 · 18:00 → 18:00' && problema() === '', painel() + ' / ' + problema());
-  if ($('loteHora') && $('loteFim')) {
+  if ($('loteHora') && $('loteFimData') && $('loteFimHora')) {
     $('loteHora').value = '06:00'; $('loteHora').dispatchEvent(new Event('change', { bubbles: true }));
-    $('loteFim').value = '2026-11-19T20:00'; $('loteFim').dispatchEvent(new Event('change', { bubbles: true }));
+    $('loteFimData').value = '2026-11-19'; $('loteFimHora').value = '20:00';
+    $('loteFimHora').dispatchEvent(new Event('change', { bubbles: true }));
   }
   await espera(50);
   ok('término 2 dias depois mostra a data', painel() === 'Ter 17/11 · 06:00 → 19/11 20:00', painel());
