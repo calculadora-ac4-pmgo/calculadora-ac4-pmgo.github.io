@@ -1,5 +1,13 @@
 # Changelog
 
+## v92 — Início e Término à vista; horário de cada dia direto na agenda
+
+Pedido do gestor (08/11/2026). Novidade para o usuário (`data-conteudo` = "92").
+- **Nova escala:** **Início** e **Término** ficam sempre visíveis, um abaixo do outro, cada um com Data e Hora (no celular; no computador, os dois campos lado a lado). O Término saiu de "Mais detalhes", que agora guarda só unidade e origem.
+- Os atalhos **12h, 14h e 24h** continuam e preenchem o Término; término digitado vale. Saíram os botões de hora 07:00/19:00/Última (v90) e o bloco "Término calculado automaticamente" do quadro de valor (o término já está na tela). A hora sugerida continua sendo a da última escala lançada.
+- **Lançar em outros dias:** tocar num dia já abre Início (hora) e Término (Data e Hora) daquele dia, com os atalhos 12h/14h/24h, sem o passo "Alterar". Dia ocupado no horário da base explica e pede outro horário ali mesmo. "Concluir" do painel virou "Pronto".
+- Testes: mobile-check (Término visível desde o começo, campos do dia abertos ao tocar, término por Data e Hora no lote); smoke (Término logo abaixo do Início, atalho 12h preenche, término digitado vale). Revisão visual em 390 px e 1280 px, claro e escuro.
+
 ## v91 — Próxima escala e Planejamento sem número repetido
 
 Ajustes de interface, sem aviso de novidades (`data-conteudo` continua "89").

@@ -667,15 +667,17 @@ try {
   const hora = await avaliarDin(`document.getElementById('mobileAdd').click();
     for(let i=0;i<30&&!document.getElementById('escalaInicioHora').value;i++)await sl(100); await sl(200);
     const r={padrao:document.getElementById('escalaInicioHora').value, data:document.getElementById('escalaInicioData').value,
-      ultimaVisivel:!document.getElementById('horaChipUltima').classList.contains('hidden'),
-      ultimaAtiva:document.getElementById('horaChipUltima').getAttribute('aria-pressed')};
-    document.querySelector('.hora-chip[data-hora="19:00"]').click(); await sl(150);
-    r.depois=document.getElementById('escalaInicio').value.slice(11,16);
-    r.ativo19=document.querySelector('.hora-chip[data-hora="19:00"]').getAttribute('aria-pressed');
+      semChipsHora:!document.getElementById('horaChips'),
+      fimVisivel:document.getElementById('escalaFimData').offsetHeight>0 && document.getElementById('escalaFimHora').offsetHeight>0,
+      fimLogoAbaixo:document.getElementById('escalaFimData').getBoundingClientRect().top>document.getElementById('escalaInicioData').getBoundingClientRect().top && document.getElementById('escalaFimData').getBoundingClientRect().top<document.querySelector('#durChips').getBoundingClientRect().top};
+    document.querySelector('#durChips .dur-chip[data-horas="12"]').click(); await sl(150);
+    r.fimData=document.getElementById('escalaFimData').value; r.fimHora=document.getElementById('escalaFimHora').value;
+    document.getElementById('escalaFimHora').value='08:00'; document.getElementById('escalaFimHora').dispatchEvent(new Event('change',{bubbles:true})); await sl(150);
+    r.fimManual=document.getElementById('escalaFim').value.slice(11,16); r.duracaoDepois=document.getElementById('escalaDuracao').value;
     localStorage.removeItem('pmgoEscalas'); return JSON.stringify(r);`);
   const hoje = await avaliarDin(`const d=new Date();return JSON.stringify(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'));`);
-  passos.push({ nome: 'Nova escala: hora vem da última escala (22:30), data de hoje, botão "Última" ativo', ok: hora.padrao === '22:30' && hora.data === hoje && hora.ultimaVisivel && hora.ultimaAtiva === 'true', detalhe: JSON.stringify(hora) });
-  passos.push({ nome: 'Botão 19:00 preenche a hora do início', ok: hora.depois === '19:00' && hora.ativo19 === 'true', detalhe: JSON.stringify(hora) });
+  passos.push({ nome: 'Nova escala: hora vem da última escala (22:30), data de hoje; Término visível (v92)', ok: hora.padrao === '22:30' && hora.data === hoje && hora.semChipsHora && hora.fimVisivel && hora.fimLogoAbaixo, detalhe: JSON.stringify(hora) });
+  passos.push({ nome: 'Atalho 12h preenche o Término; término digitado vale (v92)', ok: hora.fimHora === '10:30' && hora.fimManual === '08:00', detalhe: JSON.stringify(hora) });
   await cdp.enviar('Emulation.setDeviceMetricsOverride', { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false }, sessionId);
   await abrirDin();
   const desk = await avaliarDin(`return JSON.stringify({itens:getComputedStyle(document.getElementById('tariffItems')).display!=='none', botao:getComputedStyle(document.getElementById('tariffToggle')).display==='none', texto:document.querySelector('#listaEscalas .empty-state p')?.textContent, botaoVazio:!!document.querySelector('[data-acao-vazia]')});`);

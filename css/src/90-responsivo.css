@@ -223,15 +223,16 @@
 
   /* Rótulo em cima (com ícone), controle 100% embaixo — nunca espreme o campo */
   .launch-panel .launch-grid { grid-template-columns: 1fr; gap: 18px; }
+  /* v92: Início e Término um abaixo do outro; a duração vira atalho logo depois. */
   .launch-panel #fieldInicio { order: 1; }
-  .launch-panel #fieldDuracao { order: 2; }
-  .launch-panel #fieldQtdPm { order: 3; }
-  .launch-panel .launch-result { order: 4; }
-  .launch-panel .launch-advanced-toggle-wrap { order: 5; }
-  .launch-panel #fieldFim,
+  .launch-panel #fieldFim { order: 2; }
+  .launch-panel #fieldDuracao { order: 3; }
+  .launch-panel #fieldQtdPm { order: 4; }
+  .launch-panel .launch-result { order: 5; }
+  .launch-panel .launch-advanced-toggle-wrap { order: 6; }
   .launch-panel #fieldDescricao,
-  .launch-panel #fieldOrigem { order: 6; }
-  .launch-panel .launch-grid > .launch-full:last-child { order: 7; }
+  .launch-panel #fieldOrigem { order: 7; }
+  .launch-panel .launch-grid > .launch-full:last-child { order: 8; }
   .launch-panel .field { display: block; margin: 0; }
   .launch-panel .field > label {
     display: flex;
@@ -319,10 +320,6 @@
   /* Duração rápida: chips de largura total no lugar do select */
   #fieldDuracao > .control { display: none; }
   .dur-chips { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-  /* Hora de início rápida (v90): mesmos chips da duração, mais baixos */
-  .hora-chips { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px; }
-  .hora-chip { min-height: 44px; }
-  .hora-chip.hidden { display: none; }
 
   /* Faixa da Portaria recolhida em uma linha (v90) */
   .tariff-strip { padding: 0; gap: 0; }
@@ -368,16 +365,6 @@
   }
 
   /* Término automático — tag no rótulo + dica curta */
-  .auto-tag {
-    display: inline;
-    margin-left: 4px;
-    color: var(--gold-500);
-    font-weight: 800;
-    font-size: var(--fs-rotulo);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-  .fim-hint { display: block; margin-top: 6px; color: var(--text-faint); font-size: var(--fs-leitura); font-weight: 600; }
 
   /* Stepper de Qtd. PM — largura total: [ − ]  input  [ + ] */
   .qtd-control { display: flex; align-items: stretch; gap: 10px; }

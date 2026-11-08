@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Calculadora AC4 — v91
+   Calculadora AC4 — v92
    Arquivo gerado por tools/montar-css.mjs — edite css/src/ e rode o script.
    ========================================================================== */
 
@@ -667,27 +667,6 @@ textarea.control { min-height: 74px; resize: vertical; }
   font-size: 0.82rem;
   font-weight: 700;
 }
-.launch-result-end {
-  margin-top: 14px;
-  padding-top: 13px;
-  border-top: 1px solid color-mix(in srgb, var(--green-600) 25%, var(--border));
-}
-.launch-result-end-label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--green-700);
-  font-size: var(--fs-rotulo);
-  font-weight: 850;
-}
-[data-theme="dark"] .launch-result-end-label { color: #6ee7b7; }
-.launch-result-end-label::before { content: '✓'; font-weight: 900; }
-.launch-result-end-value {
-  margin-top: 4px;
-  color: var(--text);
-  font-size: 0.98rem;
-  font-weight: 900;
-}
 
 
 /* Cabeçalho e backdrop do bottom sheet: existem só no mobile.
@@ -700,10 +679,7 @@ textarea.control { min-height: 74px; resize: vertical; }
 .field-ico,
 .mobile-datetime,
 .dur-chips,
-.hora-chips,
 .dur-rapida-tag,
-.auto-tag,
-.fim-hint,
 .qtd-btn,
 .escala-cards,
 .metric-resumo-mobile { display: none; }
@@ -1633,6 +1609,11 @@ textarea.control { min-height: 74px; resize: vertical; }
 .lote-aviso { margin: 0 0 10px; padding: 8px 10px; border-radius: var(--radius-sm); background: var(--warn-soft); color: var(--warn-text); font-size: var(--fs-leitura); font-weight: 650; }
 .lote-editar { margin-top: 12px; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-2); }
 .lote-editar-campos { display: grid; gap: 6px; margin-bottom: 10px; }
+/* v92: término do dia em Data e Hora, como no formulário */
+.lote-fim { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr); gap: 8px; }
+.lote-fim-parte { display: block; min-width: 0; }
+.lote-fim-parte span { display: block; margin-bottom: 4px; color: var(--text-faint); font-size: var(--fs-rotulo); font-weight: 800; letter-spacing: 0.03em; text-transform: uppercase; }
+.lote-fim-parte .control { width: 100%; min-height: 44px; font-variant-numeric: tabular-nums; }
 .lote-durs { display: flex; gap: 6px; }
 .lote-dur {
   flex: 1; min-height: 44px; border: 1px solid var(--border); border-radius: var(--radius-sm);
@@ -1879,15 +1860,16 @@ textarea.control { min-height: 74px; resize: vertical; }
 
   /* Rótulo em cima (com ícone), controle 100% embaixo — nunca espreme o campo */
   .launch-panel .launch-grid { grid-template-columns: 1fr; gap: 18px; }
+  /* v92: Início e Término um abaixo do outro; a duração vira atalho logo depois. */
   .launch-panel #fieldInicio { order: 1; }
-  .launch-panel #fieldDuracao { order: 2; }
-  .launch-panel #fieldQtdPm { order: 3; }
-  .launch-panel .launch-result { order: 4; }
-  .launch-panel .launch-advanced-toggle-wrap { order: 5; }
-  .launch-panel #fieldFim,
+  .launch-panel #fieldFim { order: 2; }
+  .launch-panel #fieldDuracao { order: 3; }
+  .launch-panel #fieldQtdPm { order: 4; }
+  .launch-panel .launch-result { order: 5; }
+  .launch-panel .launch-advanced-toggle-wrap { order: 6; }
   .launch-panel #fieldDescricao,
-  .launch-panel #fieldOrigem { order: 6; }
-  .launch-panel .launch-grid > .launch-full:last-child { order: 7; }
+  .launch-panel #fieldOrigem { order: 7; }
+  .launch-panel .launch-grid > .launch-full:last-child { order: 8; }
   .launch-panel .field { display: block; margin: 0; }
   .launch-panel .field > label {
     display: flex;
@@ -1975,10 +1957,6 @@ textarea.control { min-height: 74px; resize: vertical; }
   /* Duração rápida: chips de largura total no lugar do select */
   #fieldDuracao > .control { display: none; }
   .dur-chips { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-  /* Hora de início rápida (v90): mesmos chips da duração, mais baixos */
-  .hora-chips { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px; }
-  .hora-chip { min-height: 44px; }
-  .hora-chip.hidden { display: none; }
 
   /* Faixa da Portaria recolhida em uma linha (v90) */
   .tariff-strip { padding: 0; gap: 0; }
@@ -2024,16 +2002,6 @@ textarea.control { min-height: 74px; resize: vertical; }
   }
 
   /* Término automático — tag no rótulo + dica curta */
-  .auto-tag {
-    display: inline;
-    margin-left: 4px;
-    color: var(--gold-500);
-    font-weight: 800;
-    font-size: var(--fs-rotulo);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-  .fim-hint { display: block; margin-top: 6px; color: var(--text-faint); font-size: var(--fs-leitura); font-weight: 600; }
 
   /* Stepper de Qtd. PM — largura total: [ − ]  input  [ + ] */
   .qtd-control { display: flex; align-items: stretch; gap: 10px; }

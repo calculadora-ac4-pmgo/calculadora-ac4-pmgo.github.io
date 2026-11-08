@@ -6,7 +6,7 @@
    remover com desfazer, limpar tudo, mudar situação). Estado só via `estado`.
    ========================================================================== */
 import {
-  fmtMoeda, fmtHoras, fmtDataHora, fmtDiaSemana, fmtHora,
+  fmtMoeda, fmtHoras, fmtDataHora, fmtDiaSemana,
   combinarDataHoraLocal, parseDateTimeLocal, formatarDataHoraInput, toInputLocal,
   calcularTerminoPorDuracao, validarIntervaloEscala,
 } from '../formato.mjs';
@@ -22,9 +22,6 @@ import { primeiraDoMes } from '../lote.mjs';
  *   pedirArmazenamentoPersistente, mostrarInstalacaoAposConversao, agendarEscalaItem, abrirLote, PASSO_LISTA.
  * @returns {Object} Funções públicas da área, incluindo ligarEventos().
  */
-/** Horas de início mais comuns, oferecidas como botões no celular (v90). */
-export const HORAS_RAPIDAS = Object.freeze(['07:00', '19:00']);
-
 /**
  * Hora de início da última escala lançada (a última da lista salva), ou 07:00.
  * @param {Array<Object>} escalas
@@ -33,7 +30,7 @@ export const HORAS_RAPIDAS = Object.freeze(['07:00', '19:00']);
 export function horaUltimaEscala(escalas) {
   const ultima = escalas[escalas.length - 1];
   const hora = ultima && String(ultima.inicio || '').slice(11, 16);
-  return /^\d{2}:\d{2}$/.test(hora || '') ? hora : HORAS_RAPIDAS[0];
+  return /^\d{2}:\d{2}$/.test(hora || '') ? hora : '07:00';
 }
 
 /**
@@ -269,16 +266,6 @@ export function criarFormulario(ctx) {
     el.textContent = parseDateTimeLocal(v) ? `${fmtDiaSemana(v)}, ${fmtDataHora(v)}` : '';
   }
 
-  function formatarTerminoMobile(valor) {
-    const data = parseDateTimeLocal(valor);
-    if (!data) return '';
-    const diaSemana = data.toLocaleDateString('pt-BR', { weekday: 'short' })
-      .replace('.', '')
-      .replace(/^./, (letra) => letra.toLocaleUpperCase('pt-BR'));
-    const diaMes = data.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
-    return `${diaSemana}, ${diaMes} · ${fmtHora(valor)}`;
-  }
-
   function atualizarBotaoSubmitMobile(resultado = null, qtd = 1) {
     const label = $('btnSubmitLabel');
     const valor = $('btnSubmitResult');
@@ -323,7 +310,6 @@ export function criarFormulario(ctx) {
       ? `${r.mins / 60} ${r.mins === 60 ? 'hora' : 'horas'}`
       : fmtHoras(r.mins);
     $('launchResultHours').textContent = `${fmtHoras(r.minDiurno)} diurnas · ${fmtHoras(r.minNoturno)} noturnas`;
-    $('launchResultEnd').textContent = formatarTerminoMobile(fim);
     el.classList.remove('is-empty');
     atualizarBotaoSubmitMobile(r, qtd);
   }
@@ -359,26 +345,6 @@ export function criarFormulario(ctx) {
     const val = $('escalaDuracao')?.value || '';
     document.querySelectorAll('#durChips .dur-chip').forEach((c) => {
       const ativo = c.dataset.horas === val;
-      c.classList.toggle('is-active', ativo);
-      c.setAttribute('aria-pressed', ativo ? 'true' : 'false');
-    });
-  }
-
-  /* Botões de hora de início (v90): 07:00, 19:00 e a hora da última escala
-     quando for outra. Escrevem no campo Hora, que já atualiza o Início. */
-  function atualizarChipsHora() {
-    const ultima = horaUltimaEscala(estado.escalas);
-    const chipUltima = $('horaChipUltima');
-    if (chipUltima) {
-      const mostrar = estado.escalas.length > 0 && !HORAS_RAPIDAS.includes(ultima);
-      chipUltima.classList.toggle('hidden', !mostrar);
-      chipUltima.dataset.hora = ultima;
-      const rotulo = $('horaChipUltimaValor');
-      if (rotulo) rotulo.textContent = ultima;
-    }
-    const atual = $('escalaInicioHora')?.value || '';
-    document.querySelectorAll('#horaChips .hora-chip').forEach((c) => {
-      const ativo = !c.classList.contains('hidden') && c.dataset.hora === atual;
       c.classList.toggle('is-active', ativo);
       c.setAttribute('aria-pressed', ativo ? 'true' : 'false');
     });
@@ -483,7 +449,6 @@ export function criarFormulario(ctx) {
             $('escalaInicio').value = inicioPadrao(estado.escalas);
             aplicarDuracao();
             sincronizarTodosControlesDataHora();
-            atualizarChipsHora();
           }
           atualizarResumoLancamento();
         });
@@ -537,17 +502,6 @@ export function criarFormulario(ctx) {
         on(`${id}${sufixo}`, 'change', () => aplicarPartesDataHora(id, 'change'));
       });
     });
-    on('horaChips', 'click', (ev) => {
-      const chip = ev.target.closest('.hora-chip');
-      if (!chip || !chip.dataset.hora || !$('escalaInicioHora')) return;
-      if (!$('escalaInicioData').value) $('escalaInicioData').value = toInputLocal(new Date()).slice(0, 10);
-      $('escalaInicioHora').value = chip.dataset.hora;
-      aplicarPartesDataHora('escalaInicio', 'change');
-      atualizarChipsHora();
-    });
-    on('escalaInicioHora', 'input', atualizarChipsHora);
-    on('escalaInicioHora', 'change', atualizarChipsHora);
-    on('escalaInicio', 'change', atualizarChipsHora);
     /* Resumo do lançamento também depende de Qtd. PM e Origem */
     on('escalaQtdPm', 'input', atualizarResumoLancamento);
     on('escalaQtdPm', 'change', atualizarResumoLancamento);
@@ -637,7 +591,7 @@ export function criarFormulario(ctx) {
   return {
     isMobileViewport, setDetalhesAvancados, abrirPainelLancamentoMobile, fecharPainelLancamentoMobile,
     validarFormulario, submeterFormulario, editarEscala, cancelarEdicao, atualizarResumoLancamento,
-    sincronizarTodosControlesDataHora, aplicarPartesDataHora, atualizarChipsDuracao, atualizarChipsHora, duplicarEscala,
+    sincronizarTodosControlesDataHora, aplicarPartesDataHora, atualizarChipsDuracao, duplicarEscala,
     removerEscala, limparTudo, atualizarStatusEscala, atualizarResumoFim, lerQtdPm, ligarEventos,
   };
 }

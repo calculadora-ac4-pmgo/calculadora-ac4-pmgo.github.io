@@ -160,27 +160,6 @@ textarea.control { min-height: 74px; resize: vertical; }
   font-size: 0.82rem;
   font-weight: 700;
 }
-.launch-result-end {
-  margin-top: 14px;
-  padding-top: 13px;
-  border-top: 1px solid color-mix(in srgb, var(--green-600) 25%, var(--border));
-}
-.launch-result-end-label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--green-700);
-  font-size: var(--fs-rotulo);
-  font-weight: 850;
-}
-[data-theme="dark"] .launch-result-end-label { color: #6ee7b7; }
-.launch-result-end-label::before { content: '✓'; font-weight: 900; }
-.launch-result-end-value {
-  margin-top: 4px;
-  color: var(--text);
-  font-size: 0.98rem;
-  font-weight: 900;
-}
 
 
 /* Cabeçalho e backdrop do bottom sheet: existem só no mobile.
@@ -193,10 +172,7 @@ textarea.control { min-height: 74px; resize: vertical; }
 .field-ico,
 .mobile-datetime,
 .dur-chips,
-.hora-chips,
 .dur-rapida-tag,
-.auto-tag,
-.fim-hint,
 .qtd-btn,
 .escala-cards,
 .metric-resumo-mobile { display: none; }
