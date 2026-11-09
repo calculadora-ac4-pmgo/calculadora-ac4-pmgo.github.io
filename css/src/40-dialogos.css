@@ -196,6 +196,20 @@
 }
 .valor-total-linha strong { color: var(--green-600); font-size: 1.25rem; font-weight: 900; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .valor-nota { margin: 10px 0 18px; color: var(--text-muted); font-size: var(--fs-leitura); font-weight: 600; line-height: 1.4; }
+/* ===== REPETIR A SEMANA (v95): conferência com marcar/desmarcar ===== */
+.repetir-lista { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--border); max-height: 46vh; overflow-y: auto; }
+.repetir-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; border-bottom: 1px solid var(--border); }
+.repetir-rotulo { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; min-height: 52px; padding: 8px 0; cursor: pointer; }
+.repetir-check { width: 22px; height: 22px; flex-shrink: 0; accent-color: var(--blue-600); }
+.repetir-textos { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.repetir-quando { color: var(--text); font-size: var(--fs-leitura); font-weight: 750; font-variant-numeric: tabular-nums; }
+.repetir-nota { color: var(--text-muted); font-size: var(--fs-rotulo); font-weight: 650; }
+.repetir-valor { flex-shrink: 0; color: var(--text); font-size: var(--fs-leitura); font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.repetir-item.is-fora .repetir-rotulo { cursor: default; }
+.repetir-item.is-fora .repetir-quando { color: var(--text-muted); text-decoration: line-through; }
+.repetir-acoes { margin-top: 18px; }
+.repetir-dialog .valor-total-linha { flex-wrap: wrap; }
+.repetir-dialog .valor-total-linha strong { font-size: 1.05rem; }
 /* Valor da escala como botão (abre a conta) */
 .valor-btn {
   padding: 2px 0; border: 0; background: none; color: inherit; font: inherit; cursor: pointer;

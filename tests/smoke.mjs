@@ -736,6 +736,47 @@ try {
     document.getElementById('valorFechar').click(); localStorage.removeItem('pmgoEscalas'); return JSON.stringify(r);`);
   passos.push({ nome: 'Explicar o valor: no computador, clicar no valor da tabela abre a conta', ok: evDesk.aberto && evDesk.total === 'R$ 605,00', detalhe: JSON.stringify(evDesk) });
 
+  // 13. Repetir a semana (v95): semana atual vazia + passada com escalas → cartão, conferência,
+  //     lançar com Desfazer e "Agora não" valendo para a semana de destino.
+  await cdp.enviar('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true }, sessionId);
+  const semearSemanaPassada = `(()=>{const p=(n)=>String(n).padStart(2,'0');const f=(d)=>d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'T'+p(d.getHours())+':'+p(d.getMinutes());
+    const hoje=new Date(); const seg=new Date(hoje.getFullYear(),hoje.getMonth(),hoje.getDate()-((hoje.getDay()+6)%7));
+    const em=(dias,h)=>{const d=new Date(seg);d.setDate(d.getDate()+dias);d.setHours(h,0,0,0);return d;};
+    /* semana passada: domingo 08h→18h e domingo 20h→22h (destino: domingo desta semana, ainda por vir ou hoje) */
+    const lista=[{id:'rs1',inicio:f(em(-1,8)),fim:f(em(-1,18)),descricao:'Sede',origem:'AC4',qtdPm:1,status:'recebida'},
+                 {id:'rs2',inicio:f(em(-1,20)),fim:f(em(-1,22)),descricao:'Escala AC4',origem:'AC4',qtdPm:2,status:'recebida'}];
+    localStorage.setItem('pmgoEscalas',JSON.stringify(lista)); localStorage.removeItem('pmgoRepetirSemanaDispensada'); localStorage.setItem('pmgoJaPassouDispensadas','[]');})()`;
+  await cdp.enviar('Runtime.evaluate', { expression: semearSemanaPassada }, sessionId);
+  await abrirDin();
+  const rs = await avaliarDin(`const r={}; const cartao=document.getElementById('repetirSemana');
+    r.visivel=!cartao.classList.contains('hidden'); r.texto=document.getElementById('repetirSemanaTexto').textContent;
+    document.getElementById('repetirSemanaAbrir').click(); await sl(200);
+    const dlg=document.getElementById('dialogRepetir'); r.aberto=dlg.open;
+    const caixas=[...document.querySelectorAll('.repetir-check')]; r.itens=caixas.length;
+    r.total0=document.getElementById('repetirTotal').textContent.replace(/\\s/g,' ');
+    caixas.forEach(c=>{ if(!c.checked&&!c.disabled){c.checked=true;c.dispatchEvent(new Event('change',{bubbles:true}));} }); await sl(100);
+    r.botao=document.getElementById('repetirConfirmar').textContent; r.cabe=dlg.scrollWidth<=dlg.clientWidth+1;
+    const c2=document.querySelectorAll('.repetir-check')[1]; c2.checked=false; c2.dispatchEvent(new Event('change',{bubbles:true})); await sl(100);
+    r.botao1=document.getElementById('repetirConfirmar').textContent;
+    document.getElementById('repetirConfirmar').click(); await sl(300);
+    const lista=()=>JSON.parse(localStorage.getItem('pmgoEscalas'));
+    r.depois=lista().length; r.nova=lista()[2]; r.fechou=!dlg.open; r.textoDepois=document.getElementById('repetirSemanaTexto').textContent;
+    let b=null; for(let i=0;i<60&&!(b=[...document.querySelectorAll('.toast-action')].find(x=>x.textContent==='Desfazer'));i++)await sl(100);
+    r.temDesfazer=!!b; b&&b.click(); await sl(250); r.desfeito=lista().length; r.cartaoVolta=!cartao.classList.contains('hidden') && document.getElementById('repetirSemanaTexto').textContent===r.texto;
+    document.getElementById('repetirSemanaAgoraNao').click(); await sl(100); r.dispensou=cartao.classList.contains('hidden');
+    return JSON.stringify(r);`);
+  passos.push({ nome: 'Repetir a semana: cartão oferece as 2 escalas da semana passada', ok: rs.visivel && rs.texto === 'Repetir nesta semana as 2 escalas da semana passada?' && rs.aberto && rs.itens === 2 && rs.cabe, detalhe: JSON.stringify(rs) });
+  passos.push({ nome: 'Repetir a semana: desmarcar muda o botão; lançar cria a escala 7 dias depois; o cartão passa a oferecer a próxima semana', ok: rs.botao === 'Lançar 2 escalas' && rs.botao1 === 'Lançar 1 escala' && rs.depois === 3 && rs.nova.status === 'planejada' && rs.nova.descricao === 'Sede' && rs.nova.id !== 'rs1' && rs.fechou && rs.textoDepois === 'Repetir na próxima semana a escala desta semana?', detalhe: JSON.stringify(rs) });
+  passos.push({ nome: 'Repetir a semana: Desfazer remove as lançadas; "Agora não" esconde o cartão', ok: rs.temDesfazer && rs.desfeito === 2 && rs.cartaoVolta && rs.dispensou, detalhe: JSON.stringify(rs) });
+  await abrirDin();
+  const rsDepois = await avaliarDin(`const r=document.getElementById('repetirSemana').classList.contains('hidden'); localStorage.removeItem('pmgoEscalas'); localStorage.removeItem('pmgoRepetirSemanaDispensada'); return JSON.stringify(r);`);
+  passos.push({ nome: 'Repetir a semana: "Agora não" continua valendo depois de recarregar', ok: rsDepois === true, detalhe: String(rsDepois) });
+  await cdp.enviar('Emulation.setDeviceMetricsOverride', { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false }, sessionId);
+  await abrirDin();
+  const ordem = await avaliarDin(`const t=(s)=>document.querySelector(s).getBoundingClientRect().top+scrollY;
+    return JSON.stringify({metricas:t('.metrics'),form:t('#launchPanel'),plan:t('.planning-panel'),lista:t('.feed'),aviso:t('.legal-alert')});`);
+  passos.push({ nome: 'Computador, sem cartões: formulário e planejamento acima da lista (ordem fixa)', ok: ordem.metricas < ordem.form && Math.abs(ordem.form - ordem.plan) < 2 && ordem.form < ordem.lista && ordem.lista < ordem.aviso, detalhe: JSON.stringify(ordem) });
+
   console.table(passos.map(({ nome, ok, detalhe }) => ({ passo: nome, ok, detalhe })));
 
   const falhas = passos.filter((p) => !p.ok);

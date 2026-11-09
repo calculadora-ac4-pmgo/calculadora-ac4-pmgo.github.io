@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Calculadora AC4 — v94
+   Calculadora AC4 — v95
    Módulo principal: estado, ligação dos módulos de interface (js/modules/ui/),
    render() e init(). Regras de negócio, formatação e agenda vivem em js/modules/.
    ========================================================================== */
@@ -33,6 +33,7 @@ import { criarPlanejamento } from './modules/ui/planejamento.mjs';
 import { criarDinheiro, PARTES_DINHEIRO } from './modules/ui/dinheiro.mjs';
 import { criarProximaEscala } from './modules/ui/proxima-escala.mjs';
 import { criarExplicarValor } from './modules/ui/explicar-valor.mjs';
+import { criarRepetirSemana } from './modules/ui/repetir-semana.mjs';
 import { criarFormulario, inicioPadrao } from './modules/ui/formulario.mjs';
 import { criarModelos } from './modules/ui/modelos.mjs';
 import { criarAgendaDias } from './modules/ui/agenda-dias.mjs';
@@ -46,7 +47,7 @@ import { criarAgendaDias } from './modules/ui/agenda-dias.mjs';
   /* Versão da aplicação (sincronizada pelo tools/bump-version.mjs). Serve para
      carimbar o log de erros e detectar clientes presos em cache antigo:
      se __ac4Version no console divergir do rodapé/CHANGELOG, o SW não atualizou. */
-  const APP_VERSION = '94';
+  const APP_VERSION = '95';
 
   const STORAGE = {
     escalas:   'pmgoEscalas',
@@ -62,6 +63,7 @@ import { criarAgendaDias } from './modules/ui/agenda-dias.mjs';
     ultimoBackup:   'pmgoUltimoBackup',
     lembreteBackup: 'pmgoLembreteBackup',
     jaPassouDispensadas: 'pmgoJaPassouDispensadas',
+    repetirSemanaDispensada: 'pmgoRepetirSemanaDispensada',
   };
 
   /* ------------------------------------------------------------ estado */
@@ -170,6 +172,10 @@ import { criarAgendaDias } from './modules/ui/agenda-dias.mjs';
   const agendaDias = criarAgendaDias({
     $, on, estado, toast, salvar, haptic, clonarEscalas, aposProximoPaint, cancelarEdicao, agendarEscalas, render: () => render(),
   });
+  const repetirSemana = criarRepetirSemana({
+    $, on, estado, toast, salvar, haptic, clonarEscalas, cancelarEdicao, lerLocal, STORAGE,
+    calcularEscala: (e) => calcularEscala(e), render: () => render(),
+  });
 
   /* -------------------------------------------- tabela de valores */
   /* Pontes para os módulos — injetam a tabela vigente lida do DOM,
@@ -254,6 +260,7 @@ import { criarAgendaDias } from './modules/ui/agenda-dias.mjs';
     dinheiro.renderDinheiro(resultados);
     dinheiro.renderJaPassou();
     proxima.renderProximaEscala();
+    repetirSemana.renderRepetirSemana();
 
     const container = $('listaEscalas');
     if (!lista.length) {
@@ -369,6 +376,7 @@ import { criarAgendaDias } from './modules/ui/agenda-dias.mjs';
     dinheiro.ligarEventos();
     proxima.ligarEventos();
     explicarValor.ligarEventos();
+    repetirSemana.ligarEventos();
 
     on('btnTheme', 'click', () =>
       aplicarTema(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'));
