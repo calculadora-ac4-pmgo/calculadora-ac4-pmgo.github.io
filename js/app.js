@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Calculadora AC4 — v93
+   Calculadora AC4 — v94
    Módulo principal: estado, ligação dos módulos de interface (js/modules/ui/),
    render() e init(). Regras de negócio, formatação e agenda vivem em js/modules/.
    ========================================================================== */
@@ -32,6 +32,7 @@ import { criarCompartilhar } from './modules/ui/compartilhar.mjs';
 import { criarPlanejamento } from './modules/ui/planejamento.mjs';
 import { criarDinheiro, PARTES_DINHEIRO } from './modules/ui/dinheiro.mjs';
 import { criarProximaEscala } from './modules/ui/proxima-escala.mjs';
+import { criarExplicarValor } from './modules/ui/explicar-valor.mjs';
 import { criarFormulario, inicioPadrao } from './modules/ui/formulario.mjs';
 import { criarModelos } from './modules/ui/modelos.mjs';
 import { criarAgendaDias } from './modules/ui/agenda-dias.mjs';
@@ -45,7 +46,7 @@ import { criarAgendaDias } from './modules/ui/agenda-dias.mjs';
   /* Versão da aplicação (sincronizada pelo tools/bump-version.mjs). Serve para
      carimbar o log de erros e detectar clientes presos em cache antigo:
      se __ac4Version no console divergir do rodapé/CHANGELOG, o SW não atualizou. */
-  const APP_VERSION = '93';
+  const APP_VERSION = '94';
 
   const STORAGE = {
     escalas:   'pmgoEscalas',
@@ -145,6 +146,7 @@ import { criarAgendaDias } from './modules/ui/agenda-dias.mjs';
   const proxima = criarProximaEscala({
     $, on, estado, calcularEscala: (e) => calcularEscala(e), render: () => render(),
   });
+  const explicarValor = criarExplicarValor({ $, on, estado, calcularEscala: (e) => calcularEscala(e) });
   const formulario = criarFormulario({
     $, on, estado, toast, dialogConfirmar, haptic, salvar, clonarEscalas, aposProximoPaint, esperarProximoPaint,
     pedirArmazenamentoPersistente, agendarEscalaItem, PASSO_LISTA,
@@ -152,6 +154,7 @@ import { criarAgendaDias } from './modules/ui/agenda-dias.mjs';
     render: () => render(), calcularEscala: (e) => calcularEscala(e),
     mostrarInstalacaoAposConversao: () => pwa.mostrarInstalacaoAposConversao(),
     abrirLote: (id) => agendaDias.abrir(id),
+    explicarValor: (id) => explicarValor.abrir(id),
   });
   const {
     isMobileViewport, setDetalhesAvancados, abrirPainelLancamentoMobile, cancelarEdicao,
@@ -308,7 +311,7 @@ import { criarAgendaDias } from './modules/ui/agenda-dias.mjs';
           <td data-label="Tipo"><div class="chips">${tipoChips.join('')}</div></td>
           <td data-label="Situação">${seletorStatusHTML(e, 'table-status')}</td>
           <td data-label="Horas">${fmtHoras(r.mins)}</td>
-          <td data-label="Valor" class="value-cell">${fmtMoeda(valorTotal)}${qtd > 1 ? `<span class="table-note">${fmtMoeda(r.valorCentavos)}/PM</span>` : ''}</td>
+          <td data-label="Valor" class="value-cell"><button type="button" class="valor-btn" data-acao="explicar" data-id="${escapeHTML(String(e.id))}" title="Ver como o valor foi calculado">${fmtMoeda(valorTotal)}</button>${qtd > 1 ? `<span class="table-note">${fmtMoeda(r.valorCentavos)}/PM</span>` : ''}</td>
           <td data-label="Ações">${botoesAcaoHTML(e.id)}</td>
         </tr>`;
     });
@@ -365,6 +368,7 @@ import { criarAgendaDias } from './modules/ui/agenda-dias.mjs';
     planejamento.ligarEventos();
     dinheiro.ligarEventos();
     proxima.ligarEventos();
+    explicarValor.ligarEventos();
 
     on('btnTheme', 'click', () =>
       aplicarTema(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'));

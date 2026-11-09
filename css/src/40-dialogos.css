@@ -179,6 +179,30 @@
 /* ===== ESCOLHA DE AGENDA (desktop) ===== */
 .agenda-dialog { max-width: min(92vw, 430px); }
 .agenda-title { font-size: 1.05rem; margin: 0 0 4px; }
+
+/* ===== EXPLICAR O VALOR (v94): a conta de uma escala, faixa por faixa ===== */
+.valor-linhas { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--border); }
+.valor-linha {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+  padding: 10px 0; border-bottom: 1px solid var(--border);
+}
+.valor-faixa { display: flex; flex-direction: column; gap: 2px; min-width: 0; color: var(--text); font-size: var(--fs-leitura); font-weight: 750; }
+.valor-conta { color: var(--text-muted); font-size: var(--fs-leitura); font-weight: 600; font-variant-numeric: tabular-nums; }
+.valor-arredondou { color: var(--warn-text); font-size: var(--fs-rotulo); font-weight: 700; }
+.valor-subtotal { flex-shrink: 0; color: var(--text); font-size: var(--fs-leitura); font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.valor-total-linha {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  margin: 12px 0 0; color: var(--text); font-size: var(--fs-leitura); font-weight: 800;
+}
+.valor-total-linha strong { color: var(--green-600); font-size: 1.25rem; font-weight: 900; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.valor-nota { margin: 10px 0 18px; color: var(--text-muted); font-size: var(--fs-leitura); font-weight: 600; line-height: 1.4; }
+/* Valor da escala como botão (abre a conta) */
+.valor-btn {
+  padding: 2px 0; border: 0; background: none; color: inherit; font: inherit; cursor: pointer;
+  text-decoration: underline dotted; text-underline-offset: 3px;
+}
+.valor-btn:hover { text-decoration-style: solid; }
+.valor-btn:focus-visible, .ec-valor-btn:focus-visible { outline: 2px solid var(--gold-500); outline-offset: 2px; border-radius: 4px; }
 .agenda-sub { color: var(--text-muted); font-size: var(--fs-leitura); font-weight: 600; margin: 0 0 16px; }
 .agenda-body { display: grid; gap: 10px; margin-bottom: 18px; }
 .agenda-prov {

@@ -131,6 +131,28 @@ export function calcularEscala(e, tabelaVigente = TABELA_OFICIAL) {
 }
 
 /**
+ * Abre a conta do valor de uma escala, faixa por faixa (v94: "Explicar o valor").
+ * Só entram as faixas com tempo, na ordem AD, AN, VD, VN.
+ * @param {ResultadoEscala} r Resultado de `calcularEscala`.
+ * @param {number} [qtdPm] Quantidade de PMs da escala.
+ * @returns {{linhas:Array<{chave:string, minutos:number, horasPagas:number, arredondado:boolean, tarifaCentavos:number, subtotalCentavos:number}>, porPmCentavos:number, qtdPm:number, totalCentavos:number}}
+ */
+export function detalharValor(r, qtdPm = 1) {
+  const linhas = ['AD', 'AN', 'VD', 'VN']
+    .filter((k) => r.cont[k] > 0)
+    .map((k) => ({
+      chave: k,
+      minutos: r.cont[k],
+      horasPagas: r.horasPagas[k],
+      arredondado: r.cont[k] % 60 !== 0,
+      tarifaCentavos: r.tabela.valores[k],
+      subtotalCentavos: r.horasPagas[k] * r.tabela.valores[k],
+    }));
+  const qtd = qtdPm || 1;
+  return { linhas, porPmCentavos: r.valorCentavos, qtdPm: qtd, totalCentavos: r.valorCentavos * qtd };
+}
+
+/**
  * Mapeia o código de origem do remunerado para um rótulo legível.
  * @param {string} v Código (ex.: `'AC4'`, `'CONVENIO_ENEM'`).
  * @returns {string} Rótulo amigável; `'AC4'` como padrão.

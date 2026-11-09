@@ -711,6 +711,31 @@ try {
   const semPx = await avaliarDin(`return JSON.stringify(document.getElementById('proximaEscala').classList.contains('hidden'));`);
   passos.push({ nome: 'Próxima escala: sem escala futura, o cartão não aparece', ok: semPx === true, detalhe: String(semPx) });
 
+  // 12. Explicar o valor (v94): tocar no valor abre a conta por faixa, com o arredondamento à vista.
+  await cdp.enviar('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true }, sessionId);
+  await cdp.enviar('Runtime.evaluate', { expression: `localStorage.setItem('pmgoEscalas', JSON.stringify([
+    {id:'ev1',inicio:'2026-11-08T08:01',fim:'2026-11-08T23:01',descricao:'Escala AC4',origem:'AC4',qtdPm:1,status:'recebida'},
+    {id:'ev2',inicio:'2026-11-05T18:00',fim:'2026-11-06T08:00',descricao:'Escala AC4',origem:'AC4',qtdPm:2,status:'recebida'}]));` }, sessionId);
+  await abrirDin();
+  const ev = await avaliarDin(`const dlg=document.getElementById('dialogValor'); const txt=()=>document.getElementById('valorLinhas').textContent.replace(/\\s+/g,' ').trim();
+    const r={};
+    document.querySelector('.ec-valor-btn[data-id="ev1"]').click(); await sl(150);
+    r.aberto=dlg.open; r.linhas1=txt(); r.total1=document.getElementById('valorTotal').textContent.replace(/\\s/g,' ');
+    r.nota=document.getElementById('valorNota').textContent;
+    document.getElementById('valorFechar').click(); await sl(100); r.fechou=!dlg.open;
+    document.querySelector('.ec-valor-btn[data-id="ev2"]').click(); await sl(150);
+    r.linhas2=txt(); r.total2=document.getElementById('valorTotal').textContent.replace(/\\s/g,' ');
+    r.cabe=dlg.getBoundingClientRect().width<=390 && dlg.scrollWidth<=dlg.clientWidth+1;
+    document.getElementById('valorFechar').click(); return JSON.stringify(r);`);
+  passos.push({ nome: 'Explicar o valor: domingo 08:01→23:01 mostra "13h59 conta como 14h" e R$ 605,00', ok: ev.aberto && ev.linhas1.includes('Diurna · escala vermelha') && ev.linhas1.includes('13h59 conta como 14h') && ev.linhas1.includes('1h01 conta como 1h') && ev.total1 === 'R$ 605,00' && ev.fechou, detalhe: JSON.stringify(ev) });
+  passos.push({ nome: 'Explicar o valor: 2 PMs mostra "Por PM × 2 PMs" e o total; cabe em 390 px', ok: ev.linhas2.includes('Por PM') && ev.linhas2.includes('× 2 PMs') && !ev.linhas2.includes('conta como') && ev.total2 === 'R$ 942,00' && ev.cabe && ev.nota.includes('Portaria'), detalhe: JSON.stringify(ev) });
+  await cdp.enviar('Emulation.setDeviceMetricsOverride', { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false }, sessionId);
+  await abrirDin();
+  const evDesk = await avaliarDin(`document.querySelector('.valor-btn[data-id="ev1"]').click(); await sl(150);
+    const r={aberto:document.getElementById('dialogValor').open,total:document.getElementById('valorTotal').textContent.replace(/\\s/g,' ')};
+    document.getElementById('valorFechar').click(); localStorage.removeItem('pmgoEscalas'); return JSON.stringify(r);`);
+  passos.push({ nome: 'Explicar o valor: no computador, clicar no valor da tabela abre a conta', ok: evDesk.aberto && evDesk.total === 'R$ 605,00', detalhe: JSON.stringify(evDesk) });
+
   console.table(passos.map(({ nome, ok, detalhe }) => ({ passo: nome, ok, detalhe })));
 
   const falhas = passos.filter((p) => !p.ok);
