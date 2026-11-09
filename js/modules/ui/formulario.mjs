@@ -19,7 +19,7 @@ import { primeiraDoMes } from '../lote.mjs';
  * Cria o formulário de lançamento e as ações da lista.
  * @param {Object} ctx Dependências de app.js: $, on, estado, toast, dialogConfirmar, haptic,
  *   salvar, render, calcularEscala, clonarEscalas, aposProximoPaint, esperarProximoPaint,
- *   pedirArmazenamentoPersistente, mostrarInstalacaoAposConversao, agendarEscalaItem, abrirLote, PASSO_LISTA.
+ *   pedirArmazenamentoPersistente, mostrarInstalacaoAposConversao, agendarEscalaItem, abrirLote, explicarValor, PASSO_LISTA.
  * @returns {Object} Funções públicas da área, incluindo ligarEventos().
  */
 /**
@@ -46,7 +46,7 @@ export function inicioPadrao(escalas, agora = new Date()) {
 export function criarFormulario(ctx) {
   const { $, on, estado, toast, dialogConfirmar, haptic, salvar, render, calcularEscala, clonarEscalas,
     aposProximoPaint, esperarProximoPaint, pedirArmazenamentoPersistente, mostrarInstalacaoAposConversao,
-    agendarEscalaItem, abrirLote, PASSO_LISTA } = ctx;
+    agendarEscalaItem, abrirLote, explicarValor, PASSO_LISTA } = ctx;
 
   let fundoInerte = [];
 
@@ -560,6 +560,7 @@ export function criarFormulario(ctx) {
       else if (btn.dataset.acao === 'duplicar')  duplicarEscala(id);
       else if (btn.dataset.acao === 'agenda')    agendarEscalaItem(id);
       else if (btn.dataset.acao === 'lote')      abrirLote(id);
+      else if (btn.dataset.acao === 'explicar')  explicarValor(id);
       btn.closest('details')?.removeAttribute('open');
     });
     on('listaEscalas', 'change', (ev) => {

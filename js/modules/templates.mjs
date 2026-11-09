@@ -125,13 +125,14 @@ export const cardEscalaHTML = (e, r) => {
               <div class="ec-duration">${escapeHTML(duracaoLinha)}${unidade ? ` <span class="ec-unit">· ${escapeHTML(unidade)}</span>` : ''}</div>
             </div>
           </div>
-          <div class="ec-card-amount">
+          <button type="button" class="ec-card-amount ec-valor-btn" data-acao="explicar" data-id="${escapeHTML(String(e.id))}" aria-label="${escapeHTML(fmtMoedaLinha(valorTotal))}. Ver como o valor foi calculado">
             ${qtd === 1
-              ? `<div class="ec-money">${fmtMoedaLinha(r.valorCentavos)}</div>`
-              : `<div class="ec-total">${fmtMoedaLinha(valorTotal)}</div>
-                 <div class="ec-qtd">${rotuloQuantidadePm(qtd)}</div>
-                 <div class="ec-per-pm">${fmtMoedaLinha(r.valorCentavos)} por PM</div>`}
-          </div>
+              ? `<span class="ec-money">${fmtMoedaLinha(r.valorCentavos)}</span>`
+              : `<span class="ec-total">${fmtMoedaLinha(valorTotal)}</span>
+                 <span class="ec-qtd">${rotuloQuantidadePm(qtd)}</span>
+                 <span class="ec-per-pm">${fmtMoedaLinha(r.valorCentavos)} por PM</span>`}
+            <span class="ec-valor-dica">Ver conta</span>
+          </button>
         </div>
         ${botoesCardMobileHTML(e.id, seletorStatusHTML(e, 'ec-status'))}
       </div>`;

@@ -15,9 +15,9 @@
   <!-- Preload da fonte principal — reduz reflow/CLS do font-swap da Inter -->
   <link rel="preload" href="assets/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 
-  <link rel="stylesheet" href="css/styles.css?v=93">
-  <script src="js/theme.js?v=93"></script>
-  <script src="js/inicio-seguro.js?v=93" defer></script>
+  <link rel="stylesheet" href="css/styles.css?v=94">
+  <script src="js/theme.js?v=94"></script>
+  <script src="js/inicio-seguro.js?v=94" defer></script>
 </head>
 <body>
 
@@ -536,7 +536,7 @@
         &copy; <span class="footer-year"></span> Weliton Pinheiro &mdash; Todos os direitos reservados.
       </p>
       <p class="site-footer-meta">
-        Calculadora AC4 &middot; PMGO &middot; v93 &middot;
+        Calculadora AC4 &middot; PMGO &middot; v94 &middot;
         <a href="#" id="footerNovidades" class="footer-link">Novidades</a> &middot;
         <a href="#" id="footerPrivacidade" class="footer-link">Privacidade</a> &middot;
         <a href="#" id="footerFeedback" class="footer-link">Feedback</a> &middot;
@@ -575,7 +575,7 @@
   <dialog class="confirm-dialog whats-new-dialog" id="dialogNovidades" data-conteudo="93" aria-modal="true" aria-labelledby="novidadesTitle" aria-describedby="novidadesIntro">
     <div class="whats-new-body">
       <div class="whats-new-topbar">
-        <span class="whats-new-badge">Nova versão <strong>v93</strong></span>
+        <span class="whats-new-badge">Nova versão <strong>v94</strong></span>
         <button class="btn-icon whats-new-close" id="novidadesFechar" type="button" aria-label="Fechar novidades">
           <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
         </button>
@@ -867,6 +867,20 @@
   </dialog>
 
   <!-- Escolha de agenda (celular e desktop): abre o evento pré-preenchido no provedor escolhido; .ics como alternativa -->
+  <!-- Explicar o valor (v94): a conta de uma escala, faixa por faixa -->
+  <dialog class="confirm-dialog valor-dialog" id="dialogValor" aria-modal="true" aria-labelledby="valorTitulo">
+    <div class="dialog-body">
+      <h3 class="agenda-title" id="valorTitulo">Como o valor foi calculado</h3>
+      <p class="agenda-sub" id="valorSub"></p>
+      <ul class="valor-linhas" id="valorLinhas"></ul>
+      <p class="valor-total-linha"><span>Valor estimado</span><strong id="valorTotal"></strong></p>
+      <p class="valor-nota" id="valorNota"></p>
+      <div class="dialog-actions">
+        <button class="btn btn-primary" id="valorFechar" type="button">Entendi</button>
+      </div>
+    </div>
+  </dialog>
+
   <dialog class="confirm-dialog agenda-dialog" id="dialogAgenda" aria-modal="true" aria-label="Adicionar à agenda">
     <div class="dialog-body">
       <h3 class="agenda-title">Adicionar à agenda</h3>
@@ -878,7 +892,7 @@
     </div>
   </dialog>
 
-  <script type="module" src="js/app.js?v=93"></script>
+  <script type="module" src="js/app.js?v=94"></script>
 
   <!-- Relatório profissional de impressão — populado pelo JS antes de window.print() -->
   <section id="printReport">

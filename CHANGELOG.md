@@ -1,5 +1,13 @@
 # Changelog
 
+## v94 — Explicar o valor
+
+Primeiro dos quatro recursos "inteligentes sem IA" aprovados pelo gestor em 09/11/2026 (v94–v97). Sem aviso de novidades agora (`data-conteudo` continua "93"); o aviso sai ao fim da série.
+- **Ver conta:** tocar no valor de uma escala (cartão no celular, célula da tabela no computador) abre "Como o valor foi calculado": cada faixa com tempo (diurna/noturna, escala azul/vermelha), horas × tarifa e subtotal, e o valor estimado.
+- **Arredondamento à vista:** quando a faixa não fecha hora cheia, a linha mostra, por exemplo, "13h59 conta como 14h". Com mais de um PM, aparece "Por PM × 2 PMs".
+- `calculo.mjs`: nova função pura `detalharValor(r, qtdPm)`. Novo módulo `js/modules/ui/explicar-valor.mjs` (no `SHELL`). O valor do cartão virou botão (`.ec-valor-btn`, com a dica "Ver conta").
+- Testes: unit "Explicar o valor (conta por faixa)" (domingo 08:01→23:01, 2 PMs, 20 min, subtotais somam o valor); smoke (conta no celular e no computador, cabe em 390 px). Revisão visual em 390 px e 1280 px, claro e escuro.
+
 ## v93 — Cada faixa arredondada para a hora mais próxima (igual à planilha)
 
 Decisão do gestor (08/11/2026), depois de conferir o relatório de novembro com a planilha oficial. Novidade para o usuário (`data-conteudo` = "93").

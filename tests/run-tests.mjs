@@ -544,6 +544,29 @@ const validarProximaEscala = () => {
 };
 rodar('Próxima escala', validarProximaEscala);
 
+const { detalharValor } = await import('../js/modules/calculo.mjs');
+const validarExplicarValor = () => {
+  if (typeof detalharValor !== 'function') return ['detalharValor não existe em calculo.mjs'];
+  const det = (inicio, fim, qtd = 1) => detalharValor(calcularEscala({ inicio, fim }, TABELA_OFICIAL), qtd);
+  const dom = det('2026-11-08T08:01', '2026-11-08T23:01');        // VD 13h59 → 14h, VN 1h01 → 1h
+  const qui = det('2026-11-05T18:00', '2026-11-06T08:00', 2);     // AD 4h, AN 7h, VD 3h; 2 PMs
+  const curto = det('2026-07-06T10:00', '2026-07-06T10:20');      // AD 20 min → 0h
+  const l = (d, k) => d.linhas.find((x) => x.chave === k);
+  const checks = [
+    [dom.linhas.map((x) => x.chave).join(',') === 'VD,VN', `só as faixas com tempo (obtido: ${dom.linhas.map((x) => x.chave)})`],
+    [l(dom, 'VD').minutos === 839 && l(dom, 'VD').horasPagas === 14 && l(dom, 'VD').arredondado === true && l(dom, 'VD').subtotalCentavos === 56000, '13h59 VD conta como 14h = R$ 560'],
+    [l(dom, 'VN').horasPagas === 1 && l(dom, 'VN').tarifaCentavos === 4500 && l(dom, 'VN').subtotalCentavos === 4500, '1h01 VN conta como 1h = R$ 45'],
+    [dom.porPmCentavos === 60500 && dom.totalCentavos === 60500 && dom.qtdPm === 1, 'total do domingo R$ 605'],
+    [qui.linhas.map((x) => x.chave).join(',') === 'AD,AN,VD' && qui.linhas.every((x) => !x.arredondado), 'hora cheia: sem arredondamento, ordem AD, AN, VD, VN'],
+    [qui.porPmCentavos === 47100 && qui.totalCentavos === 94200 && qui.qtdPm === 2, '2 PMs: R$ 471 por PM, R$ 942 no total'],
+    [qui.linhas.reduce((t, x) => t + x.subtotalCentavos, 0) === qui.porPmCentavos, 'subtotais somam o valor por PM'],
+    [curto.linhas.length === 1 && l(curto, 'AD').horasPagas === 0 && l(curto, 'AD').subtotalCentavos === 0 && curto.totalCentavos === 0, '20 min conta como 0h'],
+  ];
+  const falhas = checks.filter(([ok]) => !ok).map(([, nome]) => nome);
+  return falhas.length ? falhas : 'EXPLICAR O VALOR OK';
+};
+rodar('Explicar o valor (conta por faixa)', validarExplicarValor);
+
 const validarNormas = () => {
   const ids = new Set(NORMAS.map((n) => n.id));
   const iso = /^\d{4}-\d{2}-\d{2}$/;
