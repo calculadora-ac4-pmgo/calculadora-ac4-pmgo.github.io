@@ -777,6 +777,33 @@ try {
     return JSON.stringify({metricas:t('.metrics'),form:t('#launchPanel'),plan:t('.planning-panel'),lista:t('.feed'),aviso:t('.legal-alert')});`);
   passos.push({ nome: 'Computador, sem cartões: formulário e planejamento acima da lista (ordem fixa)', ok: ordem.metricas < ordem.form && Math.abs(ordem.form - ordem.plan) < 2 && ordem.form < ordem.lista && ordem.lista < ordem.aviso, detalhe: JSON.stringify(ordem) });
 
+  // 14. Lançar por texto ou voz (v96): a frase preenche Início e Término para conferir; frase que o
+  //     app não entende avisa e não mexe nos campos; Enter não adiciona a escala sozinho.
+  const tx = await avaliarDin(`const r={}; const $=(id)=>document.getElementById(id);
+    const lista=()=>JSON.parse(localStorage.getItem('pmgoEscalas')||'[]');
+    const p=(n)=>String(n).padStart(2,'0'); const hoje=new Date();
+    const sex=new Date(hoje.getFullYear(),hoje.getMonth(),hoje.getDate()+((5-hoje.getDay()+7)%7));
+    const sab=new Date(sex.getFullYear(),sex.getMonth(),sex.getDate()+1);
+    const dia=(d)=>d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());
+    r.esperadoIni=dia(sex)+'T18:01'; r.esperadoFim=dia(sab)+'T08:00';
+    $('escalaTexto').value='sexta 18:01 às 8'; $('btnTextoEscala').click(); await sl(150);
+    r.ini=$('escalaInicio').value; r.fim=$('escalaFim').value; r.msg=$('escalaTextoMsg').textContent;
+    r.erroOk=!$('escalaTextoMsg').classList.contains('is-erro'); r.semAdicionar=lista().length;
+    r.valor=!$('launchResumo').classList.contains('is-empty');
+    $('escalaTexto').value='sexta 18'; 
+    $('escalaTexto').dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true})); await sl(150);
+    r.msgErro=$('escalaTextoMsg').textContent; r.ehErro=$('escalaTextoMsg').classList.contains('is-erro');
+    r.iniMantido=$('escalaInicio').value; r.fimMantido=$('escalaFim').value; r.semAdicionar2=lista().length;
+    $('escalaTexto').value='sexta 18:01 às 8'; $('btnTextoEscala').click(); await sl(100);
+    $('formEscala').requestSubmit(); await sl(500);
+    r.adicionou=lista().length; r.nova=lista()[0]; r.textoLimpo=$('escalaTexto').value===''&&$('escalaTextoMsg').textContent==='';
+    if($('dialogLote').open) $('loteFechar').click();
+    localStorage.removeItem('pmgoEscalas');
+    return JSON.stringify(r);`);
+  passos.push({ nome: 'Lançar por texto: "sexta 18:01 às 8" preenche Início e Término (dia seguinte) e não adiciona sozinho', ok: tx.ini === tx.esperadoIni && tx.fim === tx.esperadoFim && tx.msg.startsWith('Preenchi: ') && tx.erroOk && tx.semAdicionar === 0 && tx.valor, detalhe: JSON.stringify(tx) });
+  passos.push({ nome: 'Lançar por texto: frase incompleta avisa e mantém os campos; Enter não envia o formulário', ok: tx.ehErro && tx.msgErro.startsWith('Não entendi as horas') && tx.iniMantido === tx.esperadoIni && tx.fimMantido === tx.esperadoFim && tx.semAdicionar2 === 0, detalhe: JSON.stringify(tx) });
+  passos.push({ nome: 'Lançar por texto: depois de conferir, Adicionar grava a escala e limpa o campo', ok: tx.adicionou === 1 && tx.nova.inicio === tx.esperadoIni && tx.nova.fim === tx.esperadoFim && tx.textoLimpo, detalhe: JSON.stringify(tx) });
+
   console.table(passos.map(({ nome, ok, detalhe }) => ({ passo: nome, ok, detalhe })));
 
   const falhas = passos.filter((p) => !p.ok);

@@ -177,3 +177,33 @@ textarea.control { min-height: 74px; resize: vertical; }
 .escala-cards,
 .metric-resumo-mobile { display: none; }
 
+
+/* v96: lançar por texto ou voz */
+.texto-escala { margin: 0 0 18px; }
+.texto-escala label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--text-muted);
+  font-size: var(--fs-rotulo);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.texto-escala-linha { display: flex; gap: 8px; }
+.texto-escala-linha .control { flex: 1; min-width: 0; }
+.texto-escala-linha .quick-launch-btn { flex-shrink: 0; min-height: 44px; }
+.texto-escala-dica {
+  margin-top: 5px;
+  color: var(--text-faint);
+  font-size: var(--fs-leitura);
+  font-weight: 600;
+}
+.texto-escala-msg {
+  margin-top: 6px;
+  color: var(--green-600);
+  font-size: var(--fs-leitura);
+  font-weight: 700;
+}
+.texto-escala-msg.is-erro { color: var(--danger); }
+.texto-escala-msg:empty { display: none; }
+.texto-escala:has(.texto-escala-msg:not(:empty)) .texto-escala-dica { display: none; }

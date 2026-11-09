@@ -6,6 +6,8 @@
     ".field-error",
     ".field-hint",
     ".fim-auto",
+    ".texto-escala-dica",
+    ".texto-escala-msg",
     ".launch-advanced-toggle small",
     ".launch-result-helper",
     ".planning-total small",

@@ -208,6 +208,7 @@ export function criarFormulario(ctx) {
           if ($('escalaDescricao')) $('escalaDescricao').value = '';
           if ($('escalaQtdPm'))    $('escalaQtdPm').value = '1';
           if ($('escalaOrigem'))   $('escalaOrigem').value = 'AC4';
+          limparTextoEscala();
           toast('Escala adicionada.', { acao: { rotulo: 'Lançar em outros dias', fn: () => abrirLote(idNovo) } });
         };
       }
@@ -352,8 +353,34 @@ export function criarFormulario(ctx) {
 
   const setTituloSheet = (txt) => { const el = $('mobileLaunchTitle'); if (el) el.textContent = txt; };
 
+  /* v96: campo "Escreva ou dite" volta vazio quando o lançamento termina. */
+  function limparTextoEscala() {
+    if ($('escalaTexto')) $('escalaTexto').value = '';
+    const msg = $('escalaTextoMsg');
+    if (msg) { msg.textContent = ''; msg.classList.remove('is-erro'); }
+  }
+
+  /* v96: preenche Início e Término de uma vez (lançar por texto ou voz).
+     Não adiciona nada: quem lança confere e toca em Adicionar. */
+  function preencherHorarios(inicio, fim) {
+    if (!parseDateTimeLocal(inicio) || !parseDateTimeLocal(fim)) return false;
+    if ($('escalaDuracao')) $('escalaDuracao').value = '';
+    $('escalaInicio').value = inicio;
+    $('escalaFim').value = fim;
+    ['fieldInicio', 'fieldFim'].forEach((f) => {
+      $(f).classList.remove('invalid');
+      $(f).querySelector('.control')?.removeAttribute('aria-invalid');
+    });
+    sincronizarTodosControlesDataHora();
+    atualizarResumoFim();
+    atualizarChipsDuracao();
+    atualizarResumoLancamento();
+    return true;
+  }
+
   function cancelarEdicao() {
     estado.editandoId = null;
+    limparTextoEscala();
     setTituloSheet('Nova escala AC4');
     if ($('escalaDescricao')) $('escalaDescricao').value = '';
     if ($('escalaQtdPm'))    $('escalaQtdPm').value = '1';
@@ -593,6 +620,6 @@ export function criarFormulario(ctx) {
     isMobileViewport, setDetalhesAvancados, abrirPainelLancamentoMobile, fecharPainelLancamentoMobile,
     validarFormulario, submeterFormulario, editarEscala, cancelarEdicao, atualizarResumoLancamento,
     sincronizarTodosControlesDataHora, aplicarPartesDataHora, atualizarChipsDuracao, duplicarEscala,
-    removerEscala, limparTudo, atualizarStatusEscala, atualizarResumoFim, lerQtdPm, ligarEventos,
+    removerEscala, limparTudo, atualizarStatusEscala, atualizarResumoFim, lerQtdPm, preencherHorarios, ligarEventos,
   };
 }
