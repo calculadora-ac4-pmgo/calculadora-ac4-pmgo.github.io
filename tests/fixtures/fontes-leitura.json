@@ -18,6 +18,8 @@
     ".valor-subtotal",
     ".valor-total-linha",
     ".valor-nota",
+    ".repetir-quando",
+    ".repetir-valor",
     ".planning-total-linha",
     ".config-note",
     ".metric-sub",

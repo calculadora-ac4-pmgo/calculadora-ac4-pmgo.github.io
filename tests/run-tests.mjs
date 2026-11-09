@@ -567,6 +567,50 @@ const validarExplicarValor = () => {
 };
 rodar('Explicar o valor (conta por faixa)', validarExplicarValor);
 
+const repetirMod = await import('../js/modules/repetir-semana.mjs').catch(() => ({}));
+const validarRepetirSemana = () => {
+  const { sugestaoRepetirSemana, gerarEscalasSemana, inicioDaSemana } = repetirMod;
+  if (typeof sugestaoRepetirSemana !== 'function') return ['js/modules/repetir-semana.mjs não existe'];
+  const mk = (id, ini, fim, extra = {}) => ({ id, inicio: ini, fim, descricao: 'Sede', origem: 'AC4', qtdPm: 1, status: 'recebida', ...extra });
+  /* Semana passada (seg 02/11 a dom 08/11/2026): qui, sex, sáb e dom. */
+  const passada = [
+    mk('q', '2026-11-05T18:00', '2026-11-06T08:00'),
+    mk('s', '2026-11-06T18:00', '2026-11-07T08:00'),
+    mk('b', '2026-11-07T08:01', '2026-11-08T07:01', { qtdPm: 2 }),
+    mk('d', '2026-11-08T08:01', '2026-11-08T23:01'),
+  ];
+  const seg = new Date(2026, 10, 9, 17, 0);   // segunda 09/11, semana atual vazia
+  const sex = new Date(2026, 10, 13, 20, 0);  // sexta 13/11 20h: a de quinta já passou
+  const s1 = sugestaoRepetirSemana(passada, seg);
+  const s2 = sugestaoRepetirSemana(passada, sex);
+  const comAtual = [...passada, mk('x', '2026-11-12T18:00', '2026-11-13T08:00')];
+  const s3 = sugestaoRepetirSemana(comAtual, seg);
+  /* Destino ocupado: escala da semana passada que entra na madrugada de segunda. */
+  const s4 = sugestaoRepetirSemana([mk('m', '2026-11-02T02:00', '2026-11-02T05:00'), mk('v', '2026-11-08T22:00', '2026-11-09T06:00')], new Date(2026, 10, 9, 0, 30));
+  const novas = s1 ? gerarEscalasSemana(s1.itens.filter((i) => i.marcado)) : [];
+  const checks = [
+    [inicioDaSemana(seg).getDate() === 9 && inicioDaSemana(new Date(2026, 10, 15, 23, 59)).getDate() === 9, 'semana começa na segunda e vai até domingo'],
+    [s1 && s1.origem === 'passada' && s1.alvo === '2026-11-09' && s1.itens.length === 4, 'semana atual vazia: repete a passada nesta semana'],
+    [s1 && s1.itens[0].inicio === '2026-11-12T18:00' && s1.itens[0].fim === '2026-11-13T08:00' && s1.itens[3].inicio === '2026-11-15T08:01', 'mesmo dia da semana e mesmo horário, 7 dias depois'],
+    [s1 && s1.itens.every((i) => i.estado === 'livre' && i.marcado), 'tudo livre vem marcado'],
+    [s2 && s2.itens[0].estado === 'passou' && s2.itens[0].marcado === false && s2.itens[1].marcado === true, 'dia que já passou vem desmarcado'],
+    [s3 && s3.origem === 'atual' && s3.alvo === '2026-11-16' && s3.itens.length === 1 && s3.itens[0].inicio === '2026-11-19T18:00', 'semana atual com escala e próxima vazia: repete esta na próxima'],
+    [s4 && s4.itens[0].inicio === '2026-11-09T02:00' && s4.itens[0].estado === 'ocupado' && s4.itens[0].marcado === false && s4.itens[1].estado === 'livre', 'destino que sobrepõe escala existente fica de fora'],
+    [sugestaoRepetirSemana([], seg) === null, 'sem escalas: nada'],
+    [novas.length === 4 && novas.every((e) => e.status === 'planejada' && e.tabela && e.descricao === 'Sede') && new Set(novas.map((e) => e.id)).size === 4 && novas[2].qtdPm === 2, 'escalas novas: planejadas, com norma, unidade e PMs da origem, ids novos'],
+    [novas.every((e) => !passada.some((p) => p.id === e.id)), 'ids não repetem os da origem'],
+  ];
+  /* Conflito: já existe escala no horário de destino. */
+  const comConflito = [...passada, mk('c', '2026-11-13T18:00', '2026-11-14T08:00')];
+  const s5 = sugestaoRepetirSemana(comConflito, seg);
+  checks.push([s5 && s5.origem === 'atual', 'com escala na semana atual, a origem passa a ser a atual']);
+  const s6 = sugestaoRepetirSemana([...passada, mk('c2', '2026-11-20T18:00', '2026-11-21T08:00'), mk('x2', '2026-11-13T18:00', '2026-11-14T08:00')], seg);
+  checks.push([s6 === null, 'próxima semana já tem escala: sem sugestão']);
+  const falhas = checks.filter(([ok]) => !ok).map(([, nome]) => nome);
+  return falhas.length ? falhas : 'REPETIR A SEMANA OK';
+};
+rodar('Repetir a semana', validarRepetirSemana);
+
 const validarNormas = () => {
   const ids = new Set(NORMAS.map((n) => n.id));
   const iso = /^\d{4}-\d{2}-\d{2}$/;

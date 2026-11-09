@@ -18,12 +18,17 @@
   .layout > .metrics,
   .layout > .feed,
   .layout > .legal-alert { grid-column: 1 / -1; }
-  /* Linhas 2 e 3: "Próxima escala" (v91) e "Já passou?" (v89); ocultos, a linha fica com altura zero. */
+  /* Linhas 2 a 4: "Próxima escala" (v91), "Já passou?" (v89) e "Repetir a semana" (v95); ocultos, a linha fica com altura zero. */
   .layout > .proxima-escala { grid-column: 1 / -1; grid-row: 2; }
   .layout > .ja-passou { grid-column: 1 / -1; grid-row: 3; }
-  .layout > .launch-panel { grid-column: 1; grid-row: 4 / span 2; margin-top: 20px; }
-  .layout > .planning-panel { grid-column: 2; grid-row: 4; margin-top: 20px; }
-  .layout > .tariff-strip { grid-column: 2; grid-row: 5; }
+  .layout > .repetir-semana { grid-row: 4; }
+  .layout > .launch-panel { grid-column: 1; grid-row: 5 / span 2; margin-top: 20px; }
+  .layout > .planning-panel { grid-column: 2; grid-row: 5; margin-top: 20px; }
+  .layout > .tariff-strip { grid-column: 2; grid-row: 6; }
+  /* Lista e aviso legal com linha fixa (v95): sem isso, com os cartões ocultos
+     a lista subia para a linha 2, acima do formulário (defeito desde a v89). */
+  .layout > .feed { grid-row: 7; }
+  .layout > .legal-alert { grid-row: 8; }
 }
 /* Superfícies: cartão sólido + borda nítida + sombra em camadas.
    Sem backdrop-filter — mais legível, mais barato para a GPU (INP). */

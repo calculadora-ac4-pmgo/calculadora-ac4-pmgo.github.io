@@ -1,5 +1,15 @@
 # Changelog
 
+## v95 — Repetir a semana
+
+Segundo dos recursos "inteligentes sem IA" (v94–v97). Sem aviso de novidades (`data-conteudo` continua "93").
+- **Cartão "Repetir a semana":** com a semana atual vazia e a passada com escalas, o app oferece "Repetir nesta semana as 4 escalas da semana passada?"; com a semana atual lançada e a próxima vazia, oferece repetir esta na próxima. A semana vai de segunda a domingo, pelo início da escala.
+- **Conferência antes de lançar:** "Ver e lançar" abre a lista com dia, horário e valor de cada escala, 7 dias depois (mesmo dia da semana e horário, unidade e PMs da origem). Dá para desmarcar. Destino que sobrepõe escala existente ou fora da vigência fica de fora; dia que já passou vem desmarcado. As novas entram como planejadas, com **Desfazer**.
+- **Agora não** vale para a semana de destino (`pmgoRepetirSemanaDispensada`).
+- Novos módulos `js/modules/repetir-semana.mjs` (regra pura) e `js/modules/ui/repetir-semana.mjs`, ambos no `SHELL`.
+- **Correção no computador:** desde a v89, com os cartões do topo ocultos, a lista subia acima do formulário e do planejamento. Lista e aviso legal agora têm linha fixa no grid (teste de ordem no smoke).
+- Testes: unit "Repetir a semana" (semana seg–dom, passada→atual, atual→próxima, +7 dias, dia que passou, destino ocupado, ids novos); smoke (cartão, conferência, desmarcar, lançar, Desfazer, Agora não após recarregar, ordem no computador). Revisão visual em 390 px e 1280 px, claro e escuro.
+
 ## v94 — Explicar o valor
 
 Primeiro dos quatro recursos "inteligentes sem IA" aprovados pelo gestor em 09/11/2026 (v94–v97). Sem aviso de novidades agora (`data-conteudo` continua "93"); o aviso sai ao fim da série.

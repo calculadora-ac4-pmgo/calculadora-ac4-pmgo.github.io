@@ -143,6 +143,9 @@
 .ja-passou-texto { margin: 0; color: var(--warn-text); font-size: var(--fs-leitura); font-weight: 800; }
 .ja-passou-acoes { display: flex; gap: 8px; flex-wrap: wrap; }
 .ja-passou-acoes .btn { min-height: 44px; }
+/* Repetir a semana (v95): mesmo cartão, em tom neutro (é sugestão, não pendência) */
+.repetir-semana { border-color: var(--glass-border); background: var(--info-soft); }
+.repetir-semana .ja-passou-texto { color: var(--info-text); }
 
 /* ===== FEED ===== */
 .feed { margin-top: 20px; }
