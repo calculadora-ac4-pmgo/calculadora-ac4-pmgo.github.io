@@ -1,5 +1,15 @@
 # Changelog
 
+## v96 — Lançar por texto ou voz
+
+Terceiro dos recursos "inteligentes sem IA" (v94–v97). Sem aviso de novidades (`data-conteudo` continua "93").
+- **Campo "Escreva ou dite"** acima de Início e Término: "sexta 18 às 8" + **Preencher** (ou Enter) preenche os dois campos para conferir. Nada é adicionado sozinho: quem lança confere e toca em Adicionar.
+- **O que o app entende:** o dia (hoje, amanhã, depois de amanhã, dia da semana, "dia 13", 13/11) e duas horas (18, 18h, 18:01, 18h30, "18 e 1", "7 e meia", meio-dia, meia-noite). Dia da semana vale para a próxima ocorrência, contando hoje. Término menor ou igual ao início passa para o dia seguinte.
+- **Se não entender, avisa e não mexe nos campos** (falta o dia, falta uma das horas, data que não existe, hora fora do relógio).
+- **Voz sem IA:** o ditado é o microfone do teclado do celular; o app não usa microfone nem envia nada.
+- Novos módulos `js/modules/texto-escala.mjs` (regra pura) e `js/modules/ui/texto-escala.mjs`, ambos no `SHELL`. `formulario.mjs` ganhou `preencherHorarios(inicio, fim)`.
+- Testes: unit "Lançar por texto ou voz (interpretação)" (15 frases certas, 8 recusadas); smoke (preenche e não adiciona, frase incompleta mantém os campos, Enter não envia, Adicionar grava e limpa). Revisão visual em 390 px e 1280 px, claro e escuro.
+
 ## v95 — Repetir a semana
 
 Segundo dos recursos "inteligentes sem IA" (v94–v97). Sem aviso de novidades (`data-conteudo` continua "93").

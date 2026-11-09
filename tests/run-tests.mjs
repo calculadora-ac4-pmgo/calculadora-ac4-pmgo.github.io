@@ -567,6 +567,46 @@ const validarExplicarValor = () => {
 };
 rodar('Explicar o valor (conta por faixa)', validarExplicarValor);
 
+const textoMod = await import('../js/modules/texto-escala.mjs').catch(() => ({}));
+const validarTextoEscala = () => {
+  const { interpretarTextoEscala: f } = textoMod;
+  if (typeof f !== 'function') return ['js/modules/texto-escala.mjs não existe'];
+  const agora = new Date(2026, 10, 9, 17, 0); /* segunda, 09/11/2026 */
+  const certo = [
+    ['sexta 18 às 8', '2026-11-13T18:00', '2026-11-14T08:00'],
+    ['Sexta-feira das 18h às 8h', '2026-11-13T18:00', '2026-11-14T08:00'],
+    ['hoje 7 às 19', '2026-11-09T07:00', '2026-11-09T19:00'],
+    ['amanhã 18:01 às 8', '2026-11-10T18:01', '2026-11-11T08:00'],
+    ['depois de amanhã 6 às 18', '2026-11-11T06:00', '2026-11-11T18:00'],
+    ['13/11 8 às 23', '2026-11-13T08:00', '2026-11-13T23:00'],
+    ['13/11/2026 08:01 as 22h', '2026-11-13T08:01', '2026-11-13T22:00'],
+    ['dia 13 das 18 e 1 às 8', '2026-11-13T18:01', '2026-11-14T08:00'],
+    ['sábado 7h30 até 19h30', '2026-11-14T07:30', '2026-11-14T19:30'],
+    ['sab 7 e meia as 19', '2026-11-14T07:30', '2026-11-14T19:00'],
+    ['domingo meio-dia à meia-noite', '2026-11-15T12:00', '2026-11-16T00:00'],
+    ['segunda 7 às 7', '2026-11-09T07:00', '2026-11-10T07:00'],
+    ['terça 18h01 - 08h', '2026-11-10T18:01', '2026-11-11T08:00'],
+    ['quarta 18 horas e 30 minutos às 8 horas', '2026-11-11T18:30', '2026-11-12T08:00'],
+    ['05/01 7 às 19', '2027-01-05T07:00', '2027-01-05T19:00'],
+  ];
+  const errado = [
+    ['', 'vazio'], ['oi tudo bem', 'dia'], ['18 às 8', 'dia'], ['sexta 18', 'horas'],
+    ['sexta 18 às 8 às 10', 'horas'], ['31/02 8 às 18', 'data'], ['sexta 25 às 8', 'hora'],
+    ['sexta 18:75 às 8', 'hora'],
+  ];
+  const falhas = [];
+  certo.forEach(([texto, inicio, fim]) => {
+    const r = f(texto, agora);
+    if (!r.ok || r.inicio !== inicio || r.fim !== fim) falhas.push(`"${texto}" deveria dar ${inicio} → ${fim}, deu ${r.ok ? `${r.inicio} → ${r.fim}` : r.motivo}`);
+  });
+  errado.forEach(([texto, motivo]) => {
+    const r = f(texto, agora);
+    if (r.ok || r.motivo !== motivo || !r.mensagem || 'inicio' in r) falhas.push(`"${texto}" deveria falhar por ${motivo}, deu ${r.ok ? 'ok' : r.motivo}`);
+  });
+  return falhas.length ? falhas : 'LANÇAR POR TEXTO OK';
+};
+rodar('Lançar por texto ou voz (interpretação)', validarTextoEscala);
+
 const repetirMod = await import('../js/modules/repetir-semana.mjs').catch(() => ({}));
 const validarRepetirSemana = () => {
   const { sugestaoRepetirSemana, gerarEscalasSemana, inicioDaSemana } = repetirMod;

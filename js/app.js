@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Calculadora AC4 — v95
+   Calculadora AC4 — v96
    Módulo principal: estado, ligação dos módulos de interface (js/modules/ui/),
    render() e init(). Regras de negócio, formatação e agenda vivem em js/modules/.
    ========================================================================== */
@@ -34,6 +34,7 @@ import { criarDinheiro, PARTES_DINHEIRO } from './modules/ui/dinheiro.mjs';
 import { criarProximaEscala } from './modules/ui/proxima-escala.mjs';
 import { criarExplicarValor } from './modules/ui/explicar-valor.mjs';
 import { criarRepetirSemana } from './modules/ui/repetir-semana.mjs';
+import { criarTextoEscala } from './modules/ui/texto-escala.mjs';
 import { criarFormulario, inicioPadrao } from './modules/ui/formulario.mjs';
 import { criarModelos } from './modules/ui/modelos.mjs';
 import { criarAgendaDias } from './modules/ui/agenda-dias.mjs';
@@ -47,7 +48,7 @@ import { criarAgendaDias } from './modules/ui/agenda-dias.mjs';
   /* Versão da aplicação (sincronizada pelo tools/bump-version.mjs). Serve para
      carimbar o log de erros e detectar clientes presos em cache antigo:
      se __ac4Version no console divergir do rodapé/CHANGELOG, o SW não atualizou. */
-  const APP_VERSION = '95';
+  const APP_VERSION = '96';
 
   const STORAGE = {
     escalas:   'pmgoEscalas',
@@ -162,6 +163,7 @@ import { criarAgendaDias } from './modules/ui/agenda-dias.mjs';
     isMobileViewport, setDetalhesAvancados, abrirPainelLancamentoMobile, cancelarEdicao,
     atualizarResumoLancamento, sincronizarTodosControlesDataHora,
   } = formulario;
+  const textoEscala = criarTextoEscala({ $, on, haptic, preencherHorarios: formulario.preencherHorarios });
   const modelosFavoritos = criarModelos({
     $, on, estado, toast, dialogConfirmar, salvarModelos, aposProximoPaint, isMobileViewport,
     abrirPainelLancamentoMobile, setDetalhesAvancados, sincronizarTodosControlesDataHora, atualizarResumoLancamento,
@@ -377,6 +379,7 @@ import { criarAgendaDias } from './modules/ui/agenda-dias.mjs';
     proxima.ligarEventos();
     explicarValor.ligarEventos();
     repetirSemana.ligarEventos();
+    textoEscala.ligarEventos();
 
     on('btnTheme', 'click', () =>
       aplicarTema(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'));
