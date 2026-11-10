@@ -6,7 +6,7 @@
    remover com desfazer, limpar tudo, mudar situação). Estado só via `estado`.
    ========================================================================== */
 import {
-  fmtMoeda, fmtHoras, fmtDataHora, fmtDiaSemana, fmtMesRef,
+  fmtMoeda, fmtHoras, fmtDataHora, fmtDiaSemana,
   combinarDataHoraLocal, parseDateTimeLocal, formatarDataHoraInput, toInputLocal,
   calcularTerminoPorDuracao, validarIntervaloEscala,
 } from '../formato.mjs';
@@ -14,7 +14,7 @@ import { TABELA_OFICIAL, regraNormativaParaData, tabelaParaData } from '../calcu
 import { STATUS_ESCALA, gerarIdEscala, detectarConflitos, aplicarNorma } from '../persistencia.mjs';
 import { STATUS_INFO, statusEscala, rotuloQuantidadePm } from '../templates.mjs';
 import { primeiraDoMes } from '../lote.mjs';
-import { efeitoNoLimite } from '../limite-horas.mjs';
+import { efeitoNoLimite, perguntaLimite } from '../limite-horas.mjs';
 
 /**
  * Cria o formulário de lançamento e as ações da lista.
@@ -193,10 +193,7 @@ export function criarFormulario(ctx) {
       /* v97: avisa antes de o mês passar do limite de horas; quem lança decide. */
       const limite = efeitoNoLimite(estado.escalas, dados, calcularEscala, estado.editandoId);
       if (limite.avisar) {
-        const ok = await dialogConfirmar(
-          `Com esta escala, ${fmtMesRef(limite.mes)} fica com ${limite.depois}h. O limite é de ${limite.limite}h por mês. Deseja continuar?`,
-          { textoOk: 'Continuar', perigoso: false }
-        );
+        const ok = await dialogConfirmar(perguntaLimite([limite]), { textoOk: 'Continuar', perigoso: false });
         if (!ok) return;
       }
 

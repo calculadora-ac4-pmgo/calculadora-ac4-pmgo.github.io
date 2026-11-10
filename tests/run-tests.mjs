@@ -604,6 +604,20 @@ const validarLimiteHoras = () => {
     [editaIgual.depois === 204 && !editaIgual.avisar, 'editar sem aumentar as horas não avisa de novo'],
     [editaMaior.antes === 180 && editaMaior.depois === 192 && !editaMaior.avisar, `editar 12 h → 24 h: 180 → 192 (deu ${editaMaior.depois})`],
   ];
+  /* v98: várias escalas de uma vez (lote, repetir a semana). */
+  const { mesesAcimaDoLimite, perguntaLimite } = limiteMod;
+  const dia = (mes, d, h1, h2) => ({ inicio: `2026-${mes}-${p(d)}T${h1}`, fim: `2026-${mes}-${p(d)}T${h2}`, qtdPm: 1 });
+  const loteCabe = mesesAcimaDoLimite(base, [dia('11', 20, '07:00', '19:00')], calcularEscala);
+  const lotePassa = mesesAcimaDoLimite(base, [dia('11', 20, '07:00', '19:00'), dia('11', 21, '07:00', '19:00'), dia('12', 1, '07:00', '19:00')], calcularEscala);
+  const baseDez = base.map((e, i) => ({ ...e, id: `d${i}`, inicio: e.inicio.replace('-11-', '-12-'), fim: e.fim.replace('-11-', '-12-') }));
+  const doisMeses = mesesAcimaDoLimite([...base, ...baseDez], [dia('11', 20, '07:00', '20:00'), dia('12', 20, '07:00', '21:00')], calcularEscala);
+  checks.push(
+    [typeof mesesAcimaDoLimite === 'function' && loteCabe.length === 0, 'lote que chega a 192 h não avisa'],
+    [lotePassa.length === 1 && lotePassa[0].mes === '2026-11' && lotePassa[0].antes === 180 && lotePassa[0].depois === 204, `lote 180 + 24 em novembro avisa só novembro (deu ${JSON.stringify(lotePassa)})`],
+    [perguntaLimite([{ mes: '2026-11', depois: 193, limite: 192 }]) === 'Com esta escala, Novembro de 2026 fica com 193h. O limite é de 192h por mês. Deseja continuar?', 'pergunta de 1 escala'],
+    [perguntaLimite(lotePassa, 3) === 'Com estas escalas, Novembro de 2026 fica com 204h. O limite é de 192h por mês. Deseja continuar?', 'pergunta de várias escalas'],
+    [doisMeses.length === 2 && perguntaLimite(doisMeses, 2) === 'Com estas escalas, Novembro de 2026 fica com 193h e Dezembro de 2026 com 194h. O limite é de 192h por mês. Deseja continuar?', `pergunta com dois meses (deu ${perguntaLimite(doisMeses, 2)})`],
+  );
   const falhas = checks.filter(([ok]) => !ok).map(([, nome]) => nome);
   return falhas.length ? falhas : 'LIMITE DE HORAS OK';
 };

@@ -8,6 +8,7 @@
    ========================================================================== */
 import { LIMITE_LOTE, duracaoMinutos, escalaDoDia, gerarEscalasLote, situacaoDoDia, validarLote } from '../lote.mjs';
 import { parseDateTimeLocal } from '../formato.mjs';
+import { mesesAcimaDoLimite, perguntaLimite } from '../limite-horas.mjs';
 
 const MESES_NAVEGACAO = 3;
 const fmtMes = new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' });
@@ -28,7 +29,7 @@ const horaCurta = (hhmm) => (hhmm.slice(3) === '00' ? `${hhmm.slice(0, 2)}h` : `
  * @returns {{abrir:Function, fechar:Function, ligarEventos:Function}}
  */
 export function criarAgendaDias(ctx) {
-  const { $, on, estado, toast, salvar, render, haptic, clonarEscalas, cancelarEdicao, agendarEscalas } = ctx;
+  const { $, on, estado, toast, dialogConfirmar, salvar, render, haptic, clonarEscalas, cancelarEdicao, agendarEscalas, calcularEscala } = ctx;
 
   let base = null;
   let mesBase = 0;            // índice ano*12+mês do mês da base
@@ -198,7 +199,7 @@ export function criarAgendaDias(ctx) {
   }
 
   /* ------------------------------------------------------------ lançamento */
-  function lancar() {
+  async function lancar() {
     const dlg = $('dialogLote');
     const btn = $('loteLancar');
     if (!base || !dlg?.open || btn?.disabled) return;
@@ -214,6 +215,12 @@ export function criarAgendaDias(ctx) {
     const dias = diasDoLote();
     if (!validarLote(estado.escalas, base, dias).ok) { renderTudo(); return; }
     const novas = gerarEscalasLote(base, dias);
+    /* v98: mesmo aviso do formulário antes de o mês passar do limite de horas. */
+    const acima = mesesAcimaDoLimite(estado.escalas, novas, calcularEscala);
+    if (acima.length) {
+      const ok = await dialogConfirmar(perguntaLimite(acima, novas.length), { textoOk: 'Continuar', perigoso: false });
+      if (!ok || !base || !dlg.open) { renderTudo(); return; }
+    }
     const antes = clonarEscalas();
     estado.escalas.push(...novas);
     if (!salvar()) { estado.escalas = antes; render(); renderTudo(); return; }
