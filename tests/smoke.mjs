@@ -804,6 +804,32 @@ try {
   passos.push({ nome: 'Lançar por texto: frase incompleta avisa e mantém os campos; Enter não envia o formulário', ok: tx.ehErro && tx.msgErro.startsWith('Não entendi as horas') && tx.iniMantido === tx.esperadoIni && tx.fimMantido === tx.esperadoFim && tx.semAdicionar2 === 0, detalhe: JSON.stringify(tx) });
   passos.push({ nome: 'Lançar por texto: depois de conferir, Adicionar grava a escala e limpa o campo', ok: tx.adicionou === 1 && tx.nova.inicio === tx.esperadoIni && tx.nova.fim === tx.esperadoFim && tx.textoLimpo, detalhe: JSON.stringify(tx) });
 
+  // 15. Limite de horas no mês (v97): o Planejamento mostra "180h de 192h"; chegar a 192 h não
+  //     avisa; passar de 192 h pergunta antes de gravar e, confirmado, destaca a linha.
+  await cdp.enviar('Runtime.evaluate', { expression: `(()=>{const p=(n)=>String(n).padStart(2,'0');
+    const l=Array.from({length:15},(_,i)=>({id:'lh'+i,inicio:'2026-12-'+p(i+1)+'T07:00',fim:'2026-12-'+p(i+1)+'T19:00',descricao:'Sede',origem:'AC4',qtdPm:1,status:'planejada'}));
+    localStorage.setItem('pmgoEscalas',JSON.stringify(l)); localStorage.setItem('pmgoJaPassouDispensadas',JSON.stringify(l.map(e=>e.id))); localStorage.setItem('pmgoRepetirSemanaDispensada','9999-12-31');})()` }, sessionId);
+  await abrirDin();
+  const lh = await avaliarDin(`const r={}; const $=(id)=>document.getElementById(id);
+    const lista=()=>JSON.parse(localStorage.getItem('pmgoEscalas')||'[]');
+    const filtro=$('filtroMes'); filtro.value='2026-12'; filtro.dispatchEvent(new Event('change',{bubbles:true})); await sl(200);
+    const linha=()=>({valor:$('planningLimiteValor').textContent,nota:$('planningLimiteNota').textContent,acima:$('planningLimite').classList.contains('is-acima')});
+    r.inicio=linha();
+    const lancar=async(ini,fim)=>{ $('escalaInicio').value=ini; $('escalaFim').value=fim; $('formEscala').requestSubmit(); await sl(450); };
+    await lancar('2026-12-20T07:00','2026-12-20T19:00');
+    r.semAviso=!$('dialogConfirm').open; r.apos192=lista().length; r.linha192=linha();
+    await lancar('2026-12-21T07:00','2026-12-21T08:00');
+    r.avisou=$('dialogConfirm').open; r.msg=$('dialogMsg').textContent;
+    $('dialogCancel').click(); await sl(300); r.cancelado=lista().length;
+    await lancar('2026-12-21T07:00','2026-12-21T08:00');
+    r.avisou2=$('dialogConfirm').open; $('dialogOk').click(); await sl(450);
+    r.confirmado=lista().length; r.linha193=linha();
+    localStorage.removeItem('pmgoEscalas'); localStorage.removeItem('pmgoJaPassouDispensadas'); localStorage.removeItem('pmgoRepetirSemanaDispensada');
+    return JSON.stringify(r);`);
+  passos.push({ nome: 'Limite de horas: Planejamento mostra "180h de 192h" e chegar a 192 h não avisa', ok: lh.inicio.valor === '180h de 192h' && lh.inicio.nota === 'Restam 12h' && !lh.inicio.acima && lh.semAviso && lh.apos192 === 16 && lh.linha192.valor === '192h de 192h' && lh.linha192.nota === 'No limite' && !lh.linha192.acima, detalhe: JSON.stringify(lh) });
+  passos.push({ nome: 'Limite de horas: passar de 192 h pergunta antes; Cancelar não grava', ok: lh.avisou && lh.msg === 'Com esta escala, Dezembro de 2026 fica com 193h. O limite é de 192h por mês. Deseja continuar?' && lh.cancelado === 16, detalhe: JSON.stringify(lh) });
+  passos.push({ nome: 'Limite de horas: Continuar grava e a linha fica em destaque ("1h acima do limite")', ok: lh.avisou2 && lh.confirmado === 17 && lh.linha193.valor === '193h de 192h' && lh.linha193.nota === '1h acima do limite' && lh.linha193.acima, detalhe: JSON.stringify(lh) });
+
   console.table(passos.map(({ nome, ok, detalhe }) => ({ passo: nome, ok, detalhe })));
 
   const falhas = passos.filter((p) => !p.ok);

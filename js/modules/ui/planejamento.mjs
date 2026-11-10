@@ -7,6 +7,17 @@
 import { toInputMonth, parseDateTimeLocal, fmtMesRef, fmtMoeda, fmtHoras } from '../formato.mjs';
 import { STATUS_ESCALA } from '../persistencia.mjs';
 import { STATUS_INFO, statusEscala } from '../templates.mjs';
+import { horasDoMes, situacaoLimite } from '../limite-horas.mjs';
+
+/**
+ * Textos da linha "Horas no mês" do Planejamento (v97).
+ * @param {{horas:number, limite:number, restante:number, excedeu:boolean, excesso:number}} s
+ * @returns {{valor:string, nota:string}}
+ */
+export function textosLimiteHoras(s) {
+  const nota = s.excedeu ? `${s.excesso}h acima do limite` : s.restante === 0 ? 'No limite' : `Restam ${s.restante}h`;
+  return { valor: `${s.horas}h de ${s.limite}h`, nota };
+}
 
 /**
  * Cria o planejamento do mês.
@@ -67,6 +78,13 @@ export function criarPlanejamento(ctx) {
     $('planningMonth').textContent = fmtMesRef(mes);
     $('planningValue').textContent = fmtMoeda(atual.valor);
     $('planningHours').textContent = `${fmtHoras(atual.mins)} · ${atual.qtd} escala${atual.qtd === 1 ? '' : 's'}`;
+
+    /* v97: horas pagas do mês diante do limite mensal. */
+    const limite = situacaoLimite(horasDoMes(estado.escalas, mes, calcularEscala));
+    const textosLimite = textosLimiteHoras(limite);
+    $('planningLimiteValor').textContent = textosLimite.valor;
+    $('planningLimiteNota').textContent = textosLimite.nota;
+    $('planningLimite').classList.toggle('is-acima', limite.excedeu);
 
     const comparacao = $('planningComparison');
     comparacao.className = 'planning-comparison';
