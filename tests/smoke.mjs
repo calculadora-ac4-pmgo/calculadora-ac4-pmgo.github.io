@@ -830,6 +830,53 @@ try {
   passos.push({ nome: 'Limite de horas: passar de 192 h pergunta antes; Cancelar não grava', ok: lh.avisou && lh.msg === 'Com esta escala, Dezembro de 2026 fica com 193h. O limite é de 192h por mês. Deseja continuar?' && lh.cancelado === 16, detalhe: JSON.stringify(lh) });
   passos.push({ nome: 'Limite de horas: Continuar grava e a linha fica em destaque ("1h acima do limite")', ok: lh.avisou2 && lh.confirmado === 17 && lh.linha193.valor === '193h de 192h' && lh.linha193.nota === '1h acima do limite' && lh.linha193.acima, detalhe: JSON.stringify(lh) });
 
+  // 16. Limite de horas nos lançamentos em grupo (v98): "Lançar em outros dias" e "Repetir a semana"
+  //     fazem a mesma pergunta do formulário antes de o mês passar de 192 h.
+  await cdp.enviar('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true }, sessionId);
+  await cdp.enviar('Runtime.evaluate', { expression: `(()=>{const p=(n)=>String(n).padStart(2,'0');
+    const l=Array.from({length:15},(_,i)=>({id:'lh'+i,inicio:'2026-12-'+p(i+1)+'T07:00',fim:'2026-12-'+p(i+1)+'T19:00',descricao:'Sede',origem:'AC4',qtdPm:1,status:'planejada'}));
+    localStorage.setItem('pmgoEscalas',JSON.stringify(l)); localStorage.setItem('pmgoJaPassouDispensadas',JSON.stringify(l.map(e=>e.id))); localStorage.setItem('pmgoRepetirSemanaDispensada','9999-12-31');})()` }, sessionId);
+  await abrirDin();
+  const ll = await avaliarDin(`const r={}; const $=(id)=>document.getElementById(id);
+    const lista=()=>JSON.parse(localStorage.getItem('pmgoEscalas')||'[]');
+    document.querySelector('[data-acao="lote"][data-id="lh0"]').click(); await sl(400);
+    r.abriu=$('dialogLote').open;
+    for (const d of ['2026-12-20','2026-12-21']) { $('loteGrade').querySelector('.lote-dia[data-data="'+d+'"]').click(); await sl(120); }
+    $('loteLancar').click(); await sl(350);
+    r.avisou=$('dialogConfirm').open; r.msg=$('dialogMsg').textContent;
+    $('dialogCancel').click(); await sl(300);
+    r.cancelado=lista().length; r.loteAberto=$('dialogLote').open; r.botaoLivre=!$('loteLancar').disabled;
+    $('loteLancar').click(); await sl(350); r.avisou2=$('dialogConfirm').open; $('dialogOk').click(); await sl(450);
+    r.confirmado=lista().length; if($('dialogLote').open) $('loteFechar').click();
+    return JSON.stringify(r);`);
+  passos.push({ nome: 'Limite de horas no lote: 180 h + 2 dias de 12 h pergunta antes; Cancelar não grava e mantém a agenda', ok: ll.abriu && ll.avisou && ll.msg === 'Com estas escalas, Dezembro de 2026 fica com 204h. O limite é de 192h por mês. Deseja continuar?' && ll.cancelado === 15 && ll.loteAberto && ll.botaoLivre, detalhe: JSON.stringify(ll) });
+  passos.push({ nome: 'Limite de horas no lote: Continuar grava os 2 dias', ok: ll.avisou2 && ll.confirmado === 17, detalhe: JSON.stringify(ll) });
+
+  await cdp.enviar('Runtime.evaluate', { expression: `(()=>{const p=(n)=>String(n).padStart(2,'0');const f=(d)=>d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'T'+p(d.getHours())+':'+p(d.getMinutes());
+    const hoje=new Date(); const seg=new Date(hoje.getFullYear(),hoje.getMonth(),hoje.getDate()-((hoje.getDay()+6)%7));
+    const em=(dias,h)=>{const d=new Date(seg);d.setDate(d.getDate()+dias);d.setHours(h,0,0,0);return d;};
+    const lista=[{id:'rs1',inicio:f(em(-1,8)),fim:f(em(-1,18)),descricao:'Sede',origem:'AC4',qtdPm:1,status:'recebida'}];
+    /* enche o mês do destino (domingo desta semana) com 9 dias de 23 h fora da semana passada e da atual */
+    const alvo=em(6,8); let n=0;
+    for(let d=1;d<=28&&n<9;d++){const dia=new Date(alvo.getFullYear(),alvo.getMonth(),d);const dist=(dia-seg)/864e5; if(dist>=-7&&dist<7) continue;
+      const fim=new Date(dia); fim.setHours(23,0,0,0); lista.push({id:'ch'+d,inicio:f(dia),fim:f(fim),descricao:'Sede',origem:'AC4',qtdPm:1,status:'recebida'}); n++;}
+    localStorage.setItem('pmgoEscalas',JSON.stringify(lista)); localStorage.removeItem('pmgoRepetirSemanaDispensada'); localStorage.setItem('pmgoJaPassouDispensadas',JSON.stringify(lista.map(e=>e.id)));})()` }, sessionId);
+  await abrirDin();
+  const lr = await avaliarDin(`const r={}; const $=(id)=>document.getElementById(id);
+    const lista=()=>JSON.parse(localStorage.getItem('pmgoEscalas')||'[]'); r.antes=lista().length;
+    r.cartao=!$('repetirSemana').classList.contains('hidden'); $('repetirSemanaAbrir').click(); await sl(250);
+    document.querySelectorAll('.repetir-check').forEach(c=>{ if(!c.checked&&!c.disabled){c.checked=true;c.dispatchEvent(new Event('change',{bubbles:true}));} }); await sl(100);
+    $('repetirConfirmar').click(); await sl(350);
+    r.avisou=$('dialogConfirm').open; r.msg=$('dialogMsg').textContent;
+    $('dialogCancel').click(); await sl(300); r.cancelado=lista().length; r.janela=$('dialogRepetir').open;
+    $('repetirConfirmar').click(); await sl(350); r.avisou2=$('dialogConfirm').open; $('dialogOk').click(); await sl(450);
+    r.confirmado=lista().length; r.fechou=!$('dialogRepetir').open;
+    localStorage.removeItem('pmgoEscalas'); localStorage.removeItem('pmgoJaPassouDispensadas'); localStorage.removeItem('pmgoRepetirSemanaDispensada');
+    return JSON.stringify(r);`);
+  passos.push({ nome: 'Limite de horas no repetir a semana: pergunta antes; Cancelar não grava e mantém a janela', ok: lr.cartao && lr.avisou && /^Com esta escala, .+ fica com 2\d\dh\. O limite é de 192h por mês\. Deseja continuar\?$/.test(lr.msg) && lr.cancelado === lr.antes && lr.janela, detalhe: JSON.stringify(lr) });
+  passos.push({ nome: 'Limite de horas no repetir a semana: Continuar grava e fecha a janela', ok: lr.avisou2 && lr.confirmado === lr.antes + 1 && lr.fechou, detalhe: JSON.stringify(lr) });
+  await cdp.enviar('Emulation.setDeviceMetricsOverride', { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false }, sessionId);
+
   console.table(passos.map(({ nome, ok, detalhe }) => ({ passo: nome, ok, detalhe })));
 
   const falhas = passos.filter((p) => !p.ok);

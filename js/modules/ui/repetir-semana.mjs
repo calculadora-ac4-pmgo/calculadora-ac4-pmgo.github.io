@@ -5,6 +5,7 @@
    o que não quiser e confirma. Estado só via `estado`.
    ========================================================================== */
 import { fmtMoeda, fmtHora, fmtData, parseDateTimeLocal, escapeHTML } from '../formato.mjs';
+import { mesesAcimaDoLimite, perguntaLimite } from '../limite-horas.mjs';
 import { sugestaoRepetirSemana, gerarEscalasSemana, itemSelecionavel } from '../repetir-semana.mjs';
 
 const diaCurtoBR = new Intl.DateTimeFormat('pt-BR', { weekday: 'short' });
@@ -41,9 +42,10 @@ export function textoItemRepetir(item) {
  * @returns {{renderRepetirSemana:Function, ligarEventos:Function}}
  */
 export function criarRepetirSemana(ctx) {
-  const { $, on, estado, toast, salvar, render, haptic, clonarEscalas, cancelarEdicao, calcularEscala, lerLocal, STORAGE } = ctx;
+  const { $, on, estado, toast, dialogConfirmar, salvar, render, haptic, clonarEscalas, cancelarEdicao, calcularEscala, lerLocal, STORAGE } = ctx;
   let sugestao = null;   // sugestão em conferência na janela
   let marcados = new Set();
+  let confirmando = false; // pergunta do limite aberta
 
   const valorDoItem = (item) => calcularEscala({ inicio: item.inicio, fim: item.fim }).valorCentavos * (item.base.qtdPm || 1);
 
@@ -96,10 +98,19 @@ export function criarRepetirSemana(ctx) {
     if (!dlg.open) dlg.showModal();
   }
 
-  function confirmar() {
+  async function confirmar() {
     if (!sugestao) return;
     const novas = gerarEscalasSemana(sugestao.itens.filter((_, i) => marcados.has(i)));
     if (!novas.length) return;
+    /* v98: mesmo aviso do formulário antes de o mês passar do limite de horas. */
+    const acima = mesesAcimaDoLimite(estado.escalas, novas, calcularEscala);
+    if (acima.length) {
+      if (confirmando) return;
+      confirmando = true;
+      const ok = await dialogConfirmar(perguntaLimite(acima, novas.length), { textoOk: 'Continuar', perigoso: false });
+      confirmando = false;
+      if (!ok || !sugestao) return;
+    }
     const antes = clonarEscalas();
     estado.escalas.push(...novas);
     if (!salvar()) { estado.escalas = antes; render(); return; }

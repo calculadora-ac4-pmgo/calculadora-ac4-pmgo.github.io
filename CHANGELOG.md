@@ -1,5 +1,13 @@
 # Changelog
 
+## v98 — Aviso do limite também no lote e no repetir a semana
+
+Fecha a lacuna deixada na v97. Sem aviso de novidades (`data-conteudo` continua "97").
+- **"Lançar em outros dias" e "Repetir a semana"** agora fazem a mesma pergunta do formulário quando as escalas fazem o mês passar de 192 h: "Com estas escalas, Dezembro de 2026 fica com 204h. O limite é de 192h por mês. Deseja continuar?". Cancelar não grava e mantém a janela aberta, com os dias marcados; Continuar grava.
+- Se as escalas caem em dois meses e os dois passam do limite, a pergunta cita os dois.
+- **Texto único:** a pergunta saiu do `formulario.mjs` e passou para `perguntaLimite()` em `js/modules/limite-horas.mjs`, junto com `mesesAcimaDoLimite()`; os três caminhos usam a mesma função.
+- Testes: unit "Limite de horas no mês (192 h)" ampliado (lote que cabe, lote que passa, dois meses, textos); smoke com 4 passos novos (lote e repetir: pergunta, Cancelar, Continuar).
+
 ## v97 — Alerta de limite de horas no mês
 
 Último dos recursos "inteligentes sem IA" (v94–v97). **Aviso de novidades da série** (`data-conteudo="97"`): ver a conta do valor, escrever ou ditar a escala e o aviso do limite; a introdução cita o "Repetir a semana".
