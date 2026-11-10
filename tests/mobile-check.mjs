@@ -264,7 +264,8 @@ const ROTEIRO_MOBILE = `(async () => {
      acoesCard.map((b) => b.textContent.trim()).join(' | '));
   const acoesGrandes = acoesCard.every((b) => {
     const r = b.getBoundingClientRect();
-    return r.height >= 44 && r.width >= 80;
+    /* v101: "Mais" fica só com o ícone no celular (48×48) para a situação caber inteira. */
+    return r.height >= 44 && r.width >= 44;
   });
   ok('Ações do card têm alvo de toque grande', acoesGrandes,
      acoesCard.map((b) => {

@@ -567,6 +567,24 @@ const validarExplicarValor = () => {
 };
 rodar('Explicar o valor (conta por faixa)', validarExplicarValor);
 
+const planMod = await import('../js/modules/ui/planejamento.mjs').catch(() => ({}));
+const validarResumoPlanejamento = () => {
+  const f = planMod.partesResumoPlanejamento;
+  if (typeof f !== 'function') return ['partesResumoPlanejamento não existe'];
+  const igual = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  const checks = [
+    [igual(f({ mes: '2026-11', qtd: 0, horas: '0h de 192h', meta: null }), []), 'sem escalas no mês: sem resumo'],
+    [igual(f({ mes: '2026-11', qtd: 7, horas: '84h de 192h', meta: 60 }), ['Novembro', '84h de 192h', 'Meta 60%']), 'mês, horas e meta'],
+    [igual(f({ mes: '2026-11', qtd: 7, horas: '84h de 192h', meta: null }), ['Novembro', '84h de 192h']), 'sem meta: mês e horas'],
+    [igual(f({ mes: '2026-12', qtd: 3, horas: null, meta: 0 }), ['Dezembro', 'Meta 0%']), 'mês só de seção com meta: sem horas'],
+    [igual(f({ mes: '2026-12', qtd: 1, horas: null, meta: null }), ['Dezembro', '1 escala']), 'mês só de seção sem meta: quantidade (singular)'],
+    [igual(f({ mes: '2026-12', qtd: 3, horas: null, meta: null }), ['Dezembro', '3 escalas']), 'quantidade (plural)'],
+  ];
+  const falhas = checks.filter(([ok]) => !ok).map(([, nome]) => nome);
+  return falhas.length ? falhas : 'RESUMO DO PLANEJAMENTO OK';
+};
+rodar('Resumo do Planejamento em uma linha (v101)', validarResumoPlanejamento);
+
 const limiteMod = await import('../js/modules/limite-horas.mjs').catch(() => ({}));
 const validarLimiteHoras = () => {
   const { LIMITE_HORAS_MES, horasDoMes, situacaoLimite, efeitoNoLimite } = limiteMod;

@@ -912,7 +912,7 @@ try {
     const filtro=$('filtroMes'); filtro.value='2026-12'; filtro.dispatchEvent(new Event('change',{bubbles:true})); await sl(250);
     const sel=q('#listaEscalas .ec-card-actions .status-select'); r.sel=sel.length; r.selOk=sel.length>0&&sel.every(s=>inteiro(s)&&fs(s)>=16);
     const medir=document.createElement('span'); medir.style.font=getComputedStyle(sel[0]).font; medir.style.visibility='hidden'; medir.style.position='absolute'; medir.textContent='Planejada'; document.body.appendChild(medir);
-    const cs=getComputedStyle(sel[0]); r.selCabe=medir.offsetWidth+parseFloat(cs.paddingLeft)+parseFloat(cs.paddingRight)<=sel[0].getBoundingClientRect().width; medir.remove();
+    const cs=getComputedStyle(sel[0]); r.selCabe=medir.offsetWidth+parseFloat(cs.paddingLeft)+parseFloat(cs.paddingRight)+20<=sel[0].getBoundingClientRect().width; /* +20: seta nativa do select */ medir.remove();
     r.filtros=q('.feed-filter .control').map(c=>fs(c)+'/'+Math.round(c.getBoundingClientRect().height)); r.filtrosOk=q('.feed-filter .control').every(c=>fs(c)>=16&&c.getBoundingClientRect().height>=44);
     r.rodape=q('.footer-link').map(a=>Math.round(a.getBoundingClientRect().height)); r.rodapeOk=q('.footer-link').length>0&&q('.footer-link').every(a=>a.getBoundingClientRect().height>=44);
     const b=$('pwaBanner'); b.classList.remove('hidden'); await sl(450); const rb=b.getBoundingClientRect(); const topo=document.querySelector('.topbar, header').getBoundingClientRect(); const barra=document.querySelector('.mobile-bar').getBoundingClientRect();
@@ -928,6 +928,36 @@ try {
   passos.push({ nome: 'Celular 360×640: Nova escala mostra Início e Término sem rolar', ok: au.fimVisivel, detalhe: `fim ${au.fimBottom} / adicionar ${au.addTop}` });
   passos.push({ nome: 'Celular 360 px: aviso de instalação fica entre o cabeçalho e a barra de baixo; rodapé com toque de 44 px', ok: au.bannerOk && au.rodapeOk, detalhe: JSON.stringify({ banner: au.banner, rodape: au.rodape }) });
   await cdp.enviar('Emulation.setDeviceMetricsOverride', { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false }, sessionId);
+
+  // 19. Lista mais cedo no celular (v101), em 390×844: resumo do Planejamento em uma linha acima da
+  //     lista; lista antes do Planejamento completo e da Portaria; tocar no resumo leva ao painel.
+  //     No computador o resumo não existe e a ordem não muda.
+  await cdp.enviar('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true }, sessionId);
+  await cdp.enviar('Runtime.evaluate', { expression: `(()=>{const p=(n)=>String(n).padStart(2,'0');
+    const l=Array.from({length:7},(_,i)=>({id:'or'+i,inicio:'2026-12-'+p(i+1)+'T07:00',fim:'2026-12-'+p(i+1)+'T19:00',descricao:'Sede',origem:'AC4',qtdPm:1,status:'planejada'}));
+    localStorage.setItem('pmgoEscalas',JSON.stringify(l)); localStorage.setItem('pmgoMetasMensais',JSON.stringify({'2026-12':{valorCentavos:1000000}}));
+    localStorage.setItem('pmgoJaPassouDispensadas',JSON.stringify(l.map(e=>e.id))); localStorage.setItem('pmgoRepetirSemanaDispensada','9999-12-31');})()` }, sessionId);
+  await abrirDin();
+  const od = await avaliarDin(`const r={}; const $=(id)=>document.getElementById(id); const topo=(el)=>Math.round(el.getBoundingClientRect().top+scrollY);
+    const filtro=$('filtroMes'); filtro.value='2026-12'; filtro.dispatchEvent(new Event('change',{bubbles:true})); await sl(250);
+    const res=$('planningResumo'); r.visivel=!res.classList.contains('hidden')&&getComputedStyle(res).display!=='none'; r.texto=[...$('planningResumoTexto').children].map(e=>e.textContent).join(' | ');
+    r.altura=Math.round(res.getBoundingClientRect().height);
+    r.ordem={metrics:topo(document.querySelector('.metrics')),resumo:topo(res),feed:topo(document.querySelector('.feed')),plan:topo($('planningPanel')),portaria:topo($('tariffStrip')),legal:topo(document.querySelector('.legal-alert'))};
+    const sel=document.querySelector('#listaEscalas .ec-card-actions .status-select'); const m=document.createElement('span'); m.style.font=getComputedStyle(sel).font; m.style.position='absolute'; m.style.visibility='hidden'; m.textContent='Planejada'; document.body.appendChild(m);
+    const cs=getComputedStyle(sel); r.selCabe=m.offsetWidth+parseFloat(cs.paddingLeft)+parseFloat(cs.paddingRight)+20<=sel.getBoundingClientRect().width; m.remove();
+    res.click(); await sl(900); const pr=$('planningPanel').getBoundingClientRect(); r.planTop=Math.round(pr.top); r.foco=document.activeElement&&document.activeElement.id;
+    return JSON.stringify(r);`);
+  const o = od.ordem;
+  passos.push({ nome: 'Celular: resumo do Planejamento em uma linha ("Dezembro | 84h de 192h | Meta …%") acima da lista', ok: od.visivel && /^Dezembro \| 84h de 192h \| Meta \d+%$/.test(od.texto) && od.altura >= 44 && o.metrics < o.resumo && o.resumo < o.feed, detalhe: JSON.stringify(od) });
+  passos.push({ nome: 'Celular: lista antes do Planejamento completo, da Portaria e do aviso legal; situação "Planejada" inteira em 390 px', ok: o.feed < o.plan && o.plan < o.portaria && o.portaria < o.legal && od.selCabe, detalhe: JSON.stringify(o) });
+  passos.push({ nome: 'Celular: tocar no resumo leva ao Planejamento e põe o foco nele', ok: od.planTop >= 0 && od.planTop < 300 && od.foco === 'planningPanel', detalhe: `top ${od.planTop} foco ${od.foco}` });
+  await cdp.enviar('Emulation.setDeviceMetricsOverride', { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false }, sessionId);
+  await abrirDin();
+  const odd = await avaliarDin(`const $=(id)=>document.getElementById(id); const t=(el)=>Math.round(el.getBoundingClientRect().top+scrollY);
+    const r={resumo:getComputedStyle($('planningResumo')).display, plan:t($('planningPanel')), feed:t(document.querySelector('.feed'))};
+    localStorage.removeItem('pmgoEscalas'); localStorage.removeItem('pmgoMetasMensais'); localStorage.removeItem('pmgoJaPassouDispensadas'); localStorage.removeItem('pmgoRepetirSemanaDispensada');
+    return JSON.stringify(r);`);
+  passos.push({ nome: 'Computador: sem resumo e com o Planejamento acima da lista, como antes', ok: odd.resumo === 'none' && odd.plan < odd.feed, detalhe: JSON.stringify(odd) });
 
   console.table(passos.map(({ nome, ok, detalhe }) => ({ passo: nome, ok, detalhe })));
 

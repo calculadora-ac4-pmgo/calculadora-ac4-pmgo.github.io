@@ -1,5 +1,14 @@
 # Changelog
 
+## v101 — Lista de escalas mais cedo no celular
+
+Último ponto da auditoria de celular, com desenho aprovado em 10/11/2026 (opção B). Sem aviso de novidades (`data-conteudo` continua "97").
+- **Nova ordem no celular:** valor estimado, próxima escala, avisos, **resumo do Planejamento**, **lista de escalas**, Planejamento completo, Portaria, aviso legal. Em 360×640, com todos os avisos visíveis, a lista sobe de 2,3 para 1,7 tela de rolagem (de 1,7 para 1,3 em 390×844).
+- **Resumo do Planejamento em uma linha** acima da lista: "Novembro · 84h de 192h · Meta 60%". Tocar leva ao Planejamento completo. Fica em vermelho quando o mês passa de 192 h; em mês só com escalas de mais de um PM mostra a meta ou a quantidade de escalas.
+- **Computador não muda:** o resumo não aparece e a ordem é a mesma. A ordem do HTML também não muda (leitores de tela seguem como antes); no celular a troca é feita só no CSS.
+- **Correção da v100:** de 375 a 430 px a situação "Planejada"/"Realizada" ainda cortava com a letra de 16 px. Agora o botão "Mais" fica só com o ícone em todo celular (360 a 430 px), com nome acessível mantido.
+- Testes: unit "Resumo do Planejamento em uma linha (v101)"; smoke com 4 passos novos (resumo, ordem, toque no resumo, computador igual) e medição da situação com a seta do campo; `mobile-check` aceita o "Mais" de 48×48.
+
 ## v100 — Auditoria de celular
 
 Correções da auditoria feita em 360×640, 390×844, 320×568 e paisagem (10/11/2026). Sem aviso de novidades (`data-conteudo` continua "97").

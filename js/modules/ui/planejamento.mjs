@@ -20,6 +20,21 @@ export function textosLimiteHoras(s) {
 }
 
 /**
+ * Resumo do Planejamento em uma linha (v101), mostrado no celular acima da lista.
+ * Ex.: ["Novembro", "84h de 192h", "Meta 60%"]. Sem escalas no mês, lista vazia.
+ * @param {{mes:string, qtd:number, horas:(string|null), meta:(number|null)}} d
+ * @returns {string[]}
+ */
+export function partesResumoPlanejamento(d) {
+  if (!d.qtd) return [];
+  const partes = [fmtMesRef(d.mes).split(' ')[0]];
+  if (d.horas) partes.push(d.horas);
+  if (d.meta !== null) partes.push(`Meta ${d.meta}%`);
+  if (partes.length === 1) partes.push(`${d.qtd} escala${d.qtd === 1 ? '' : 's'}`);
+  return partes;
+}
+
+/**
  * Cria o planejamento do mês.
  * @param {Object} ctx Dependências de app.js: $, on, estado, toast, salvarMetas, calcularEscala e render.
  * @returns {{atualizarSelectMes:Function, renderPlanejamento:Function, renderHistorico:Function,
@@ -113,6 +128,7 @@ export function criarPlanejamento(ctx) {
         <strong>${contagens[status]}</strong><span>${STATUS_INFO[status].curto}</span>
       </button>`).join('');
 
+    let metaPercentual = null;
     const meta = estado.metasMensais[mes];
     const progresso = $('planningProgress');
     progresso.classList.toggle('hidden', !meta);
@@ -133,7 +149,21 @@ export function criarPlanejamento(ctx) {
       $('planningProgressValue').textContent = `${Math.round(percentual)}%`;
       $('planningProgressBar').style.width = `${percentual}%`;
       $('planningProgressTrack').setAttribute('aria-valuenow', String(Math.round(percentual)));
+      metaPercentual = Math.round(percentual);
     }
+
+    /* v101: resumo em uma linha acima da lista (só aparece no celular, via CSS). */
+    const partes = partesResumoPlanejamento({
+      mes, qtd: atual.qtd, meta: metaPercentual,
+      horas: mesSoDeSecao(estado.escalas, mes) ? null : textosLimite.valor,
+    });
+    $('planningResumo').classList.toggle('hidden', !partes.length);
+    $('planningResumo').classList.toggle('is-acima', limite.excedeu);
+    $('planningResumoTexto').replaceChildren(...partes.map((texto, i) => {
+      const el = document.createElement(i === 1 ? 'strong' : 'span');
+      el.textContent = texto;
+      return el;
+    }));
 
     renderHistorico(mes);
 
@@ -218,6 +248,11 @@ export function criarPlanejamento(ctx) {
       $('planningToggle')?.setAttribute('aria-expanded', aberto ? 'true' : 'false');
       const texto = $('planningToggle')?.querySelector('span');
       if (texto) texto.textContent = aberto ? 'Ocultar detalhes do mês' : 'Ver detalhes do mês';
+    });
+    on('planningResumo', 'click', () => {
+      const painel = $('planningPanel');
+      painel?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+      painel?.focus({ preventScroll: true });
     });
     on('planningGoalCancel', 'click', () => $('dialogPlanningGoal')?.close());
     on('planningGoalClear', 'click', removerMetaMensal);

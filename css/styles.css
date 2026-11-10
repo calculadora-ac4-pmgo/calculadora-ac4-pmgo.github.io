@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Calculadora AC4 — v100
+   Calculadora AC4 — v101
    Arquivo gerado por tools/montar-css.mjs — edite css/src/ e rode o script.
    ========================================================================== */
 
@@ -953,6 +953,12 @@ textarea.control { min-height: 74px; resize: vertical; }
 .planning-limite small { margin-left: auto; font-size: inherit; font-weight: 750; }
 .planning-limite.is-acima { border-color: var(--danger); background: color-mix(in srgb, var(--danger) 10%, var(--surface)); }
 .planning-limite.is-acima strong, .planning-limite.is-acima small { color: var(--danger); }
+
+/* v101: resumo do Planejamento em uma linha; só existe no celular (90-responsivo) */
+.planning-resumo { display: none; }
+.planning-panel { scroll-margin-top: 12px; }
+.planning-panel:focus { outline: none; }
+.planning-panel:focus-visible { outline: 2px solid var(--gold-500); outline-offset: 2px; }
 /* ===== METRICS ===== */
 .metrics {
   display: grid;
@@ -2434,11 +2440,49 @@ textarea.control { min-height: 74px; resize: vertical; }
   .dinheiro-parte { padding-inline: 6px; }
 }
 
-@media (min-width: 360px) and (max-width: 374px) {
-  /* Cartão da escala: "Mais" só com o ícone, para a situação caber por inteiro.
-     (Abaixo de 360 px a situação já ocupa a linha toda.) */
+@media (min-width: 360px) and (max-width: 430px) {
+  /* Cartão da escala: "Mais" só com o ícone, para a situação caber por inteiro
+     com a letra de 16 px (v101: vale para todo celular; a 375–430 px "Planejada"
+     ainda cortava). Abaixo de 360 px a situação já ocupa a linha toda. */
   .ec-card-actions { grid-template-columns: minmax(0, 1fr) 84px 48px; }
   .ec-more > summary span { display: none; }
+}
+
+/* ===== v101: lista de escalas mais cedo no celular =====
+   Ordem na tela: valor, próxima escala, avisos, resumo do planejamento, lista,
+   planejamento completo, Portaria, aviso legal. A ordem do HTML não muda
+   (computador e leitores de tela seguem como antes). */
+@media (max-width: 760px) {
+  .layout { display: flex; flex-direction: column; }
+  .layout > * { min-width: 0; }
+  .layout > .metrics { order: 1; }
+  .layout > .proxima-escala { order: 2; }
+  .layout > .ja-passou { order: 3; }
+  .layout > .planning-resumo { order: 4; }
+  .layout > .feed { order: 5; }
+  .layout > .planning-panel { order: 6; }
+  .layout > .tariff-strip { order: 7; }
+  .layout > .legal-alert { order: 8; }
+
+  .planning-resumo {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    width: 100%; min-height: 48px; margin-top: 12px; padding: 8px 14px;
+    border: 1px solid var(--glass-border); border-radius: var(--radius-lg);
+    background: var(--surface); color: var(--text-muted); text-align: left; cursor: pointer;
+    font-size: var(--fs-leitura); font-weight: 700; font-variant-numeric: tabular-nums;
+    box-shadow: var(--shadow-sm);
+  }
+  .planning-resumo-texto { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; min-width: 0; }
+  .planning-resumo-texto > * + *::before { content: '·'; margin-right: 8px; color: var(--text-faint); font-weight: 700; }
+  .planning-resumo strong { color: var(--text); font-weight: 850; }
+  .planning-resumo.is-acima strong { color: var(--danger); }
+  .planning-resumo .icon { flex-shrink: 0; }
+  .planning-resumo:focus-visible { outline: 2px solid var(--gold-500); outline-offset: 2px; }
+}
+
+@media (min-width: 360px) and (max-width: 374px) {
+  /* 360 px: mais 8 px para "Planejada" caber com folga. */
+  .ec-card-actions { grid-template-columns: minmax(0, 1fr) 80px 48px; gap: 6px; }
 }
 /* ===== SITE FOOTER ===== */
 .site-footer {
