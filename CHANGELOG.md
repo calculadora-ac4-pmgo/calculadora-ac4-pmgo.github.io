@@ -1,5 +1,14 @@
 # Changelog
 
+## v99 — Limite de 192 h só para escala individual
+
+Decisão do gestor em 10/11/2026: o limite de 192 h por mês vale para o policial. Escala com mais de um PM é planejamento da seção e serve para chegar ao valor final, sem controle de horas. Sem aviso de novidades (`data-conteudo` continua "97").
+- **Escala com mais de um PM** não soma na linha "Horas no mês" e não dispara a pergunta do limite (Nova escala, "Lançar em outros dias" e "Repetir a semana").
+- **Mês só com escalas de mais de um PM:** a linha "Horas no mês" some do Planejamento. Com escalas dos dois tipos, a linha conta só as individuais.
+- Editar uma escala de vários PMs para 1 PM faz ela passar a contar (e avisa, se o mês passar do limite).
+- `limite-horas.mjs`: `escalaIndividual()` e `mesSoDeSecao()`; `horasDoMes()` e `efeitoNoLimite()` ignoram escala com mais de um PM.
+- Testes: unit "Limite de horas no mês (192 h)" ampliado (7 casos novos); smoke com 2 passos novos.
+
 ## v98 — Aviso do limite também no lote e no repetir a semana
 
 Fecha a lacuna deixada na v97. Sem aviso de novidades (`data-conteudo` continua "97").

@@ -7,7 +7,7 @@
 import { toInputMonth, parseDateTimeLocal, fmtMesRef, fmtMoeda, fmtHoras } from '../formato.mjs';
 import { STATUS_ESCALA } from '../persistencia.mjs';
 import { STATUS_INFO, statusEscala } from '../templates.mjs';
-import { horasDoMes, situacaoLimite } from '../limite-horas.mjs';
+import { horasDoMes, mesSoDeSecao, situacaoLimite } from '../limite-horas.mjs';
 
 /**
  * Textos da linha "Horas no mês" do Planejamento (v97).
@@ -79,12 +79,14 @@ export function criarPlanejamento(ctx) {
     $('planningValue').textContent = fmtMoeda(atual.valor);
     $('planningHours').textContent = `${fmtHoras(atual.mins)} · ${atual.qtd} escala${atual.qtd === 1 ? '' : 's'}`;
 
-    /* v97: horas pagas do mês diante do limite mensal. */
+    /* v97: horas pagas do mês (só escalas individuais, v99) diante do limite mensal. */
     const limite = situacaoLimite(horasDoMes(estado.escalas, mes, calcularEscala));
     const textosLimite = textosLimiteHoras(limite);
     $('planningLimiteValor').textContent = textosLimite.valor;
     $('planningLimiteNota').textContent = textosLimite.nota;
     $('planningLimite').classList.toggle('is-acima', limite.excedeu);
+    /* v99: mês só com escalas de mais de um PM é planejamento da seção; sem linha de horas. */
+    $('planningLimite').classList.toggle('hidden', mesSoDeSecao(estado.escalas, mes));
 
     const comparacao = $('planningComparison');
     comparacao.className = 'planning-comparison';

@@ -64,3 +64,4 @@ Valores, DOE e vigência desta Portaria estão em `js/modules/portarias.mjs` (fo
 - **Fração de hora:** decisão do gestor (08/11/2026, v93) — cada faixa arredondada para a hora mais próxima, como a planilha. Antes (v71): só horas inteiras.
 - **Feriados:** a Portaria classifica só por dia da semana; feriado em dia útil segue a tarifa daquele dia.
 - **Limite de horas:** o teto de 192h por lançamento é regra do gestor (limite de horas do policial), não da Portaria.
+- **Limite mensal (v97–v99):** 192 h por mês por policial, confirmado pelo gestor em 10/11/2026. O app conta só escalas individuais (1 PM), avisa e pergunta, e nunca bloqueia. Escala com mais de um PM é planejamento da seção e fica fora dessa conta.
