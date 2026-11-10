@@ -230,3 +230,9 @@
 .planning-limite small { margin-left: auto; font-size: inherit; font-weight: 750; }
 .planning-limite.is-acima { border-color: var(--danger); background: color-mix(in srgb, var(--danger) 10%, var(--surface)); }
 .planning-limite.is-acima strong, .planning-limite.is-acima small { color: var(--danger); }
+
+/* v101: resumo do Planejamento em uma linha; só existe no celular (90-responsivo) */
+.planning-resumo { display: none; }
+.planning-panel { scroll-margin-top: 12px; }
+.planning-panel:focus { outline: none; }
+.planning-panel:focus-visible { outline: 2px solid var(--gold-500); outline-offset: 2px; }
