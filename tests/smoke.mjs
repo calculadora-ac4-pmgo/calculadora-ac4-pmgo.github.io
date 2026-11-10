@@ -877,6 +877,26 @@ try {
   passos.push({ nome: 'Limite de horas no repetir a semana: Continuar grava e fecha a janela', ok: lr.avisou2 && lr.confirmado === lr.antes + 1 && lr.fechou, detalhe: JSON.stringify(lr) });
   await cdp.enviar('Emulation.setDeviceMetricsOverride', { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false }, sessionId);
 
+  // 17. Limite só para escala individual (v99): escala com mais de um PM é planejamento da seção;
+  //     não conta nas horas, não pergunta e, se o mês só tem escalas assim, a linha de horas some.
+  await cdp.enviar('Runtime.evaluate', { expression: `(()=>{const p=(n)=>String(n).padStart(2,'0');
+    const l=Array.from({length:15},(_,i)=>({id:'lh'+i,inicio:'2026-12-'+p(i+1)+'T07:00',fim:'2026-12-'+p(i+1)+'T19:00',descricao:'Sede',origem:'AC4',qtdPm:1,status:'planejada'}));
+    localStorage.setItem('pmgoEscalas',JSON.stringify(l)); localStorage.setItem('pmgoJaPassouDispensadas',JSON.stringify(l.map(e=>e.id))); localStorage.setItem('pmgoRepetirSemanaDispensada','9999-12-31');})()` }, sessionId);
+  await abrirDin();
+  const ls = await avaliarDin(`const r={}; const $=(id)=>document.getElementById(id);
+    const lista=()=>JSON.parse(localStorage.getItem('pmgoEscalas')||'[]');
+    const filtro=$('filtroMes'); filtro.value='2026-12'; filtro.dispatchEvent(new Event('change',{bubbles:true})); await sl(200);
+    $('escalaInicio').value='2026-12-20T07:00'; $('escalaFim').value='2026-12-21T07:00'; $('escalaQtdPm').value='4';
+    $('formEscala').requestSubmit(); await sl(450);
+    r.semAviso=!$('dialogConfirm').open; r.gravou=lista().length; r.qtd=lista()[15]&&lista()[15].qtdPm;
+    r.linha=$('planningLimiteValor').textContent; r.visivel=!$('planningLimite').classList.contains('hidden');
+    localStorage.setItem('pmgoEscalas',JSON.stringify(lista().filter(e=>e.qtdPm>1)));
+    return JSON.stringify(r);`);
+  await abrirDin();
+  const ls2 = await avaliarDin(`const oculto=document.getElementById('planningLimite').classList.contains('hidden'); localStorage.removeItem('pmgoEscalas'); localStorage.removeItem('pmgoJaPassouDispensadas'); localStorage.removeItem('pmgoRepetirSemanaDispensada'); return JSON.stringify(oculto);`);
+  passos.push({ nome: 'Limite só individual: escala de 4 PMs com o mês em 180 h grava sem perguntar e não soma horas', ok: ls.semAviso && ls.gravou === 16 && ls.qtd === 4 && ls.linha === '180h de 192h' && ls.visivel, detalhe: JSON.stringify(ls) });
+  passos.push({ nome: 'Limite só individual: mês só com escalas de mais de um PM não mostra a linha de horas', ok: ls2 === true, detalhe: String(ls2) });
+
   console.table(passos.map(({ nome, ok, detalhe }) => ({ passo: nome, ok, detalhe })));
 
   const falhas = passos.filter((p) => !p.ok);

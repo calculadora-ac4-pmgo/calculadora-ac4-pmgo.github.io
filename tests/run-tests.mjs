@@ -592,7 +592,7 @@ const validarLimiteHoras = () => {
   const um01 = horasDoMes([{ id: 'a', inicio: '2026-11-08T08:01', fim: '2026-11-08T23:01', qtdPm: 1 }], '2026-11', calcularEscala);
   const checks = [
     [LIMITE_HORAS_MES === 192, `limite deveria ser 192, é ${LIMITE_HORAS_MES}`],
-    [nov === 192, `novembro deveria somar 192 h (180 + 12 da escala que vira o mês, 1 vez), somou ${nov}`],
+    [nov === 180, `novembro deveria somar 180 h (a escala de 3 PMs que vira o mês não conta), somou ${nov}`],
     [um01 === 15, `08:01→23:01 deveria contar 15 h pagas, contou ${um01}`],
     [!s180.excedeu && s180.restante === 12, '180 h: não excede, restam 12'],
     [!s192.excedeu && s192.restante === 0, '192 h: no limite, não excede'],
@@ -604,6 +604,20 @@ const validarLimiteHoras = () => {
     [editaIgual.depois === 204 && !editaIgual.avisar, 'editar sem aumentar as horas não avisa de novo'],
     [editaMaior.antes === 180 && editaMaior.depois === 192 && !editaMaior.avisar, `editar 12 h → 24 h: 180 → 192 (deu ${editaMaior.depois})`],
   ];
+  /* v99: escala com mais de um PM é planejamento da seção e fica fora do limite. */
+  const { mesSoDeSecao, escalaIndividual } = limiteMod;
+  const secao = Array.from({ length: 10 }, (_, i) => ({ id: `s${i}`, inicio: `2026-11-${p(i + 1)}T00:00`, fim: `2026-11-${p(i + 1)}T23:00`, qtdPm: 4 }));
+  const novaSecao = efeitoNoLimite(base, { inicio: '2026-11-20T07:00', fim: '2026-11-21T07:00', qtdPm: 5 }, calcularEscala);
+  const viraIndividual = efeitoNoLimite([...base, { id: 'g', inicio: '2026-11-20T07:00', fim: '2026-11-21T07:00', qtdPm: 3 }], { inicio: '2026-11-20T07:00', fim: '2026-11-21T07:00', qtdPm: 1 }, calcularEscala, 'g');
+  checks.push(
+    [typeof mesSoDeSecao === 'function' && escalaIndividual({}) && escalaIndividual({ qtdPm: 1 }) && !escalaIndividual({ qtdPm: 2 }), 'escala sem qtdPm ou com 1 PM é individual; com 2 não'],
+    [horasDoMes(secao, '2026-11', calcularEscala) === 0, 'escalas de 4 PMs não somam horas no limite'],
+    [horasDoMes([...base, ...secao], '2026-11', calcularEscala) === 180, 'mês misto conta só as individuais'],
+    [!novaSecao.avisar && novaSecao.depois === 180, 'lançar escala de 5 PMs com o mês em 180 h não avisa'],
+    [viraIndividual.avisar && viraIndividual.antes === 180 && viraIndividual.depois === 204, 'editar de 3 PMs para 1 PM passa a contar e avisa'],
+    [limiteMod.mesesAcimaDoLimite(base, [{ inicio: '2026-11-20T07:00', fim: '2026-11-21T07:00', qtdPm: 2 }], calcularEscala).length === 0, 'lote de escala de 2 PMs não avisa'],
+    [mesSoDeSecao(secao, '2026-11') && !mesSoDeSecao([...base, ...secao], '2026-11') && !mesSoDeSecao([], '2026-11') && !mesSoDeSecao(secao, '2026-12'), 'mês só de seção: sim só quando todas as escalas do mês têm mais de um PM'],
+  );
   /* v98: várias escalas de uma vez (lote, repetir a semana). */
   const { mesesAcimaDoLimite, perguntaLimite } = limiteMod;
   const dia = (mes, d, h1, h2) => ({ inicio: `2026-${mes}-${p(d)}T${h1}`, fim: `2026-${mes}-${p(d)}T${h2}`, qtdPm: 1 });
