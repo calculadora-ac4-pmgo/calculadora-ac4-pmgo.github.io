@@ -62,7 +62,14 @@ export function criarDinheiro(ctx) {
       const barra = $(`dinBarra-${p.chave}`);
       if (barra) barra.style.width = total ? `${(p.valor / total) * 100}%` : '0%';
       const valor = $(`dinValor-${p.chave}`);
-      if (valor) valor.textContent = fmtMoeda(p.valor);
+      if (valor) {
+        /* v100: "R$" num span à parte; em tela estreita ele some para o número caber inteiro. */
+        const [moeda, ...resto] = fmtMoeda(p.valor).split(/\s/);
+        const prefixo = document.createElement('span');
+        prefixo.className = 'dinheiro-moeda';
+        prefixo.textContent = `${moeda}\u00a0`;
+        valor.replaceChildren(prefixo, resto.join(' '));
+      }
       const qtd = $(`dinQtd-${p.chave}`);
       if (qtd) qtd.textContent = plural(p.qtd, 'escala', 'escalas');
       const botao = painel.querySelector(`[data-dinheiro-filtro="${p.chave}"]`);

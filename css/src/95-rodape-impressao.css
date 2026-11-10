@@ -25,6 +25,11 @@
   font-weight: 500;
 }
 .footer-link {
+  /* v100: área de toque de 44 px (auditoria de celular) */
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding-inline: 6px;
   color: var(--text-muted);
   text-decoration: none;
   font-weight: 700;

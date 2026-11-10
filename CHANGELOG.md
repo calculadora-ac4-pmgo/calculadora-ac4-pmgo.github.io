@@ -1,5 +1,18 @@
 # Changelog
 
+## v100 — Auditoria de celular
+
+Correções da auditoria feita em 360×640, 390×844, 320×568 e paisagem (10/11/2026). Sem aviso de novidades (`data-conteudo` continua "97").
+- **Meu dinheiro:** em tela de até 400 px, Recebido / A receber / Previsto mostram o número sem o "R$" repetido, para caber inteiro (antes cortava em "R$ 1.22…" a 360 px). O "R$" continua no texto para leitor de tela e no total.
+- **Nova escala:** a ajuda do "Escreva ou dite" sai da tela no celular (continua para leitor de tela); em 360×640, Início e Término aparecem juntos sem rolar.
+- **Aviso de instalação:** no celular vira uma faixa compacta acima da barra de baixo e não cobre mais o cabeçalho. Texto corrigido para "Instale a Calculadora AC4". O toast sobe quando o aviso está visível.
+- **iPhone sem zoom ao tocar em campo:** busca, filtros, situação da escala, "Escreva ou dite" e Feedback passam a 16 px no celular.
+- **Situação da escala inteira no cartão:** em tela de 360 a 374 px o botão "Mais" fica só com o ícone (nome acessível mantido) e "Recebida"/"Planejada" não cortam mais.
+- **Toque:** filtros com 44 px de altura; links do rodapé com 44 px.
+- **Contraste:** "Limpar tudo" no tema claro passa de 3,9:1 para mais de 4,5:1. Os demais alertas de contraste da auditoria eram falso positivo da medição (fundo translúcido) e foram conferidos: estão acima de 4,5:1.
+- **Fica para depois:** ordem da tela inicial (a lista começa depois de 2,3 telas em 360 px), Nova escala com o celular deitado e ícone adaptável em PNG.
+- Testes: smoke com 4 passos novos em 360×640 (valores inteiros, situação e campos de 16 px, Término visível, aviso fora do cabeçalho e rodapé de 44 px).
+
 ## v99 — Limite de 192 h só para escala individual
 
 Decisão do gestor em 10/11/2026: o limite de 192 h por mês vale para o policial. Escala com mais de um PM é planejamento da seção e serve para chegar ao valor final, sem controle de horas. Sem aviso de novidades (`data-conteudo` continua "97").

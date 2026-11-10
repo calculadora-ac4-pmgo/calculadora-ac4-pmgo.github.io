@@ -657,3 +657,58 @@
   .planning-history-value { letter-spacing: -0.03em; }
 }
 
+
+/* ===== v100: auditoria de celular ===== */
+@media (max-width: 760px) {
+  /* iPhone amplia a tela ao focar campo com letra menor que 16 px. */
+  .feed-filter .control,
+  .status-select,
+  .texto-escala-linha .control,
+  .fb-textarea { font-size: 1rem; }
+  .feed-filter .control { min-height: 44px; }
+
+  /* Nova escala: a ajuda do "Escreva ou dite" sai da tela (continua para leitor
+     de tela) para Início e Término aparecerem juntos sem rolar. */
+  .texto-escala { margin-bottom: 12px; }
+  .texto-escala-dica {
+    position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+    overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+  }
+
+  /* Aviso de instalação: faixa compacta acima da barra de baixo, sem cobrir o
+     cabeçalho. Continua fixa (fora do fluxo) para não deslocar o conteúdo. */
+  .pwa-banner {
+    top: auto;
+    left: 10px;
+    right: 10px;
+    bottom: calc(78px + env(safe-area-inset-bottom));
+    padding: 8px 8px 8px 12px;
+    border: 1px solid rgba(214, 173, 85, 0.32);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    animation-name: bannerSobe;
+  }
+  .pwa-banner-content p { display: none; }
+  .pwa-banner-content strong { font-size: var(--fs-leitura); line-height: 1.25; }
+  .pwa-banner-actions .btn, .pwa-banner-close { min-height: 44px; }
+  .pwa-banner-close { width: 44px; }
+  /* O toast sobe para não ficar em cima do aviso. */
+  body:has(.pwa-banner:not(.hidden)) .toast-region { bottom: calc(148px + env(safe-area-inset-bottom)); }
+}
+@keyframes bannerSobe {
+  from { transform: translateY(16px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+@media (max-width: 400px) {
+  /* Meu dinheiro: sem o "R$" repetido, o número cabe inteiro nas três colunas. */
+  .dinheiro-moeda { display: none; }
+  .dinheiro-parte { padding-inline: 6px; }
+}
+
+@media (min-width: 360px) and (max-width: 374px) {
+  /* Cartão da escala: "Mais" só com o ícone, para a situação caber por inteiro.
+     (Abaixo de 360 px a situação já ocupa a linha toda.) */
+  .ec-card-actions { grid-template-columns: minmax(0, 1fr) 84px 48px; }
+  .ec-more > summary span { display: none; }
+}

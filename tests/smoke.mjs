@@ -897,6 +897,38 @@ try {
   passos.push({ nome: 'Limite só individual: escala de 4 PMs com o mês em 180 h grava sem perguntar e não soma horas', ok: ls.semAviso && ls.gravou === 16 && ls.qtd === 4 && ls.linha === '180h de 192h' && ls.visivel, detalhe: JSON.stringify(ls) });
   passos.push({ nome: 'Limite só individual: mês só com escalas de mais de um PM não mostra a linha de horas', ok: ls2 === true, detalhe: String(ls2) });
 
+  // 18. Auditoria de celular (v100), em 360×640: valores do "Meu dinheiro" inteiros, situação da
+  //     escala inteira, campos com 16 px (iPhone não amplia), Término visível na Nova escala,
+  //     aviso de instalação fora do cabeçalho e rodapé com área de toque de 44 px.
+  await cdp.enviar('Emulation.setDeviceMetricsOverride', { width: 360, height: 640, deviceScaleFactor: 1, mobile: true }, sessionId);
+  await cdp.enviar('Runtime.evaluate', { expression: `(()=>{const p=(n)=>String(n).padStart(2,'0');
+    const l=Array.from({length:12},(_,i)=>({id:'au'+i,inicio:'2026-12-'+p(i+1)+'T00:00',fim:'2026-12-'+p(i+1)+'T23:00',descricao:'Sede',origem:'AC4',qtdPm:4,status:['recebida','realizada','planejada','conferida'][i%4]}));
+    localStorage.setItem('pmgoEscalas',JSON.stringify(l)); localStorage.setItem('pmgoJaPassouDispensadas',JSON.stringify(l.map(e=>e.id))); localStorage.setItem('pmgoRepetirSemanaDispensada','9999-12-31');})()` }, sessionId);
+  await abrirDin();
+  const au = await avaliarDin(`const r={}; try{ const $=(id)=>document.getElementById(id); const q=(s)=>[...document.querySelectorAll(s)];
+    const inteiro=(el)=>el.scrollWidth<=el.clientWidth+1; const fs=(el)=>parseFloat(getComputedStyle(el).fontSize);
+    r.valores=q('.dinheiro-valor').map(el=>el.textContent+':'+inteiro(el)); r.valoresOk=q('.dinheiro-valor').length===3&&q('.dinheiro-valor').every(inteiro);
+    r.moedaNoTexto=q('.dinheiro-valor').every(el=>el.textContent.startsWith('R$'));
+    const filtro=$('filtroMes'); filtro.value='2026-12'; filtro.dispatchEvent(new Event('change',{bubbles:true})); await sl(250);
+    const sel=q('#listaEscalas .ec-card-actions .status-select'); r.sel=sel.length; r.selOk=sel.length>0&&sel.every(s=>inteiro(s)&&fs(s)>=16);
+    const medir=document.createElement('span'); medir.style.font=getComputedStyle(sel[0]).font; medir.style.visibility='hidden'; medir.style.position='absolute'; medir.textContent='Planejada'; document.body.appendChild(medir);
+    const cs=getComputedStyle(sel[0]); r.selCabe=medir.offsetWidth+parseFloat(cs.paddingLeft)+parseFloat(cs.paddingRight)<=sel[0].getBoundingClientRect().width; medir.remove();
+    r.filtros=q('.feed-filter .control').map(c=>fs(c)+'/'+Math.round(c.getBoundingClientRect().height)); r.filtrosOk=q('.feed-filter .control').every(c=>fs(c)>=16&&c.getBoundingClientRect().height>=44);
+    r.rodape=q('.footer-link').map(a=>Math.round(a.getBoundingClientRect().height)); r.rodapeOk=q('.footer-link').length>0&&q('.footer-link').every(a=>a.getBoundingClientRect().height>=44);
+    const b=$('pwaBanner'); b.classList.remove('hidden'); await sl(450); const rb=b.getBoundingClientRect(); const topo=document.querySelector('.topbar, header').getBoundingClientRect(); const barra=document.querySelector('.mobile-bar').getBoundingClientRect();
+    r.banner={top:Math.round(rb.top),bottom:Math.round(rb.bottom),topoFim:Math.round(topo.bottom),barraTopo:Math.round(barra.top)}; r.bannerOk=rb.top>=topo.bottom&&rb.bottom<=barra.top+1; b.classList.add('hidden');
+    $('mobileAdd').click(); await sl(900);
+    const fim=$('fieldFim').getBoundingClientRect(); const add=$('btnSubmit').getBoundingClientRect();
+    r.fimBottom=Math.round(fim.bottom); r.addTop=Math.round(add.top); r.fimVisivel=fim.top>0&&fim.bottom<=add.top+1; r.textoFs=fs($('escalaTexto'));
+    }catch(e){r.erro=String(e&&e.stack||e);}
+    localStorage.removeItem('pmgoEscalas'); localStorage.removeItem('pmgoJaPassouDispensadas'); localStorage.removeItem('pmgoRepetirSemanaDispensada');
+    return JSON.stringify(r);`);
+  passos.push({ nome: 'Celular 360 px: valores do "Meu dinheiro" aparecem inteiros (com "R$" no texto para leitor de tela)', ok: au.valoresOk && au.moedaNoTexto, detalhe: JSON.stringify(au.valores) });
+  passos.push({ nome: 'Celular 360 px: situação da escala cabe inteira e campos têm 16 px (iPhone não amplia)', ok: au.selOk && au.selCabe && au.filtrosOk && au.textoFs >= 16, detalhe: JSON.stringify({ sel: au.sel, selCabe: au.selCabe, filtros: au.filtros, texto: au.textoFs }) });
+  passos.push({ nome: 'Celular 360×640: Nova escala mostra Início e Término sem rolar', ok: au.fimVisivel, detalhe: `fim ${au.fimBottom} / adicionar ${au.addTop}` });
+  passos.push({ nome: 'Celular 360 px: aviso de instalação fica entre o cabeçalho e a barra de baixo; rodapé com toque de 44 px', ok: au.bannerOk && au.rodapeOk, detalhe: JSON.stringify({ banner: au.banner, rodape: au.rodape }) });
+  await cdp.enviar('Emulation.setDeviceMetricsOverride', { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false }, sessionId);
+
   console.table(passos.map(({ nome, ok, detalhe }) => ({ passo: nome, ok, detalhe })));
 
   const falhas = passos.filter((p) => !p.ok);
