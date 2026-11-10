@@ -567,6 +567,48 @@ const validarExplicarValor = () => {
 };
 rodar('Explicar o valor (conta por faixa)', validarExplicarValor);
 
+const limiteMod = await import('../js/modules/limite-horas.mjs').catch(() => ({}));
+const validarLimiteHoras = () => {
+  const { LIMITE_HORAS_MES, horasDoMes, situacaoLimite, efeitoNoLimite } = limiteMod;
+  if (typeof horasDoMes !== 'function') return ['js/modules/limite-horas.mjs não existe'];
+  const p = (n) => String(n).padStart(2, '0');
+  /* 15 escalas de 12 h em novembro (01 a 15, 07→19) = 180 h. */
+  const base = Array.from({ length: 15 }, (_, i) => ({ id: `e${i}`, inicio: `2026-11-${p(i + 1)}T07:00`, fim: `2026-11-${p(i + 1)}T19:00`, qtdPm: 1 }));
+  const extra = [
+    { id: 'out', inicio: '2026-10-31T19:00', fim: '2026-11-01T07:00', qtdPm: 1 },   /* começa em outubro */
+    { id: 'vira', inicio: '2026-11-30T19:00', fim: '2026-12-01T07:00', qtdPm: 3 },  /* começa em novembro, 3 PMs */
+  ];
+  const nov = horasDoMes([...base, ...extra], '2026-11', calcularEscala);
+  const s180 = situacaoLimite(180);
+  const s192 = situacaoLimite(192);
+  const s198 = situacaoLimite(198);
+  const cabe = efeitoNoLimite(base, { inicio: '2026-11-20T07:00', fim: '2026-11-20T19:00' }, calcularEscala);
+  const passa = efeitoNoLimite(base, { inicio: '2026-11-20T07:00', fim: '2026-11-20T20:00' }, calcularEscala);
+  const outroMes = efeitoNoLimite(base, { inicio: '2026-12-01T07:00', fim: '2026-12-02T07:00' }, calcularEscala);
+  const cheio = [...base, { id: 'x', inicio: '2026-11-20T07:00', fim: '2026-11-21T07:00', qtdPm: 1 }]; /* 204 h */
+  const editaMenor = efeitoNoLimite(cheio, { inicio: '2026-11-20T07:00', fim: '2026-11-20T19:00' }, calcularEscala, 'x');
+  const editaIgual = efeitoNoLimite(cheio, { inicio: '2026-11-21T07:00', fim: '2026-11-22T07:00' }, calcularEscala, 'x');
+  const editaMaior = efeitoNoLimite(base, { inicio: '2026-11-15T07:00', fim: '2026-11-16T07:00' }, calcularEscala, 'e14');
+  const um01 = horasDoMes([{ id: 'a', inicio: '2026-11-08T08:01', fim: '2026-11-08T23:01', qtdPm: 1 }], '2026-11', calcularEscala);
+  const checks = [
+    [LIMITE_HORAS_MES === 192, `limite deveria ser 192, é ${LIMITE_HORAS_MES}`],
+    [nov === 192, `novembro deveria somar 192 h (180 + 12 da escala que vira o mês, 1 vez), somou ${nov}`],
+    [um01 === 15, `08:01→23:01 deveria contar 15 h pagas, contou ${um01}`],
+    [!s180.excedeu && s180.restante === 12, '180 h: não excede, restam 12'],
+    [!s192.excedeu && s192.restante === 0, '192 h: no limite, não excede'],
+    [s198.excedeu && s198.excesso === 6 && s198.restante === 0, '198 h: excede em 6'],
+    [cabe.depois === 192 && !cabe.avisar, `180 + 12 = 192 não avisa (deu ${cabe.depois}, avisar ${cabe.avisar})`],
+    [passa.depois === 193 && passa.avisar && passa.antes === 180 && passa.mes === '2026-11', `180 + 13 = 193 avisa (deu ${passa.depois})`],
+    [outroMes.mes === '2026-12' && outroMes.depois === 24 && !outroMes.avisar, 'escala de dezembro não conta em novembro'],
+    [editaMenor.depois === 192 && !editaMenor.avisar, `editar para menos (204 → 192) não avisa (deu ${editaMenor.depois})`],
+    [editaIgual.depois === 204 && !editaIgual.avisar, 'editar sem aumentar as horas não avisa de novo'],
+    [editaMaior.antes === 180 && editaMaior.depois === 192 && !editaMaior.avisar, `editar 12 h → 24 h: 180 → 192 (deu ${editaMaior.depois})`],
+  ];
+  const falhas = checks.filter(([ok]) => !ok).map(([, nome]) => nome);
+  return falhas.length ? falhas : 'LIMITE DE HORAS OK';
+};
+rodar('Limite de horas no mês (192 h)', validarLimiteHoras);
+
 const textoMod = await import('../js/modules/texto-escala.mjs').catch(() => ({}));
 const validarTextoEscala = () => {
   const { interpretarTextoEscala: f } = textoMod;

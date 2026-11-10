@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Calculadora AC4 — v96
+   Calculadora AC4 — v97
    Arquivo gerado por tools/montar-css.mjs — edite css/src/ e rode o script.
    ========================================================================== */
 
@@ -938,6 +938,19 @@ textarea.control { min-height: 74px; resize: vertical; }
   max-width: 180px;
 }
 
+
+/* v97: horas do mês diante do limite mensal */
+.planning-limite {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px;
+  margin-top: 12px; padding: 9px 12px;
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text-muted); font-size: var(--fs-leitura); font-weight: 700; font-variant-numeric: tabular-nums;
+}
+.planning-limite strong { color: var(--text); font-weight: 850; }
+.planning-limite small { margin-left: auto; font-size: inherit; font-weight: 750; }
+.planning-limite.is-acima { border-color: var(--danger); background: color-mix(in srgb, var(--danger) 10%, var(--surface)); }
+.planning-limite.is-acima strong, .planning-limite.is-acima small { color: var(--danger); }
 /* ===== METRICS ===== */
 .metrics {
   display: grid;

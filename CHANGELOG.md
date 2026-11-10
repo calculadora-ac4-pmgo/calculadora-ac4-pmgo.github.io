@@ -1,5 +1,16 @@
 # Changelog
 
+## v97 — Alerta de limite de horas no mês
+
+Último dos recursos "inteligentes sem IA" (v94–v97). **Aviso de novidades da série** (`data-conteudo="97"`): ver a conta do valor, escrever ou ditar a escala e o aviso do limite; a introdução cita o "Repetir a semana".
+- **Planejamento:** nova linha "Horas no mês: 180h de 192h", com "Restam 12h", "No limite" ou, em destaque, "6h acima do limite".
+- **Aviso ao lançar:** se a escala nova (ou a edição que aumenta as horas) faz o mês passar de 192 h, o app pergunta "Com esta escala, Novembro de 2026 fica com 198h. O limite é de 192h por mês. Deseja continuar?". Cancelar não grava; Continuar grava. Chegar exatamente a 192 h não avisa.
+- **Como conta:** horas pagas (cada faixa arredondada, como na planilha do gestor), no mês em que a escala começa, uma vez por escala (o limite é por policial, não multiplica pela quantidade de PMs).
+- **Limite:** 192 h por mês, da planilha do gestor (`LIMITE_HORAS_MES` em `js/modules/limite-horas.mjs`). Não está na Portaria transcrita em `docs/`; se a regra mudar, é só essa constante.
+- **Fora desta versão:** "Lançar em outros dias" e "Repetir a semana" não perguntam antes de gravar; o excesso aparece na linha do Planejamento. O aviso de escalas sem intervalo ficou de fora (sem regra oficial conhecida).
+- Novo módulo `js/modules/limite-horas.mjs` (regra pura, no `SHELL`).
+- Testes: unit "Limite de horas no mês (192 h)" (mês pelo início, 1 vez por escala, ":01", 192 não avisa, 193 avisa, edição para menos ou igual não avisa); smoke (linha do Planejamento, pergunta, Cancelar, Continuar e destaque). Revisão visual em 390 px e 1280 px, claro e escuro.
+
 ## v96 — Lançar por texto ou voz
 
 Terceiro dos recursos "inteligentes sem IA" (v94–v97). Sem aviso de novidades (`data-conteudo` continua "93").
