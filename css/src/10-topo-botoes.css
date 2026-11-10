@@ -115,7 +115,9 @@
 .topbar .btn-outline:hover { background: rgb(255 255 255 / 0.12); border-color: rgb(242 221 155 / 0.4); }
 .btn-ghost { background: transparent; color: var(--text-muted); }
 .btn-ghost:hover { background: var(--surface-2); color: var(--text); }
-.btn-danger-soft { background: var(--danger-soft); color: var(--danger); border-color: transparent; }
+/* v100: vermelho mais escuro no tema claro (4,5:1 sobre o fundo rosado; era 3,9:1). */
+.btn-danger-soft { background: var(--danger-soft); color: #b91c1c; border-color: transparent; }
+[data-theme="dark"] .btn-danger-soft { color: var(--danger); }
 .btn-danger-soft:hover { filter: brightness(0.97); }
 .btn-sm { min-height: 40px; padding: 8px 12px; font-size: 0.8rem; }
 .btn-block { width: 100%; }
