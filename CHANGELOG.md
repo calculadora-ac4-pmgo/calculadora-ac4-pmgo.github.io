@@ -1,5 +1,17 @@
 # Changelog
 
+## v102 — App abre mais rápido e o "Nova escala" responde na hora
+
+Correções a partir do relatório do Cloudflare Web Analytics (16/10 a 15/11/2026). Sem aviso de novidades (`data-conteudo` continua "97").
+- **Abertura (LCP):** no Cloudflare, 92% do tempo do LCP no P75 (1.542 de 1.684 ms) era "atraso na renderização do elemento": o conteúdo já tinha chegado, mas a tela esperava o JavaScript. Três ajustes:
+  - `<link rel="modulepreload">` de todos os módulos no `index.html`, com `fetchpriority="low"` para não atrasar o CSS e a fonte. Antes o navegador descobria um nível de `import` por vez (até 3 idas e voltas na rede).
+  - O `app.js` começa assim que o módulo roda, sem esperar o `DOMContentLoaded`, que esperava também o beacon do Cloudflare.
+  - O beacon do Cloudflare passa a `async`.
+  - Medição de laboratório (4G lento, CPU 4×, 1ª visita, mediana de 5): LCP de 2.116 para 1.840 ms (−13%). FCP sem mudança (924 → 988 ms, dentro do ruído).
+- **Abrir "Nova escala" e "Editar" no celular (INP):** marcar o fundo como inerte recalculava o estilo da página inteira (~1.400 elementos) no mesmo frame do toque. Agora o painel aparece primeiro e o fundo fica inerte no frame seguinte (o foco de volta ao fechar segue a mesma ordem). Laboratório com CPU 20× (celular fraco) e 120 escalas: de 512–776 ms para 176–296 ms.
+- **O que não muda com código:** o `#escalaInicioHora` (3,7 s no P75 do Cloudflare, 10 ocorrências) não se reproduz no laboratório (32 ms com CPU 4×, ~200 ms com 20×). A hipótese mais provável é o seletor de hora nativo do Android entrando na conta. Fica em observação no próximo relatório.
+- Teste unit novo "Módulos pré-carregados (LCP)": todo módulo do app tem `modulepreload` de prioridade baixa (e nenhum a mais), o beacon é `async` e o `app.js` não volta a esperar só o `DOMContentLoaded`.
+
 ## v101 — Lista de escalas mais cedo no celular
 
 Último ponto da auditoria de celular, com desenho aprovado em 10/11/2026 (opção B). Sem aviso de novidades (`data-conteudo` continua "97").

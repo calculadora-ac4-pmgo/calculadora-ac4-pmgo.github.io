@@ -65,6 +65,8 @@ export function criarFormulario(ctx) {
   const isMobileViewport = () => window.matchMedia('(max-width: 760px)').matches;
 
   function setFundoInerte(inerte) {
+    /* Já no estado pedido: não regrava (senão o "anterior" guardado vira true). */
+    if (inerte === fundoInerte.length > 0) return;
     if (inerte) {
       const alvos = document.querySelectorAll(
         'body > header, body > footer, body > .mobile-bar, #conteudo > :not(#launchPanel):not(#mobileLaunchBackdrop)'
@@ -77,6 +79,16 @@ export function criarFormulario(ctx) {
     fundoInerte = [];
   }
 
+  /* v102 (INP): marcar o fundo como inerte recalcula o estilo da página inteira
+     (~1.400 elementos; ~200 ms num celular fraco). Fazer isso no mesmo frame do
+     toque atrasava a abertura do sheet. Agora o sheet aparece primeiro e o fundo
+     fica inerte no frame seguinte; vale só o último pedido (abrir/fechar rápido). */
+  let pedidoInerte = 0;
+  function agendarFundoInerte(inerte) {
+    const pedido = ++pedidoInerte;
+    aposProximoPaint(() => { if (pedido === pedidoInerte) setFundoInerte(inerte); });
+  }
+
   function configurarSemanticaSheet(aberto) {
     const painel = $('launchPanel');
     if (!painel) return;
@@ -85,13 +97,13 @@ export function criarFormulario(ctx) {
       painel.setAttribute('aria-modal', 'true');
       painel.setAttribute('aria-labelledby', 'mobileLaunchTitle');
       painel.setAttribute('tabindex', '-1');
-      setFundoInerte(true);
+      agendarFundoInerte(true);
     } else {
       painel.removeAttribute('role');
       painel.removeAttribute('aria-modal');
       painel.setAttribute('aria-labelledby', 'formTitle');
       painel.removeAttribute('tabindex');
-      setFundoInerte(false);
+      agendarFundoInerte(false);
     }
   }
 
@@ -117,7 +129,8 @@ export function criarFormulario(ctx) {
   function fecharPainelLancamentoMobile({ devolverFoco = true } = {}) {
     if (!estado.sheetAberto) return;
     setMobileSheetOpen(false);
-    if (devolverFoco) $('mobileAdd')?.focus();
+    /* O botão fica ativo de novo junto com o fundo, no frame seguinte (v102). */
+    if (devolverFoco) aposProximoPaint(() => { if (!estado.sheetAberto) $('mobileAdd')?.focus(); });
   }
 
   /* --------------------------------------------------------------- ações */

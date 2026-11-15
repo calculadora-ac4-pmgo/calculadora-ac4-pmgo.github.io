@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Calculadora AC4 — v101
+   Calculadora AC4 — v102
    Módulo principal: estado, ligação dos módulos de interface (js/modules/ui/),
    render() e init(). Regras de negócio, formatação e agenda vivem em js/modules/.
    ========================================================================== */
@@ -48,7 +48,7 @@ import { criarAgendaDias } from './modules/ui/agenda-dias.mjs';
   /* Versão da aplicação (sincronizada pelo tools/bump-version.mjs). Serve para
      carimbar o log de erros e detectar clientes presos em cache antigo:
      se __ac4Version no console divergir do rodapé/CHANGELOG, o SW não atualizou. */
-  const APP_VERSION = '101';
+  const APP_VERSION = '102';
 
   const STORAGE = {
     escalas:   'pmgoEscalas',
@@ -435,7 +435,12 @@ import { criarAgendaDias } from './modules/ui/agenda-dias.mjs';
     document.documentElement.classList.add('app-ready');
   }
 
-  document.addEventListener('DOMContentLoaded', () => {
+  /* v102: começa assim que o módulo roda. Módulo sem async só executa depois
+     de o HTML inteiro ser lido, então o DOM já está pronto aqui. Esperar o
+     DOMContentLoaded fazia a tela esperar também scripts de terceiros (o
+     beacon do Cloudflare), que nada têm a ver com o app (LCP no Cloudflare:
+     92% do tempo era "atraso na renderização do elemento"). */
+  const iniciarAplicacao = () => {
     try {
       init();
     } finally {
@@ -446,7 +451,9 @@ import { criarAgendaDias } from './modules/ui/agenda-dias.mjs';
     document.querySelectorAll('.footer-year').forEach((el) => { el.textContent = ano; });
     const printYear = $('printYear');
     if (printYear) printYear.textContent = ano;
-  });
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciarAplicacao, { once: true });
+  else iniciarAplicacao();
   /* Suítes de regressão: módulo carregado sob demanda só em localhost —
      não vai para o aparelho do usuário. tests/*.mjs aguardam esta promessa. */
   if (ambienteDeTeste) {
