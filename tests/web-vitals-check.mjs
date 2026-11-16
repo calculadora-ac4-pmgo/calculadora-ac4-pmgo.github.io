@@ -128,16 +128,18 @@ const OBSERVADOR_VITALS = `(() => {
       for (const entry of list.getEntries()) window.__ac4Vitals.longTasks.push(entry.duration);
     }).observe({ type: 'longtask', buffered: true });
   } catch { window.__ac4Vitals.semLongTask = true; }
-  /* Conta reposições de conteúdo em #listaEscalas a partir do DOMContentLoaded
-     (o parser também insere o empty-state estático — esse não conta). Este
-     listener registra antes do módulo da aplicação, logo observa o 1º render. */
-  document.addEventListener('DOMContentLoaded', () => {
+  /* Conta reposições de conteúdo em #listaEscalas a partir do fim da leitura do
+     HTML (o parser também insere o empty-state estático — esse não conta). O
+     readyState "interactive" chega antes de os módulos rodarem; desde a v102 o
+     app.js inicia ali mesmo, antes do DOMContentLoaded. */
+  document.addEventListener('readystatechange', () => {
+    if (document.readyState !== 'interactive') return;
     const alvo = document.getElementById('listaEscalas');
     if (!alvo) return;
     new MutationObserver((records) => {
       window.__ac4Vitals.renderMutacoes += records.length;
     }).observe(alvo, { childList: true });
-  }, { once: true });
+  });
 })();`;
 
 /* Coleta pós-carregamento: espera fontes + frames + janela de assentamento e
@@ -419,11 +421,11 @@ try {
 
   /* Cenário 6 — resiliência: erro proposital no init() não pode deixar a tela
      presa em app-pending. A sabotagem remove #escalaInicio antes do init rodar
-     (o listener injetado registra primeiro), forçando o TypeError; o try/finally
-     do DOMContentLoaded deve revelar a aplicação mesmo assim. */
+     (no readyState "interactive", antes de os módulos rodarem), forçando o
+     TypeError; o try/finally da inicialização deve revelar a aplicação mesmo assim. */
   await avaliar(LIMPAR_ESCALAS);
   const { identifier: idSabotagem } = await cdp.enviar('Page.addScriptToEvaluateOnNewDocument', {
-    source: `document.addEventListener('DOMContentLoaded', () => { document.getElementById('escalaInicio')?.remove(); }, { once: true });`,
+    source: `document.addEventListener('readystatechange', () => { if (document.readyState === 'interactive') document.getElementById('escalaInicio')?.remove(); });`,
   }, sessionId);
   await navegar();
   const m5 = await avaliar(`(async () => {

@@ -30,6 +30,9 @@ const storageStub = () => {
 globalThis.window = globalThis;
 globalThis.document = {
   getElementById: () => null,
+  /* "loading": o app só se liga ao DOMContentLoaded, que nunca dispara aqui
+     (desde a v102 o app.js inicia na hora se o documento já foi lido). */
+  readyState: 'loading',
   addEventListener: () => {},
   querySelectorAll: () => [],
   querySelector: () => null,
@@ -323,6 +326,28 @@ const validarShellModulos = () => {
   return falhas.length ? falhas : 'MÓDULOS NO SHELL OK';
 };
 rodar('Módulos no cache offline do Service Worker', validarShellModulos);
+
+/* v102 (LCP no Cloudflare): o index.html pré-carrega todos os módulos de uma vez
+   (<link rel="modulepreload">), em vez de o navegador descobrir um nível de import
+   por vez. Módulo novo sem preload volta a custar uma ida e volta na rede; preload
+   de módulo que não existe baixa à toa. Prioridade baixa: não disputa com o CSS. */
+const validarModulosPreCarregados = () => {
+  const html = readFileSync(join(raiz, 'index.html'), 'utf8');
+  const soTeste = new Set(['testes.mjs']);
+  const preload = [...html.matchAll(/<link rel="modulepreload" href="js\/modules\/([^"?]+)"([^>]*)>/g)];
+  const listados = new Set(preload.map((m) => m[1]));
+  const falhas = [];
+  listarModulos().filter((f) => !soTeste.has(f)).forEach((f) => { if (!listados.has(f)) falhas.push(`sem modulepreload: js/modules/${f}`); });
+  listados.forEach((f) => { if (soTeste.has(f) || !existsSync(join(raiz, 'js', 'modules', f))) falhas.push(`modulepreload de módulo inexistente ou só de teste: ${f}`); });
+  preload.forEach((m) => { if (!/fetchpriority="low"/.test(m[2])) falhas.push(`modulepreload sem fetchpriority="low": ${m[1]}`); });
+  if (!/<link rel="modulepreload" href="js\/app\.js\?v=\d+">/.test(html)) falhas.push('app.js sem modulepreload');
+  /* O beacon do Cloudflare não pode segurar a abertura do app. */
+  if (!/<script type="module" async src="https:\/\/static\.cloudflareinsights\.com\/beacon\.min\.js"/.test(html)) falhas.push('beacon do Cloudflare sem async');
+  const app = readFileSync(join(raiz, 'js', 'app.js'), 'utf8');
+  if (!/document\.readyState === 'loading'/.test(app)) falhas.push('app.js voltou a esperar só o DOMContentLoaded para iniciar');
+  return falhas.length ? falhas : 'MÓDULOS PRÉ-CARREGADOS OK';
+};
+rodar('Módulos pré-carregados (LCP)', validarModulosPreCarregados);
 
 /* Módulos puros extraídos do app.js (P3-2): templates e exportações. */
 const { botoesAcaoHTML, cardEscalaHTML } = await import('../js/modules/templates.mjs');

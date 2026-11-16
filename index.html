@@ -15,9 +15,41 @@
   <!-- Preload da fonte principal — reduz reflow/CLS do font-swap da Inter -->
   <link rel="preload" href="assets/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 
-  <link rel="stylesheet" href="css/styles.css?v=101">
-  <script src="js/theme.js?v=101"></script>
-  <script src="js/inicio-seguro.js?v=101" defer></script>
+  <link rel="stylesheet" href="css/styles.css?v=102">
+  <!-- v102: baixa todos os módulos de uma vez, em vez de descobrir um nível de
+       import por vez (cada nível custava uma ida e volta na rede do celular).
+       Lista igual aos módulos do SHELL do sw.js (teste "Módulos pré-carregados"). -->
+  <link rel="modulepreload" href="js/app.js?v=102">
+  <link rel="modulepreload" href="js/modules/formato.mjs" fetchpriority="low">
+  <link rel="modulepreload" href="js/modules/calculo.mjs" fetchpriority="low">
+  <link rel="modulepreload" href="js/modules/portarias.mjs" fetchpriority="low">
+  <link rel="modulepreload" href="js/modules/agenda.mjs" fetchpriority="low">
+  <link rel="modulepreload" href="js/modules/persistencia.mjs" fetchpriority="low">
+  <link rel="modulepreload" href="js/modules/lote.mjs" fetchpriority="low">
+  <link rel="modulepreload" href="js/modules/templates.mjs" fetchpriority="low">
+  <link rel="modulepreload" href="js/modules/relatorio.mjs" fetchpriority="low">
+  <link rel="modulepreload" href="js/modules/pdf.mjs" fetchpriority="low">
+  <link rel="modulepreload" href="js/modules/ui/dinheiro.mjs" fetchpriority="low">
+  <link rel="modulepreload" href="js/modules/ui/proxima-escala.mjs" fetchpriority="low">
+  <link rel="modulepreload" href="js/modules/ui/explicar-valor.mjs" fetchpriority="low">
+  <link rel="modulepreload" href="js/modules/ui/repetir-semana.mjs" fetchpriority="low">
+  <link rel="modulepreload" href="js/modules/repetir-semana.mjs" fetchpriority="low">
+  <link rel="modulepreload" href="js/modules/ui/texto-escala.mjs" fetchpriority="low">
+  <link rel="modulepreload" href="js/modules/texto-escala.mjs" fetchpriority="low">
+  <link rel="modulepreload" href="js/modules/limite-horas.mjs" fetchpriority="low">
+  <link rel="modulepreload" href="js/modules/pwa.mjs" fetchpriority="low">
+  <link rel="modulepreload" href="js/modules/ui/avisos.mjs" fetchpriority="low">
+  <link rel="modulepreload" href="js/modules/ui/observabilidade.mjs" fetchpriority="low">
+  <link rel="modulepreload" href="js/modules/ui/aparencia.mjs" fetchpriority="low">
+  <link rel="modulepreload" href="js/modules/ui/dados.mjs" fetchpriority="low">
+  <link rel="modulepreload" href="js/modules/ui/exportacoes.mjs" fetchpriority="low">
+  <link rel="modulepreload" href="js/modules/ui/compartilhar.mjs" fetchpriority="low">
+  <link rel="modulepreload" href="js/modules/ui/planejamento.mjs" fetchpriority="low">
+  <link rel="modulepreload" href="js/modules/ui/formulario.mjs" fetchpriority="low">
+  <link rel="modulepreload" href="js/modules/ui/modelos.mjs" fetchpriority="low">
+  <link rel="modulepreload" href="js/modules/ui/agenda-dias.mjs" fetchpriority="low">
+  <script src="js/theme.js?v=102"></script>
+  <script src="js/inicio-seguro.js?v=102" defer></script>
 </head>
 <body>
 
@@ -566,7 +598,7 @@
         &copy; <span class="footer-year"></span> Weliton Pinheiro &mdash; Todos os direitos reservados.
       </p>
       <p class="site-footer-meta">
-        Calculadora AC4 &middot; PMGO &middot; v101 &middot;
+        Calculadora AC4 &middot; PMGO &middot; v102 &middot;
         <a href="#" id="footerNovidades" class="footer-link">Novidades</a> &middot;
         <a href="#" id="footerPrivacidade" class="footer-link">Privacidade</a> &middot;
         <a href="#" id="footerFeedback" class="footer-link">Feedback</a> &middot;
@@ -605,7 +637,7 @@
   <dialog class="confirm-dialog whats-new-dialog" id="dialogNovidades" data-conteudo="97" aria-modal="true" aria-labelledby="novidadesTitle" aria-describedby="novidadesIntro">
     <div class="whats-new-body">
       <div class="whats-new-topbar">
-        <span class="whats-new-badge">Nova versão <strong>v101</strong></span>
+        <span class="whats-new-badge">Nova versão <strong>v102</strong></span>
         <button class="btn-icon whats-new-close" id="novidadesFechar" type="button" aria-label="Fechar novidades">
           <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
         </button>
@@ -936,7 +968,7 @@
     </div>
   </dialog>
 
-  <script type="module" src="js/app.js?v=101"></script>
+  <script type="module" src="js/app.js?v=102"></script>
 
   <!-- Relatório profissional de impressão — populado pelo JS antes de window.print() -->
   <section id="printReport">
@@ -971,8 +1003,9 @@
     </footer>
   </section>
 
-  <!-- Cloudflare Web Analytics: métricas agregadas, sem cookies e sem acesso aos dados da calculadora. -->
-  <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token":"3b1137c9d2024604bff681a3d09a202e"}'></script>
+  <!-- Cloudflare Web Analytics: métricas agregadas, sem cookies e sem acesso aos dados da calculadora.
+       async (v102): o beacon não segura a abertura do app. -->
+  <script type="module" async src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token":"3b1137c9d2024604bff681a3d09a202e"}'></script>
 
 </body>
 </html>
